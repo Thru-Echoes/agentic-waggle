@@ -2,9 +2,9 @@
 
 > *The agentic CRM for the people who move the bees.*
 
-**Waggle** is a self-contained agentic CRM over a synthetic commercial-beekeeping
-domain ("Meridian Apiaries"). Postgres + pgvector + Redis, FastAPI + Jinja/HTMX,
-LangGraph + MCP, real LLM. Zero external services — runs entirely on your laptop.
+**Waggle** is an agentic CRM over a synthetic commercial-beekeeping domain
+(Meridian Apiaries). Postgres + pgvector + Redis under Docker, FastAPI +
+Jinja/HTMX, LangGraph + MCP, real LLM (OpenAI default; Anthropic toggle).
 
 > Phase-by-phase status: [`STATUS.md`](STATUS.md). Public-facing overview:
 > [`README.md`](README.md).
@@ -103,9 +103,6 @@ scripts/demo.py        5-minute demo orchestrator
 5. **Sales Copilot answers** a question over MCP — *"What's the varroa trend
    at the O'Reilly orchard?"* — queries customer reports, aggregates mite counts,
    returns a structured answer with citations.
-
-Each step is live, demo-able, and backed by real code. No canned responses,
-no mocks.
 
 <!-- trace-mcp:claude-code -->
 

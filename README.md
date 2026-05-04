@@ -2,25 +2,27 @@
 
 > *The agentic CRM for the people who move the bees.*
 
-**Waggle** is a self-contained, agentic CRM for a fictional commercial beekeeper ("Meridian Apiaries & Pollination Services"). It runs entirely on your laptop — Postgres + pgvector + Redis — with synthetic data and zero external services. No cloud dependency, no third-party SaaS, no mocks.
+**Waggle** is an agentic CRM for a synthetic commercial-beekeeping domain — Meridian Apiaries & Pollination Services. 
 
-The name comes from the **waggle dance**: how bees tell each other where the nectar is. In Waggle, it's how agents tell each other where the data is.
+It showcases a LangGraph order-extraction agent, two MCP servers (Copilot for Sales team + Customer Reports), and a local RAG stack (pgvector + sentence-transformers), wrapped in a FastAPI + Jinja/HTMX frontend.
 
-The domain is migratory commercial beekeeping: 40 customers (orchards, honey wholesalers, mead makers, specialty food), 150 orders spanning pollination contracts and SKU shipments, 40 apiary inspection reports, and 80 synthetic inbound emails. The app showcases an **agentic order-extraction pipeline**, **two MCP servers** (Sales Copilot + Trip Reports), and a **local RAG stack** (pgvector + sentence-transformers) — all wrapped in a FastAPI + Jinja/HTMX frontend.
+The name comes from the **waggle dance** — how bees tell each other where the nectar is. In Waggle, it's how agents tell each other where the data is.
 
-**Repo name:** `agentic-mcp-crm` (tech-descriptive, portfolio-safe, reusable if the domain shifts).
-**Product name:** Waggle.
+Clone the repo, set an `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`) in `.env`, and run `make build && make up && make migrate && make seed && make demo`. Postgres + pgvector + Redis come up under Docker; no other external dependencies.
+
+## Data 
+
+- 40 customers (orchards, honey wholesalers, mead makers, specialty food)
+- 150 orders across 11-state FSM 
+- 40 apiary inspections 
+- 80 inbound emails 
+
 
 ## Brand
 
 - **Palette:** honey amber `#E89F2A`, dark comb `#2B1D0F`, pollen cream `#F6ECD3`, sap green `#4E6B3A` (accent for live/healthy), alarm carmine `#B83A3A` (accent for red-flags/regulatory).
 - **Motif:** regular hexagon with an arrow through it at ~30°, echoing the waggle-dance orientation. Hex tiles for grids and list rows.
 - **Typography:** a humanist sans for UI (Inter/IBM Plex Sans), a slab or serif for hero type (IBM Plex Serif) to keep it feeling a bit analog.
-
-## What this is (and is not)
-
-- **Is:** A fully standalone portfolio-grade CRM with a synthetic beekeeping dataset. Postgres, pgvector, Redis, FastAPI, LangGraph, MCP servers, real LLM (Anthropic / OpenAI). Zero external services required — everything runs on your laptop.
-- **Is not:** A copy or fork of any other CRM. All code, data, and naming is original to this project.
 
 ## Quick start
 
@@ -53,59 +55,77 @@ make test       # full E2E suite (real pgvector, real sentence-transformers, rea
 make test-unit  # Pydantic-only tests (no DB needed)
 ```
 
+## Architecture
+
+A browser hits FastAPI; an MCP client speaks to the same backend over stdio.
+The AI/data-science layer sits between them and the database.
+
+```mermaid
+flowchart TB
+    U1[Browser]
+    U2["MCP client<br/>(Claude Desktop, Inspector, …)"]
+
+    subgraph Web["FastAPI + Jinja/HTMX"]
+      direction LR
+      Pages[HTML pages]
+      API["JSON API · /api/*"]
+    end
+
+    subgraph AI["AI / data-science layer"]
+      direction TB
+      Agent["LangGraph order-extraction agent<br/>classify → fuzzy-match customer →<br/>structured-output line items →<br/>SKU resolution (rapidfuzz + LLM fallback)"]
+      RAG["Local RAG<br/>sentence-transformers (384-dim) +<br/>pgvector cosine semantic search"]
+      MCP["MCP servers<br/>Sales Copilot · Customer Reports<br/>(tools over stdio)"]
+    end
+
+    LLM[("OpenAI / Anthropic<br/>(gpt-5.4-mini · claude-sonnet-4-6)")]
+    DB[("Postgres + pgvector<br/>17 tables · seeded synthetic data")]
+
+    U1 --> Web
+    U2 -->|stdio| MCP
+    Web --> Agent
+    Web --> RAG
+    Agent --> LLM
+    Agent --> DB
+    RAG --> DB
+    MCP --> DB
+    MCP --> RAG
+    MCP --> LLM
+```
+
+Three pieces worth highlighting from a data-science / AI-engineering lens:
+
+- **Structured-output extraction.** The LangGraph agent uses
+  `with_structured_output(PydanticModel)` so each node returns validated
+  Pydantic objects, not free-text JSON. Fuzzy customer matching uses
+  `rapidfuzz`; SKU resolution falls back to an LLM guess only when the
+  fuzzy score is below threshold.
+- **Local semantic search.** Customer-report narratives are chunked, embedded
+  with `sentence-transformers/all-MiniLM-L6-v2` (384-dim), and stored in
+  `pgvector`. The Sales Copilot MCP tool runs cosine similarity directly
+  in Postgres — no external vector DB.
+- **MCP-native surface.** The same data the API exposes via JSON is also
+  reachable through MCP tools (customer lookup, customer-report search,
+  email drafting), so an LLM client can answer business questions without
+  scraping the UI.
+
 ## Layout
 
 ```
 agentic-mcp-crm/
-├── Makefile                      command entry points
-├── Dockerfile                    single image for api / worker / seed
-├── docker-compose.yml            Postgres (pgvector) + Redis + api + worker
-├── .env.example                  sample env vars
-├── requirements.txt              Python deps for app + seed
-├── pyrightconfig.json            strict type checking
-├── STATUS.md                     phase-by-phase status + roadmap
-├── alembic/                      migration chain (first migration creates schema)
-│   ├── env.py
-│   └── versions/
-├── db/                           SQLModel models, session factory
-│   ├── models.py                 17-table model layer
-│   └── session.py                engine + session scope
-├── app/                          FastAPI application
-│   ├── main.py                   app factory
-│   ├── routes/                   health, customers, orders, customer_reports,
-│   │                             search, agent, pages (HTML)
-│   ├── schemas/                  request/response Pydantic models
-│   ├── static/                   waggle.css, logo.svg
-│   └── templates/                Jinja pages + HTMX partials
-├── agents/                       LangGraph pipelines
-│   └── order_extractor.py        email → extracted order draft
-├── mcp_servers/                  MCP servers (the portfolio's flagship)
-│   ├── sales_copilot_server.py   customer / site / customer-report lookup + email drafting
-│   └── customer_reports_server.py    narrative → structured fields, fleet-health queries
-├── providers/                    first-class provider impls (real, not stubs)
-│   ├── vector_search.py          sentence-transformers + pgvector cosine search
-│   ├── storage.py                local filesystem object store
-│   ├── erp.py                    JSON-line "Hive-side ERP" mock
-│   ├── inbox.py                  fixture-backed Gmail replacement
-│   ├── mailer.py                 outbound-mail log
-│   └── llm.py                    real Anthropic / OpenAI only — no canned fallback
-├── seed/                         synthetic data generator
-│   ├── generate.py               entry point: python -m seed.generate
-│   ├── models.py                 Pydantic domain models (intermediate)
-│   ├── faker_providers.py        custom beekeeping Faker providers
-│   └── (16 generator modules)
-├── tests/                        21-module E2E suite
-│   ├── conftest.py               DB + filesystem fixtures
-│   ├── schema.sql                authoritative column-level schema
-│   ├── test_seed_*.py            every generator exercised
-│   ├── test_provider_*.py        every provider exercised
-│   └── test_integration_full_seed.py
-├── scripts/
-│   └── demo.py                   5-minute demo orchestrator
-├── local-storage/                stands in for object storage (gitignored contents)
-├── sent-mail/                    log-only outbound (gitignored contents)
-├── erp-sync-log/                 JSON log of ERP mock calls (gitignored)
-└── gmail-fixtures/               fixture inbox the inbox provider reads from
+├── app/                FastAPI app — routes, Jinja templates, schemas, static
+├── agents/             LangGraph order-extraction pipeline
+├── mcp_servers/        Sales Copilot + Customer Reports MCP servers
+├── providers/          First-class implementations
+│                       (vector_search, inbox, erp, mailer, storage, llm)
+├── db/                 SQLModel layer (17 tables) + session
+├── alembic/            DB migrations (single migration creates schema)
+├── seed/               16 generators that populate synthetic data
+├── tests/              21-module E2E suite (real pgvector, real LLM)
+├── scripts/demo.py     CLI orchestrator: email → FSM → ERP → Copilot
+├── Dockerfile          single image used by api, seed, and MCP servers
+├── docker-compose.yml  postgres + redis + api
+└── Makefile            command entry points (`make help`)
 ```
 
 ## Pages and routes
@@ -142,8 +162,6 @@ OpenAPI docs are at `/docs`; raw schema at `/openapi.json`.
 4. **ERP sync fires** — the mock writes a JSON line to `/erp-sync-log/`; the order transitions to `SYNCED_TO_ERP`. Visible from `/erp-log`.
 5. **Sales Copilot answers a question** — "What's the varroa trend at the O'Reilly orchard?" The MCP server queries customer reports, aggregates mite counts, and returns a structured answer with citations.
 
-Each step is live, demo-able, and backed by real code — no canned responses, no mocks.
-
 The full FSM walk (steps 2-5) is also scripted in `scripts/demo.py`:
 
 ```bash
@@ -170,25 +188,16 @@ docker compose run --rm seed python -m mcp_servers.sales_copilot_server
 docker compose run --rm seed python -m mcp_servers.customer_reports_server
 ```
 
-Wire either of them into Claude Desktop, MCP Inspector, or another MCP
+Wire either of them into Claude Code / Desktop, MCP Inspector, or another MCP
 client by configuring it to launch the command above. The servers will
 hold a session open on stdio and respond to tool calls. They share the
 same `DATABASE_URL` and providers as the API.
 
 ## Guardrails
 
-- **All synthetic.** Nothing in `seed/` represents real data — every customer name, SKU, and price is fictional and generated by the seed module.
-- **Everything offline-capable.** The only network dependency is the LLM API. Set `OPENAI_API_KEY` in `.env` (primary, `gpt-5.4-mini`). To switch to Claude, set `LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`. The app fails loudly at startup if the selected provider's key is missing and no fallback key is set either.
-- **Fail-loud throughout.** No `ON CONFLICT DO NOTHING`, no silent FK skips, no canned fallbacks. See `.claude/rules/fail-loud.md` for the full list.
-- **Gitignored runtime directories.** `local-storage/`, `sent-mail/`, `erp-sync-log/` hold generated artifacts; their contents are ignored. Keep `.gitkeep` files.
+- **All synthetic data.** Customer names, SKUs, prices, and emails are fictional, generated by `seed/`.
+- **LLM provider toggle.** Default is OpenAI (`gpt-5.4-mini`). Switch with `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`. The app raises at startup if the selected provider's key is missing.
 
 ## Status
-
-End-to-end boot is verified locally: postgres + pgvector + redis container
-up, alembic migration creates 17 tables, seed populates 40 customers, 150
-orders, 80 inbound emails, 40 customer reports with embeddings, FastAPI serves
-`localhost:5001`, all HTML pages render, all JSON APIs return 200, the
-LangGraph order-extraction agent runs against the real LLM and produces a
-fuzzy-matched `OrderDraft`. Test suite: **187 passed, 0 failed, 8 skipped**.
 
 See `STATUS.md` for the authoritative phase-by-phase status.

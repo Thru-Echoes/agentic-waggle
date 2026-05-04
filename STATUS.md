@@ -2,8 +2,6 @@
 
 Tracks what works, what's in-flight, and what's next.
 
-**Repo name:** `agentic-mcp-crm/` (tech-descriptive). **Product name:** Waggle.
-
 ## Scope
 
 **Tier 2** — MVP CRUD + LangGraph order-extraction agent + both MCP servers + inbox-fixture-driven demo + Jinja/HTMX frontend. Not React (keeps the server-render story clean). Not Celery (no async-required work in the demo path).
