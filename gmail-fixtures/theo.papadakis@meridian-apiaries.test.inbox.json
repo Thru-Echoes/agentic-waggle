@@ -1,0 +1,86 @@
+[
+  {
+    "id": "67bd14a232944c4fab",
+    "thread_id": "67bd14a232944c4fab",
+    "account_id": "theo.papadakis@meridian-apiaries.test",
+    "from_address": "contact@blue-ridge-family-orchards.test",
+    "to_addresses": [
+      "simone.delacroix@meridian-apiaries.test"
+    ],
+    "subject": "Question from Blue Ridge Family Orchards",
+    "body_text": "What's the current price on wildflower drums? Might want to place a bulk order.",
+    "body_html": null,
+    "received_at": "2026-04-16T01:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "85d97f509c8a4c0882",
+    "thread_id": "85d97f509c8a4c0882",
+    "account_id": "theo.papadakis@meridian-apiaries.test",
+    "from_address": "contact@heartland-apiary-trading-co.test",
+    "to_addresses": [
+      "renee.boucher@meridian-apiaries.test"
+    ],
+    "subject": "Question from Heartland Apiary Trading Co.",
+    "body_text": "What's the current price on wildflower drums? Might want to place a bulk order.",
+    "body_html": null,
+    "received_at": "2026-04-24T19:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "e7638d49c92646669c",
+    "thread_id": "e7638d49c92646669c",
+    "account_id": "theo.papadakis@meridian-apiaries.test",
+    "from_address": "contact@cascade-orchard-partners.test",
+    "to_addresses": [
+      "marcus.okafor@meridian-apiaries.test"
+    ],
+    "subject": "From Cascade Orchard Partners",
+    "body_text": "Unrelated: can you point me to the updated safety docs?",
+    "body_html": null,
+    "received_at": "2026-04-05T16:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "f2a80ecdd15f498fba",
+    "thread_id": "f2a80ecdd15f498fba",
+    "account_id": "theo.papadakis@meridian-apiaries.test",
+    "from_address": "contact@old-mission-farm.test",
+    "to_addresses": [
+      "devon.hale@meridian-apiaries.test"
+    ],
+    "subject": "Multi-site planning \u2014 Old Mission Farm",
+    "body_text": "Season plan: almonds at North Block (627 hives, 2026-06-06), cherries at East Block (248 hives, following month), then blueberries in the summer if we have capacity.",
+    "body_html": null,
+    "received_at": "2026-04-22T18:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "61eb5660cb23470eb8",
+    "thread_id": "61eb5660cb23470eb8",
+    "account_id": "theo.papadakis@meridian-apiaries.test",
+    "from_address": "contact@old-mission-farm.test",
+    "to_addresses": [
+      "ari.solomon@meridian-apiaries.test"
+    ],
+    "subject": "Multi-site planning \u2014 Old Mission Farm",
+    "body_text": "Season plan: almonds at North Block (736 hives, 2026-06-15), cherries at East Block (140 hives, following month), then blueberries in the summer if we have capacity.",
+    "body_html": null,
+    "received_at": "2026-04-07T09:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "8f446efc11f44e9984",
+    "thread_id": "8f446efc11f44e9984",
+    "account_id": "theo.papadakis@meridian-apiaries.test",
+    "from_address": "contact@old-mission-farm.test",
+    "to_addresses": [
+      "theo.papadakis@meridian-apiaries.test"
+    ],
+    "subject": "Multi-site planning \u2014 Old Mission Farm",
+    "body_text": "Complicated one: existing contract at North Block for 659 needs to reduce to 389 due to an AFB incident last season. Can we discuss restructuring?",
+    "body_html": null,
+    "received_at": "2026-04-13T23:57:05.141738+00:00",
+    "attachments": []
+  }
+]

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ product }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/waggle.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">
+          <img src="/static/logo.svg" width="36" height="36" alt="{{ product }}">
+        </span>
+        <span class="brand-name">{{ product }}</span>
+        <span class="brand-tagline">{{ tagline }}</span>
+      </a>
+      <nav class="primary">
+        <a href="/" class="{{ 'active' if nav == 'dashboard' else '' }}">Dashboard</a>
+        <a href="/inbox" class="{{ 'active' if nav == 'inbox' else '' }}">Inbox</a>
+        <a href="/customers" class="{{ 'active' if nav == 'customers' else '' }}">Customers</a>
+        <a href="/orders" class="{{ 'active' if nav == 'orders' else '' }}">Orders</a>
+        <a href="/customer-reports" class="{{ 'active' if nav == 'customer_reports' else '' }}">Customer reports</a>
+        <a href="/erp-log" class="{{ 'active' if nav == 'erp_log' else '' }}">ERP log</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <strong>{{ product }}</strong> · {{ company }} · local demo — no external services required.
+  </footer>
+</body>
+</html>

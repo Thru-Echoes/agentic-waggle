@@ -1,0 +1,44 @@
+[
+  {
+    "id": "f8502b39e21b4a4eba",
+    "thread_id": "f8502b39e21b4a4eba",
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "from_address": "contact@mountain-valley-orchards.test",
+    "to_addresses": [
+      "elena.vasquez@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Mountain Valley Orchards (blueberry)",
+    "body_text": "Quick note \u2014 ordering 18 of 5-frame nucs for delivery to Highway Block. Invoice to main account.",
+    "body_html": null,
+    "received_at": "2026-04-23T08:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "de94b1571eb7416a93",
+    "thread_id": "de94b1571eb7416a93",
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "from_address": "contact@blue-ridge-farms.test",
+    "to_addresses": [
+      "renee.boucher@meridian-apiaries.test"
+    ],
+    "subject": "Question from Blue Ridge Farms",
+    "body_text": "Do we have capacity for a almond job this year? Haven't fully scoped it yet but probably ~142 hives.",
+    "body_html": null,
+    "received_at": "2026-04-15T21:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "b0874b7f4a47444c99",
+    "thread_id": "b0874b7f4a47444c99",
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "from_address": "contact@riverbend-farms-lp.test",
+    "to_addresses": [
+      "marcus.okafor@meridian-apiaries.test"
+    ],
+    "subject": "Question from Riverbend Farms LP",
+    "body_text": "Do we have capacity for a blueberry job this year? Haven't fully scoped it yet but probably ~96 hives.",
+    "body_html": null,
+    "received_at": "2026-04-18T12:57:05.141738+00:00",
+    "attachments": []
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "048cb2a443ff4b02b4",
+    "thread_id": "048cb2a443ff4b02b4",
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "from_address": "contact@sierra-crest-orchard-partners.test",
+    "to_addresses": [
+      "priya.ramaswamy@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Sierra Crest Orchard Partners (apple)",
+    "body_text": "Ready to schedule pollination for apple \u2014 about 355 hives at the River Block block, early May.",
+    "body_html": null,
+    "received_at": "2026-04-11T13:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "a381ba1f3a524cabb0",
+    "thread_id": "a381ba1f3a524cabb0",
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "from_address": "contact@goldenridge-fruit-co.test",
+    "to_addresses": [
+      "theo.papadakis@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Goldenridge Fruit Co. (almond)",
+    "body_text": "Hi \u2014 we need 281 hives for almond bloom starting 2026-06-24. Same blocks as last year at North Block 1. Thanks, Brandy Murray.",
+    "body_html": null,
+    "received_at": "2026-04-24T12:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "8303fc5c9f5d404eb4",
+    "thread_id": "8303fc5c9f5d404eb4",
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "from_address": "contact@old-mission-farm.test",
+    "to_addresses": [
+      "priya.ramaswamy@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Old Mission Farm (blueberry)",
+    "body_text": "Hi \u2014 we need 257 hives for blueberry bloom starting 2026-06-21. Same blocks as last year at North Block 1. Thanks, Gloria Atkinson.",
+    "body_html": null,
+    "received_at": "2026-04-04T07:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "5f51d0aac66d46c884",
+    "thread_id": "5f51d0aac66d46c884",
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "from_address": "contact@haley-farms-lp.test",
+    "to_addresses": [
+      "marcus.okafor@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Haley Farms LP (almond)",
+    "body_text": "Ready to schedule pollination for almond \u2014 about 227 hives at the River Block block, early February.",
+    "body_html": null,
+    "received_at": "2026-04-13T01:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "4870c9ea8a7548acb7",
+    "thread_id": "4870c9ea8a7548acb7",
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "from_address": "contact@seven-acres-farms.test",
+    "to_addresses": [
+      "renee.boucher@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Seven Acres Farms (almond)",
+    "body_text": "Ready to schedule pollination for almond \u2014 about 307 hives at the Highway Block block, early April.",
+    "body_html": null,
+    "received_at": "2026-04-28T15:57:05.141738+00:00",
+    "attachments": []
+  }
+]

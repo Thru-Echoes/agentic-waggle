@@ -1,0 +1,61 @@
+# ---------------------------------------------------------------------------
+# Runtime dependencies for agentic-mcp-crm.
+# Version floors keep us on known-good baselines; no upper pins so a
+# `pip install -r` always pulls the latest compatible release.
+# ---------------------------------------------------------------------------
+
+# -- Core data + typing ---------------------------------------------------
+pydantic>=2.5
+pydantic-settings>=2.2
+python-dateutil>=2.9
+
+# -- Database + ORM + migrations ------------------------------------------
+sqlalchemy>=2.0
+sqlmodel>=0.0.16
+psycopg2-binary>=2.9
+alembic>=1.13
+pgvector>=0.3
+
+# -- FastAPI app layer ----------------------------------------------------
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+jinja2>=3.1
+httpx>=0.27
+
+# -- Seed + fixtures ------------------------------------------------------
+faker>=25.0
+
+# -- Local embeddings + vector search -------------------------------------
+sentence-transformers>=2.5
+numpy>=1.26
+
+# -- Fuzzy matching (customer / SKU resolution in the extraction agent) ---
+rapidfuzz>=3.9
+
+# -- LLM — required (no canned fallback). ANTHROPIC_API_KEY or OPENAI_API_KEY
+#         must be set at runtime; providers/llm.py raises if both are absent.
+anthropic>=0.40
+openai>=1.30
+
+# -- LangGraph-backed extraction agent ------------------------------------
+langchain-core>=0.3
+langchain-anthropic>=0.3
+langchain-openai>=0.3
+langgraph>=0.2
+
+# -- Model Context Protocol (MCP) servers ---------------------------------
+# `mcp` is Anthropic's official SDK; `fastmcp` is the decorator-based
+# wrapper that's become the de-facto standard for building MCP servers.
+mcp>=1.0
+fastmcp>=0.4
+
+# -- Redis client (reserved for future background work; unused in Tier 2) -
+redis>=5.0
+
+# ---------------------------------------------------------------------------
+# Test-only dependencies
+# ---------------------------------------------------------------------------
+pytest>=8.0
+pytest-asyncio>=0.23
+anyio>=4.0

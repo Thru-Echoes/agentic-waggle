@@ -1,0 +1,128 @@
+[
+  {
+    "id": "64e290f1a3be4562af",
+    "thread_id": "64e290f1a3be4562af",
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "from_address": "contact@seven-acres-farms-lp.test",
+    "to_addresses": [
+      "isa.martinez@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Seven Acres Farms LP (cherry)",
+    "body_text": "Samuel White here. Confirming pollination for River Block: 464 colonies, approx 2026-06-16\u20132026-07-31. Let me know what paperwork you need.",
+    "body_html": null,
+    "received_at": "2026-04-24T10:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "4baf857703844a62bb",
+    "thread_id": "4baf857703844a62bb",
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "from_address": "contact@old-mission-growers.test",
+    "to_addresses": [
+      "ari.solomon@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Old Mission Growers (blueberry)",
+    "body_text": "Hailey Barajas here. Confirming pollination for River Block: 236 colonies, approx 2026-06-29\u20132026-07-31. Let me know what paperwork you need.",
+    "body_html": null,
+    "received_at": "2026-04-26T09:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "4414877aaa35405d9e",
+    "thread_id": "4414877aaa35405d9e",
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "from_address": "contact@juniper-hill-orchard-partners.test",
+    "to_addresses": [
+      "marcus.okafor@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Juniper Hill Orchard Partners (apple)",
+    "body_text": "Quick note \u2014 ordering 20 of 5-frame nucs for delivery to River Block. Invoice to main account.",
+    "body_html": null,
+    "received_at": "2026-04-07T16:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "fde33aa618b54a2989",
+    "thread_id": "fde33aa618b54a2989",
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "from_address": "contact@cascade-orchard-partners.test",
+    "to_addresses": [
+      "theo.papadakis@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Cascade Orchard Partners (almond)",
+    "body_text": "Thomas Smith here. Confirming pollination for River Block: 337 colonies, approx 2026-06-24\u20132026-07-23. Let me know what paperwork you need.",
+    "body_html": null,
+    "received_at": "2026-05-02T03:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "796d0476bdce430785",
+    "thread_id": "796d0476bdce430785",
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "from_address": "contact@blue-ridge-family-orchards.test",
+    "to_addresses": [
+      "elena.vasquez@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Blue Ridge Family Orchards (apple)",
+    "body_text": "Ready to schedule pollination for apple \u2014 about 369 hives at the North Block 1 block, early March.",
+    "body_html": null,
+    "received_at": "2026-04-27T04:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "98052f5ece5f4feb83",
+    "thread_id": "98052f5ece5f4feb83",
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "from_address": "contact@seven-acres-farms-lp.test",
+    "to_addresses": [
+      "dana.chen@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Seven Acres Farms LP (almond)",
+    "body_text": "Hi \u2014 we need 376 hives for almond bloom starting 2026-06-10. Same blocks as last year at River Block. Thanks, Jason Gonzalez.",
+    "body_html": null,
+    "received_at": "2026-04-08T13:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "6eee1f741c924e169d",
+    "thread_id": "6eee1f741c924e169d",
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "from_address": "contact@riverbend-family-orchards.test",
+    "to_addresses": [
+      "kai.okonkwo@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Riverbend Family Orchards (blueberry)",
+    "body_text": "Hi \u2014 we need 221 hives for blueberry bloom starting 2026-05-27. Same blocks as last year at North Block 1. Thanks, Sean Anderson.",
+    "body_html": null,
+    "received_at": "2026-05-04T13:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "3122c15216c540b8a3",
+    "thread_id": "3122c15216c540b8a3",
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "from_address": "contact@cascadia-honey-co.test",
+    "to_addresses": [
+      "luz.garcia@meridian-apiaries.test"
+    ],
+    "subject": "Question from Cascadia Honey Co.",
+    "body_text": "Is it too late to add hives for my almond block? Bloom is starting.",
+    "body_html": null,
+    "received_at": "2026-04-20T05:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "a22fa533623444188d",
+    "thread_id": "a22fa533623444188d",
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "from_address": "contact@old-mission-farm.test",
+    "to_addresses": [
+      "maya.whitfield@meridian-apiaries.test"
+    ],
+    "subject": "From Old Mission Farm",
+    "body_text": "Reminder: apiary registration renewal due next month.",
+    "body_html": null,
+    "received_at": "2026-04-10T14:57:05.141738+00:00",
+    "attachments": []
+  }
+]

@@ -1,0 +1,100 @@
+[
+  {
+    "id": "0a957367f7fa4081ac",
+    "thread_id": "0a957367f7fa4081ac",
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "from_address": "contact@haley-orchard-co.test",
+    "to_addresses": [
+      "sam.oreilly@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Haley Orchard Co. (blueberry)",
+    "body_text": "Quick note \u2014 ordering 10 of wildflower drums for delivery to Highway Block. Invoice to main account.",
+    "body_html": null,
+    "received_at": "2026-04-30T20:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "7cec350185ac43de93",
+    "thread_id": "7cec350185ac43de93",
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "from_address": "contact@martinez-and-sons-orchards.test",
+    "to_addresses": [
+      "ari.solomon@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Martinez & Sons Orchards (apple)",
+    "body_text": "John Hardy here. Confirming pollination for North Block 1: 241 colonies, approx 2026-05-25\u20132026-07-30. Let me know what paperwork you need.",
+    "body_html": null,
+    "received_at": "2026-05-01T12:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "e691ca785f754e049d",
+    "thread_id": "e691ca785f754e049d",
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "from_address": "contact@haley-family-orchards.test",
+    "to_addresses": [
+      "dana.chen@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Haley Family Orchards (apple)",
+    "body_text": "Anthony Carter here. Confirming pollination for River Block: 234 colonies, approx 2026-05-18\u20132026-07-30. Let me know what paperwork you need.",
+    "body_html": null,
+    "received_at": "2026-05-01T18:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "5bb150f69d7240f295",
+    "thread_id": "5bb150f69d7240f295",
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "from_address": "contact@mountain-valley-farms.test",
+    "to_addresses": [
+      "renee.boucher@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Mountain Valley Farms (blueberry)",
+    "body_text": "Ready to schedule pollination for blueberry \u2014 about 254 hives at the River Block block, early March.",
+    "body_html": null,
+    "received_at": "2026-04-09T00:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "507eca7591a74ed7b4",
+    "thread_id": "507eca7591a74ed7b4",
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "from_address": "contact@goldenridge-fruit-co.test",
+    "to_addresses": [
+      "ari.solomon@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Goldenridge Fruit Co. (cherry)",
+    "body_text": "Ready to schedule pollination for cherry \u2014 about 412 hives at the River Block block, early February.",
+    "body_html": null,
+    "received_at": "2026-04-26T22:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "91c285771a5b430ba8",
+    "thread_id": "91c285771a5b430ba8",
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "from_address": "contact@cobblestone-hives.test",
+    "to_addresses": [
+      "theo.papadakis@meridian-apiaries.test"
+    ],
+    "subject": "Question from Cobblestone Hives",
+    "body_text": "What's the current price on wildflower drums? Might want to place a bulk order.",
+    "body_html": null,
+    "received_at": "2026-04-25T20:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "e04627ded7d74e94a1",
+    "thread_id": "e04627ded7d74e94a1",
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "from_address": "contact@stormchaser-meadery.test",
+    "to_addresses": [
+      "kai.okonkwo@meridian-apiaries.test"
+    ],
+    "subject": "From Stormchaser Meadery",
+    "body_text": "Unrelated: can you point me to the updated safety docs?",
+    "body_html": null,
+    "received_at": "2026-04-17T21:57:05.141738+00:00",
+    "attachments": []
+  }
+]

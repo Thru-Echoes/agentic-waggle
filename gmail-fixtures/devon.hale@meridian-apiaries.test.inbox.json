@@ -1,0 +1,44 @@
+[
+  {
+    "id": "212520d96db24b1e95",
+    "thread_id": "212520d96db24b1e95",
+    "account_id": "devon.hale@meridian-apiaries.test",
+    "from_address": "contact@blue-ridge-family-orchards.test",
+    "to_addresses": [
+      "sam.oreilly@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Blue Ridge Family Orchards (apple)",
+    "body_text": "Brian Gould here. Confirming pollination for North Block 1: 90 colonies, approx 2026-06-26\u20132026-07-17. Let me know what paperwork you need.",
+    "body_html": null,
+    "received_at": "2026-04-10T07:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "be3829dac9b54ffd8e",
+    "thread_id": "be3829dac9b54ffd8e",
+    "account_id": "devon.hale@meridian-apiaries.test",
+    "from_address": "contact@wenatchee-family-orchards.test",
+    "to_addresses": [
+      "dana.chen@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Wenatchee Family Orchards (almond)",
+    "body_text": "Quick note \u2014 ordering 4 of 5-frame nucs for delivery to North Block 1. Invoice to main account.",
+    "body_html": null,
+    "received_at": "2026-04-16T17:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "47bbd9fc6e7b4e2993",
+    "thread_id": "47bbd9fc6e7b4e2993",
+    "account_id": "devon.hale@meridian-apiaries.test",
+    "from_address": "contact@juniper-hill-orchard-partners.test",
+    "to_addresses": [
+      "theo.papadakis@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Juniper Hill Orchard Partners (cherry)",
+    "body_text": "Ready to schedule pollination for cherry \u2014 about 222 hives at the Highway Block block, early April.",
+    "body_html": null,
+    "received_at": "2026-04-13T15:57:05.141738+00:00",
+    "attachments": []
+  }
+]

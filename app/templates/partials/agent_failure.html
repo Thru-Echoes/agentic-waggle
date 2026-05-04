@@ -1,0 +1,17 @@
+<h3>Extraction failed <span class="badge alarm">{{ failure.stage }}</span></h3>
+
+<p class="muted">
+  Source email: <strong>{{ email.subject }}</strong> from {{ email.from_address }}.
+</p>
+
+<p><strong>Reason:</strong> {{ failure.reason }}</p>
+
+{% if failure.partial_state %}
+  <h4>Partial state at failure</h4>
+  <pre class="code-block">{{ failure.partial_state | tojson(indent=2) }}</pre>
+{% endif %}
+
+<p class="muted">
+  Fail-loud is the policy — see <code>.claude/rules/fail-loud.md</code>. The
+  agent did not silently produce a half-order.
+</p>

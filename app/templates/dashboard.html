@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ product }} — dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<p class="muted">A snapshot of the hive.</p>
+
+<div class="tile-row">
+  <div class="tile accent">
+    <div class="label">Customers</div>
+    <div class="value">{{ customer_count }}</div>
+  </div>
+  <div class="tile sap">
+    <div class="label">Orders</div>
+    <div class="value">{{ order_count }}</div>
+  </div>
+  <div class="tile">
+    <div class="label">Customer reports</div>
+    <div class="value">{{ customer_report_count }}</div>
+  </div>
+</div>
+
+<h2>Orders by state</h2>
+<div class="state-grid">
+  {% for s in state_summary %}
+    <div class="state-cell">
+      <span class="name">{{ s.state }}</span>
+      <span class="count">{{ s.count }}</span>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="split">
+  <div class="card">
+    <h2>Recent orders</h2>
+    {% if recent_orders %}
+      <table class="rows">
+        <thead><tr><th>Customer</th><th>Apiarist</th><th>State</th><th>Total</th></tr></thead>
+        <tbody>
+          {% for o in recent_orders %}
+            <tr>
+              <td>{{ o.customer.name if o.customer else "(unknown)" }}</td>
+              <td>{{ o.apiarist.name if o.apiarist else "(unknown)" }}</td>
+              <td><span class="badge {{ o.state.value.lower() }}">{{ o.state.value }}</span></td>
+              <td>${{ "{:,.2f}".format(o.total_usd) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No orders yet — run <code>make seed</code>.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Latest customer reports</h2>
+    {% if recent_customer_reports %}
+      <table class="rows">
+        <thead><tr><th>Visit date</th><th>Site</th><th>Apiarist</th><th>Varroa</th></tr></thead>
+        <tbody>
+          {% for t in recent_customer_reports %}
+            <tr>
+              <td>{{ t.visit_date.isoformat() }}</td>
+              <td>{{ t.site.name if t.site else "(unknown)" }}</td>
+              <td>{{ t.author.name if t.author else "(unknown)" }}</td>
+              <td>{{ t.varroa_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No customer reports yet.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

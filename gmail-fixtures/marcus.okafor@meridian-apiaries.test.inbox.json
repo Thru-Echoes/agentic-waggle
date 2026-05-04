@@ -1,0 +1,86 @@
+[
+  {
+    "id": "cb80851cee3c4a9999",
+    "thread_id": "cb80851cee3c4a9999",
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "from_address": "contact@wenatchee-family-orchards.test",
+    "to_addresses": [
+      "priya.ramaswamy@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Wenatchee Family Orchards (almond)",
+    "body_text": "Hi \u2014 we need 302 hives for almond bloom starting 2026-05-24. Same blocks as last year at River Block. Thanks, Elijah Johnson.",
+    "body_html": null,
+    "received_at": "2026-04-23T07:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "45f29d4472204af997",
+    "thread_id": "45f29d4472204af997",
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "from_address": "contact@heartland-apiary-trading-co.test",
+    "to_addresses": [
+      "sam.oreilly@meridian-apiaries.test"
+    ],
+    "subject": "Question from Heartland Apiary Trading Co.",
+    "body_text": "Do we have capacity for a apple job this year? Haven't fully scoped it yet but probably ~81 hives.",
+    "body_html": null,
+    "received_at": "2026-04-07T06:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "9135da222ffb4073b2",
+    "thread_id": "9135da222ffb4073b2",
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "from_address": "contact@drakestone-mead.test",
+    "to_addresses": [
+      "theo.papadakis@meridian-apiaries.test"
+    ],
+    "subject": "Question from Drakestone Mead",
+    "body_text": "Thinking about adding queens \u2014 Italian or Saskatraz? What's availability look like for spring?",
+    "body_html": null,
+    "received_at": "2026-04-06T11:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "d2a127f091ef45ba9e",
+    "thread_id": "d2a127f091ef45ba9e",
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "from_address": "contact@heartland-apiary-trading-co.test",
+    "to_addresses": [
+      "theo.papadakis@meridian-apiaries.test"
+    ],
+    "subject": "Question from Heartland Apiary Trading Co.",
+    "body_text": "Is it too late to add hives for my almond block? Bloom is starting.",
+    "body_html": null,
+    "received_at": "2026-05-01T08:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "e4fbbad3f8a74436a5",
+    "thread_id": "e4fbbad3f8a74436a5",
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "from_address": "contact@drakestone-mead.test",
+    "to_addresses": [
+      "isa.martinez@meridian-apiaries.test"
+    ],
+    "subject": "Question from Drakestone Mead",
+    "body_text": "What's the current price on wildflower drums? Might want to place a bulk order.",
+    "body_html": null,
+    "received_at": "2026-04-16T11:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "f486925328e144fbb4",
+    "thread_id": "f486925328e144fbb4",
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "from_address": "contact@goldenridge-fruit-co.test",
+    "to_addresses": [
+      "devon.hale@meridian-apiaries.test"
+    ],
+    "subject": "From Goldenridge Fruit Co.",
+    "body_text": "Newsletter: Regional extension news \u2014 Varroa pressure update for the quarter.",
+    "body_html": null,
+    "received_at": "2026-05-04T03:57:05.141738+00:00",
+    "attachments": []
+  }
+]

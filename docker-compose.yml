@@ -1,0 +1,90 @@
+# Waggle — local docker-compose environment.
+#
+# Standalone: the entire stack builds from the local Dockerfile. There is no
+# sibling-repo dependency. Services:
+#
+#   postgres  — Postgres 15 with the pgvector extension preinstalled.
+#   redis     — reserved for future background work; unused by Tier 2.
+#   seed      — one-shot runner for migrations + synthetic data generation.
+#   api       — FastAPI app serving routes + Jinja/HTMX templates on :5001.
+#
+# MCP servers are added as separate services in Phase D.
+#
+# Runtime volumes persist provider artifacts across restarts:
+#   local-storage/, sent-mail/, erp-sync-log/, gmail-fixtures/
+#
+# Model weights for sentence-transformers are cached in a named volume so
+# they don't re-download on every rebuild.
+
+name: agentic-mcp-crm
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    environment:
+      POSTGRES_USER: agentic_mcp_crm
+      POSTGRES_PASSWORD: agentic_mcp_crm
+      POSTGRES_DB: agentic_mcp_crm
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "agentic_mcp_crm", "-d", "agentic_mcp_crm"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+
+  # One-shot utility container. Runs alembic migrations and seed generation.
+  # Invoked explicitly via `make migrate`, `make seed`, `make reseed`, `make test`.
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: []
+    working_dir: /app
+    environment:
+      DATABASE_URL: postgresql://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - ./local-storage:/local-storage
+      - ./sent-mail:/sent-mail
+      - ./erp-sync-log:/erp-sync-log
+      - ./gmail-fixtures:/gmail-fixtures
+      - hf_cache:/cache/huggingface
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgresql://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm
+      REDIS_URL: redis://redis:6379/0
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - ./local-storage:/local-storage
+      - ./sent-mail:/sent-mail
+      - ./erp-sync-log:/erp-sync-log
+      - ./gmail-fixtures:/gmail-fixtures
+      - hf_cache:/cache/huggingface
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  hf_cache:

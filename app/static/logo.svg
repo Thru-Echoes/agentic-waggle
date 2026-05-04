@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40" aria-label="Waggle">
+  <defs>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F6C068"/>
+      <stop offset="100%" stop-color="#C27F12"/>
+    </linearGradient>
+  </defs>
+  <!-- Hex outline (pointy-top) -->
+  <polygon points="20,3 35,11.5 35,28.5 20,37 5,28.5 5,11.5"
+           fill="none" stroke="url(#amber)" stroke-width="2.5" />
+  <!-- Waggle-dance arrow at ~30° -->
+  <g stroke="#F6C068" stroke-width="2.8" stroke-linecap="round" fill="none">
+    <line x1="10" y1="26" x2="29" y2="15"/>
+    <polyline points="24,13 29,15 27.5,20"/>
+  </g>
+</svg>

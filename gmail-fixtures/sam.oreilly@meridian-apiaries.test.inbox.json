@@ -1,0 +1,86 @@
+[
+  {
+    "id": "4147a49501f54655bb",
+    "thread_id": "4147a49501f54655bb",
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "from_address": "contact@mountain-valley-farms.test",
+    "to_addresses": [
+      "elena.vasquez@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Mountain Valley Farms (almond)",
+    "body_text": "Ready to schedule pollination for almond \u2014 about 204 hives at the North Block 1 block, early February.",
+    "body_html": null,
+    "received_at": "2026-04-17T11:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "ad598188f1af4f5fbf",
+    "thread_id": "ad598188f1af4f5fbf",
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "from_address": "contact@blue-ridge-family-orchards.test",
+    "to_addresses": [
+      "luz.garcia@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Blue Ridge Family Orchards (apple)",
+    "body_text": "Hi \u2014 we need 365 hives for apple bloom starting 2026-06-13. Same blocks as last year at Highway Block. Thanks, Terry Evans.",
+    "body_html": null,
+    "received_at": "2026-04-14T19:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "c075564570f14fdeac",
+    "thread_id": "c075564570f14fdeac",
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "from_address": "contact@cobblestone-hives.test",
+    "to_addresses": [
+      "sam.oreilly@meridian-apiaries.test"
+    ],
+    "subject": "Question from Cobblestone Hives",
+    "body_text": "What's the current price on wildflower drums? Might want to place a bulk order.",
+    "body_html": null,
+    "received_at": "2026-04-15T05:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "85edfa02d1fd4c1783",
+    "thread_id": "85edfa02d1fd4c1783",
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "from_address": "contact@drakestone-mead.test",
+    "to_addresses": [
+      "marcus.okafor@meridian-apiaries.test"
+    ],
+    "subject": "Question from Drakestone Mead",
+    "body_text": "Do we have capacity for a blueberry job this year? Haven't fully scoped it yet but probably ~350 hives.",
+    "body_html": null,
+    "received_at": "2026-04-17T08:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "17ca6947d3df44f5ae",
+    "thread_id": "17ca6947d3df44f5ae",
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "from_address": "contact@north-wind-mead-co.test",
+    "to_addresses": [
+      "nora.adeyemi@meridian-apiaries.test"
+    ],
+    "subject": "Question from North Wind Mead Co.",
+    "body_text": "Thinking about adding queens \u2014 Italian or Saskatraz? What's availability look like for spring?",
+    "body_html": null,
+    "received_at": "2026-04-19T11:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "c8d5da3d1cda4109ba",
+    "thread_id": "c8d5da3d1cda4109ba",
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "from_address": "contact@artisan-ferment-and-food.test",
+    "to_addresses": [
+      "maya.whitfield@meridian-apiaries.test"
+    ],
+    "subject": "From Artisan Ferment & Food",
+    "body_text": "Newsletter: Regional extension news \u2014 Varroa pressure update for the quarter.",
+    "body_html": null,
+    "received_at": "2026-04-23T05:57:05.141738+00:00",
+    "attachments": []
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "0fd7dfc4141e4f63be",
+    "thread_id": "0fd7dfc4141e4f63be",
+    "account_id": "isa.martinez@meridian-apiaries.test",
+    "from_address": "contact@wenatchee-orchard-partners.test",
+    "to_addresses": [
+      "jun-ho.park@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Wenatchee Orchard Partners (almond)",
+    "body_text": "Quick note \u2014 ordering 16 of 5-frame nucs for delivery to North Block 1. Invoice to main account.",
+    "body_html": null,
+    "received_at": "2026-05-02T06:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "322dd938d72f4246a7",
+    "thread_id": "322dd938d72f4246a7",
+    "account_id": "isa.martinez@meridian-apiaries.test",
+    "from_address": "contact@haley-farms-lp.test",
+    "to_addresses": [
+      "luz.garcia@meridian-apiaries.test"
+    ],
+    "subject": "From Haley Farms LP",
+    "body_text": "Unrelated: can you point me to the updated safety docs?",
+    "body_html": null,
+    "received_at": "2026-04-15T17:57:05.141738+00:00",
+    "attachments": []
+  }
+]

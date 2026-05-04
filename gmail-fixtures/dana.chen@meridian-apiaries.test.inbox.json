@@ -1,0 +1,58 @@
+[
+  {
+    "id": "58875debe0f14a2698",
+    "thread_id": "58875debe0f14a2698",
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "from_address": "contact@cascade-orchard-partners.test",
+    "to_addresses": [
+      "sam.oreilly@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Cascade Orchard Partners (cherry)",
+    "body_text": "Anthony Adams here. Confirming pollination for Highway Block: 345 colonies, approx 2026-06-10\u20132026-08-01. Let me know what paperwork you need.",
+    "body_html": null,
+    "received_at": "2026-04-05T20:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "a65b1c147b9544a8a7",
+    "thread_id": "a65b1c147b9544a8a7",
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "from_address": "contact@oreilly-family-orchards.test",
+    "to_addresses": [
+      "maya.whitfield@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 O'Reilly Family Orchards (almond)",
+    "body_text": "Danny Skinner here. Confirming pollination for Highway Block: 443 colonies, approx 2026-05-28\u20132026-07-22. Let me know what paperwork you need.",
+    "body_html": null,
+    "received_at": "2026-04-14T14:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "ce0ffb50916b43b0b9",
+    "thread_id": "ce0ffb50916b43b0b9",
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "from_address": "contact@blue-ridge-family-orchards.test",
+    "to_addresses": [
+      "elena.vasquez@meridian-apiaries.test"
+    ],
+    "subject": "Question from Blue Ridge Family Orchards",
+    "body_text": "Is it too late to add hives for my almond block? Bloom is starting.",
+    "body_html": null,
+    "received_at": "2026-04-11T16:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "248f80a2281b42118c",
+    "thread_id": "248f80a2281b42118c",
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "from_address": "contact@goldenridge-fruit-co.test",
+    "to_addresses": [
+      "elena.vasquez@meridian-apiaries.test"
+    ],
+    "subject": "Multi-site planning \u2014 Goldenridge Fruit Co.",
+    "body_text": "We're looking at 277 hives split across North Block, East Block, and River Block \u2014 staggered placement over three weeks starting 2026-07-03. Need your input on whether that's viable.",
+    "body_html": null,
+    "received_at": "2026-04-09T22:57:05.141738+00:00",
+    "attachments": []
+  }
+]

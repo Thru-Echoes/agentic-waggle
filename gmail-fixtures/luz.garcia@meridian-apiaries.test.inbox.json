@@ -1,0 +1,58 @@
+[
+  {
+    "id": "a4276bf8bc5442b2b9",
+    "thread_id": "a4276bf8bc5442b2b9",
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "from_address": "contact@blue-ridge-family-orchards.test",
+    "to_addresses": [
+      "simone.delacroix@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Blue Ridge Family Orchards (almond)",
+    "body_text": "Quick note \u2014 ordering 6 of Italian queens for delivery to North Block 1. Invoice to main account.",
+    "body_html": null,
+    "received_at": "2026-04-05T22:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "0a30d9a25e404afa90",
+    "thread_id": "0a30d9a25e404afa90",
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "from_address": "contact@riverbend-farms-lp.test",
+    "to_addresses": [
+      "simone.delacroix@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Riverbend Farms LP (apple)",
+    "body_text": "Hi \u2014 we need 491 hives for apple bloom starting 2026-06-16. Same blocks as last year at North Block 1. Thanks, Gregory Matthews.",
+    "body_html": null,
+    "received_at": "2026-04-20T09:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "fc8396b41d72403c9d",
+    "thread_id": "fc8396b41d72403c9d",
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "from_address": "contact@mountain-valley-orchards.test",
+    "to_addresses": [
+      "nora.adeyemi@meridian-apiaries.test"
+    ],
+    "subject": "Multi-site planning \u2014 Mountain Valley Orchards",
+    "body_text": "We're looking at 278 hives split across North Block, East Block, and River Block \u2014 staggered placement over three weeks starting 2026-06-23. Need your input on whether that's viable.",
+    "body_html": null,
+    "received_at": "2026-05-01T02:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "a1ebbf7ae2f34c458c",
+    "thread_id": "a1ebbf7ae2f34c458c",
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "from_address": "contact@haley-family-orchards.test",
+    "to_addresses": [
+      "devon.hale@meridian-apiaries.test"
+    ],
+    "subject": "Multi-site planning \u2014 Haley Family Orchards",
+    "body_text": "Complicated one: existing contract at North Block for 351 needs to reduce to 220 due to an AFB incident last season. Can we discuss restructuring?",
+    "body_html": null,
+    "received_at": "2026-04-30T10:57:05.141738+00:00",
+    "attachments": []
+  }
+]

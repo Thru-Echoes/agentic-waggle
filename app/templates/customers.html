@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ product }} — customers{% endblock %}
+{% block content %}
+<h1>Customers</h1>
+<p class="muted">{{ customers|length }} shown.</p>
+
+<div class="card">
+  {% if customers %}
+    <table class="rows">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>ERP #</th>
+          <th>Market segment</th>
+          <th>Aliases</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in customers %}
+          <tr>
+            <td>{{ c.name }}</td>
+            <td><code>{{ c.erp_customer_no }}</code></td>
+            <td><span class="badge">{{ c.market_segment.value }}</span></td>
+            <td class="muted">{{ c.aliases|join(", ") if c.aliases else "—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty">No customers yet — run <code>make seed</code>.</div>
+  {% endif %}
+</div>
+{% endblock %}

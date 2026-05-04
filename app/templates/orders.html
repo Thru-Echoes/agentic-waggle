@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ product }} — orders{% endblock %}
+{% block content %}
+<h1>Orders</h1>
+
+<div class="filter-bar">
+  <a href="/orders" class="{{ 'active' if current_state is none else '' }}">All</a>
+  {% for s in states %}
+    <a href="/orders?state={{ s.value }}" class="{{ 'active' if current_state == s else '' }}">{{ s.value }}</a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  {% if orders %}
+    <table class="rows">
+      <thead>
+        <tr>
+          <th>Created</th>
+          <th>Customer</th>
+          <th>Apiarist</th>
+          <th>State</th>
+          <th>Pollination date</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+          <tr>
+            <td>{{ o.created_at.strftime("%Y-%m-%d") }}</td>
+            <td>{{ o.customer.name if o.customer else "(unknown)" }}</td>
+            <td>{{ o.apiarist.name if o.apiarist else "(unknown)" }}</td>
+            <td><span class="badge {{ o.state.value.lower() }}">{{ o.state.value }}</span></td>
+            <td>{{ o.pollination_date.isoformat() if o.pollination_date else "—" }}</td>
+            <td>${{ "{:,.2f}".format(o.total_usd) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty">No orders match this filter.</div>
+  {% endif %}
+</div>
+{% endblock %}

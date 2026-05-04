@@ -1,0 +1,29 @@
+<h3>{{ customer_report.site.name if customer_report.site else "(unknown site)" }}</h3>
+<p class="muted">
+  Visited {{ customer_report.visit_date.isoformat() }} by
+  {{ customer_report.author.name if customer_report.author else "(unknown apiarist)" }}.
+</p>
+
+<div class="tile-row">
+  <div class="tile">
+    <div class="label">Hives placed</div>
+    <div class="value">{{ customer_report.hives_placed }}</div>
+  </div>
+  <div class="tile {{ 'alarm' if customer_report.varroa_count > 3 else 'sap' }}">
+    <div class="label">Varroa count</div>
+    <div class="value">{{ customer_report.varroa_count }}</div>
+  </div>
+</div>
+
+{% if customer_report.diseases_observed %}
+  <p><strong>Diseases observed:</strong>
+    {% for d in customer_report.diseases_observed %}<span class="badge alarm">{{ d }}</span>{% endfor %}
+  </p>
+{% endif %}
+
+{% if customer_report.pesticide_exposure_note %}
+  <p><strong>Pesticide exposure note:</strong> {{ customer_report.pesticide_exposure_note }}</p>
+{% endif %}
+
+<h3>Narrative</h3>
+<p>{{ customer_report.narrative }}</p>

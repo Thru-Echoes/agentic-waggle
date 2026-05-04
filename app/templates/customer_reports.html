@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ product }} — customer reports{% endblock %}
+{% block content %}
+<h1>Customer reports</h1>
+<p class="muted">Click a row to see the full narrative.</p>
+
+<div class="split">
+  <div class="card">
+    {% if customer_reports %}
+      <table class="rows">
+        <thead>
+          <tr>
+            <th>Visit date</th>
+            <th>Site</th>
+            <th>Apiarist</th>
+            <th>Varroa</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in customer_reports %}
+            <tr
+              hx-get="/customer-reports/{{ t.id }}/partial"
+              hx-target="#detail-pane"
+              hx-swap="innerHTML"
+            >
+              <td>{{ t.visit_date.isoformat() }}</td>
+              <td>{{ t.site.name if t.site else "(unknown)" }}</td>
+              <td>{{ t.author.name if t.author else "(unknown)" }}</td>
+              <td>{{ t.varroa_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No customer reports yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="card" id="detail-pane">
+    <div class="empty">Select a customer report to see the narrative.</div>
+  </div>
+</div>
+{% endblock %}

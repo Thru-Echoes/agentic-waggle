@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ product }} — ERP log{% endblock %}
+{% block content %}
+<h1>ERP sync log</h1>
+<p class="muted">
+  Local "Hive-side ERP" mock — every <code>submit_sales_order</code>,
+  <code>customer_exists</code>, and <code>reconcile_stale</code> call writes a
+  JSON line to <code>/erp-sync-log/YYYYMMDD.jsonl</code>. Newest first, latest
+  200.
+</p>
+
+<div class="card">
+  {% if events %}
+    <table class="rows">
+      <thead>
+        <tr>
+          <th>Timestamp (UTC)</th>
+          <th>Event</th>
+          <th>Summary</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+          <tr>
+            <td class="muted">{{ e.ts }}</td>
+            <td>
+              <span class="badge {{ 'sap' if e.event == 'submit_sales_order' else '' }}">
+                {{ e.event }}
+              </span>
+            </td>
+            <td>
+              {% if e.event == "submit_sales_order" %}
+                SO <code>{{ e.payload.output.erp_so_no }}</code>
+                · status <strong>{{ e.payload.output.status }}</strong>
+                · customer <code>{{ e.payload.input.customer_erp_no }}</code>
+                · ${{ "{:,.2f}".format(e.payload.input.total_usd|float) }}
+              {% elif e.event == "customer_exists" %}
+                <code>{{ e.payload.erp_customer_no }}</code>
+                → {{ "found" if e.payload.result else "missing" }}
+              {% elif e.event == "reconcile_stale" %}
+                since {{ e.payload.since }}
+              {% else %}
+                {{ e.payload | tojson }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty">
+      No ERP events yet. Run <code>python -m scripts.demo</code> from inside the
+      <code>seed</code> container to drive an order through the FSM and trigger
+      a sync, or POST to <code>/api/agent/extract</code> first.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{
+  "include": [
+    "providers",
+    "db",
+    "seed",
+    "app",
+    "agents",
+    "mcp_servers",
+    "scripts",
+    "tests",
+    "alembic"
+  ],
+  "reportMissingImports": "warning",
+  "reportMissingTypeStubs": "none",
+  "pythonVersion": "3.11",
+  "extraPaths": ["."],
+  "reportIncompatibleVariableOverride": "none",
+  "reportDeprecated": "none",
+  "executionEnvironments": [
+    {
+      "root": "tests",
+      "reportUnusedVariable": "none",
+      "reportUnusedImport": "none",
+      "reportUnusedExpression": "none"
+    },
+    {
+      "root": "alembic",
+      "reportUnusedImport": "none"
+    },
+    {
+      "root": "app/routes",
+      "reportArgumentType": "warning",
+      "reportCallIssue": "warning"
+    }
+  ]
+}

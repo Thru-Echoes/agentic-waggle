@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ product }} — inbox{% endblock %}
+{% block content %}
+<h1>Inbox</h1>
+<p class="muted">
+  Synthetic inbound mail surfaced from <code>/gmail-fixtures</code>.
+  Click <em>Extract with agent</em> on any pollination request to run the
+  LangGraph pipeline live.
+</p>
+
+{% if fixture_error %}
+  <div class="card">
+    <div class="empty">{{ fixture_error }}</div>
+  </div>
+{% else %}
+  <div class="split">
+    <div class="card">
+      {% if emails %}
+        <table class="rows">
+          <thead>
+            <tr>
+              <th>Received</th>
+              <th>From</th>
+              <th>To (apiarist)</th>
+              <th>Subject</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in emails %}
+              <tr>
+                <td class="muted">{{ e.received_at[:10] }}</td>
+                <td>{{ e.from_address }}</td>
+                <td class="muted">{{ e.account_id }}</td>
+                <td>{{ e.subject }}</td>
+                <td>
+                  <button
+                    class="action"
+                    hx-post="/inbox/extract"
+                    hx-vals='{"account_id": "{{ e.account_id }}", "message_id": "{{ e.id }}"}'
+                    hx-target="#extract-pane"
+                    hx-swap="innerHTML"
+                    hx-indicator="#extract-pane-spinner"
+                  >Extract</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty">No emails in fixtures.</div>
+      {% endif %}
+    </div>
+
+    <div class="card" id="extract-pane">
+      <div class="empty">
+        Click <strong>Extract</strong> on a row to run the agent.
+        <span id="extract-pane-spinner" class="htmx-indicator"> · running…</span>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

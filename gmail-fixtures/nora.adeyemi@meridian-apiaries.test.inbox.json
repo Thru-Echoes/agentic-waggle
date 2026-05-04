@@ -1,0 +1,44 @@
+[
+  {
+    "id": "d86448ccdb0d47d692",
+    "thread_id": "d86448ccdb0d47d692",
+    "account_id": "nora.adeyemi@meridian-apiaries.test",
+    "from_address": "contact@st-agnes-pollination.test",
+    "to_addresses": [
+      "maya.whitfield@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 St. Agnes Pollination (cherry)",
+    "body_text": "Ready to schedule pollination for cherry \u2014 about 288 hives at the River Block block, early May.",
+    "body_html": null,
+    "received_at": "2026-04-19T18:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "9df7f6531eb24939be",
+    "thread_id": "9df7f6531eb24939be",
+    "account_id": "nora.adeyemi@meridian-apiaries.test",
+    "from_address": "contact@riverbend-family-orchards.test",
+    "to_addresses": [
+      "priya.ramaswamy@meridian-apiaries.test"
+    ],
+    "subject": "Question from Riverbend Family Orchards",
+    "body_text": "Do we have capacity for a almond job this year? Haven't fully scoped it yet but probably ~271 hives.",
+    "body_html": null,
+    "received_at": "2026-04-10T19:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "05f6966c4aef40fc92",
+    "thread_id": "05f6966c4aef40fc92",
+    "account_id": "nora.adeyemi@meridian-apiaries.test",
+    "from_address": "contact@blue-ridge-farms.test",
+    "to_addresses": [
+      "sam.oreilly@meridian-apiaries.test"
+    ],
+    "subject": "Question from Blue Ridge Farms",
+    "body_text": "Is it too late to add hives for my almond block? Bloom is starting.",
+    "body_html": null,
+    "received_at": "2026-04-15T09:57:05.141738+00:00",
+    "attachments": []
+  }
+]

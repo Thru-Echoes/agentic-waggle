@@ -1,0 +1,44 @@
+[
+  {
+    "id": "97545875268f4dcfbf",
+    "thread_id": "97545875268f4dcfbf",
+    "account_id": "renee.boucher@meridian-apiaries.test",
+    "from_address": "contact@haley-farms-lp.test",
+    "to_addresses": [
+      "jun-ho.park@meridian-apiaries.test"
+    ],
+    "subject": "Pollination request \u2014 Haley Farms LP (blueberry)",
+    "body_text": "Kimberly Webb here. Confirming pollination for Highway Block: 455 colonies, approx 2026-06-20\u20132026-08-02. Let me know what paperwork you need.",
+    "body_html": null,
+    "received_at": "2026-04-24T11:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "216819f21210455896",
+    "thread_id": "216819f21210455896",
+    "account_id": "renee.boucher@meridian-apiaries.test",
+    "from_address": "contact@mountain-valley-farms.test",
+    "to_addresses": [
+      "renee.boucher@meridian-apiaries.test"
+    ],
+    "subject": "Question from Mountain Valley Farms",
+    "body_text": "What's the current price on wildflower drums? Might want to place a bulk order.",
+    "body_html": null,
+    "received_at": "2026-04-05T03:57:05.141738+00:00",
+    "attachments": []
+  },
+  {
+    "id": "a23c01813f2e49ddaa",
+    "thread_id": "a23c01813f2e49ddaa",
+    "account_id": "renee.boucher@meridian-apiaries.test",
+    "from_address": "contact@st-agnes-pollination.test",
+    "to_addresses": [
+      "jun-ho.park@meridian-apiaries.test"
+    ],
+    "subject": "Question from St. Agnes Pollination",
+    "body_text": "Thinking about adding queens \u2014 Italian or Saskatraz? What's availability look like for spring?",
+    "body_html": null,
+    "received_at": "2026-05-02T21:57:05.141738+00:00",
+    "attachments": []
+  }
+]
