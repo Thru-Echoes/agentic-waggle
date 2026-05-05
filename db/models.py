@@ -286,6 +286,10 @@ class CustomerReport(SQLModel, table=True):
     )
     pesticide_exposure_note: Optional[str] = None
     narrative: str = Field(..., nullable=False)
+    tags: list[str] = Field(
+        default_factory=list,
+        sa_column=Column("tags", JSONB, nullable=False, server_default="[]"),
+    )
 
     site: Mapped[Optional["CustomerSite"]] = Relationship(back_populates="customer_reports")
     author: Mapped[Optional["User"]] = Relationship(back_populates="customer_reports")

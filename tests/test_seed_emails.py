@@ -91,3 +91,93 @@ class TestPersist:
         emails_gen.persist(db, msgs)
         with pytest.raises(IntegrityError):
             emails_gen.persist(db, msgs)
+
+
+class TestStableMessageIds:
+    """Email message ids must be deterministic across reseeds so the
+    gmail-fixtures/*.inbox.json files don't churn in git on every reset-db."""
+
+    def _gen(self, faker_instance):
+        regions = regions_gen.generate()
+        customers = customers_gen.generate(faker_instance)
+        apiarists = apiarists_gen.generate(faker_instance, regions)
+        return emails_gen.generate(faker_instance, customers, apiarists)
+
+    def test_ids_stable_across_reseeds(self, faker_instance) -> None:
+        """Re-running generate() with the same fixture must produce the
+        same external_ids (content-hashed)."""
+        first = [m.external_id for m in self._gen(faker_instance)]
+
+        # Fresh Faker(seed=42) for the second pass — content hashing should
+        # not depend on Faker state.
+        from faker import Faker
+        from seed.faker_providers import BeekeepingProvider
+
+        f2 = Faker(locale="en_US")
+        Faker.seed(42)
+        f2.add_provider(BeekeepingProvider)
+        second = [m.external_id for m in self._gen(f2)]
+        assert first == second, (
+            "external_ids drift across reseeds — gmail-fixtures will churn"
+        )
+
+
+class TestDocumentPromotion:
+    """Each persisted email also goes into the `documents` table so the
+    body is searchable via RAG. These tests pin the contract."""
+
+    def _setup_emails(self, db, faker_instance, inbox_fixture_root):
+        regions = regions_gen.generate()
+        customers = customers_gen.generate(faker_instance)
+        apiarists = apiarists_gen.generate(faker_instance, regions)
+        import seed.emails as emails_mod
+        emails_mod.GMAIL_FIXTURE_ROOT = inbox_fixture_root
+        msgs = emails_gen.generate(faker_instance, customers, apiarists)
+        emails_gen.persist(db, msgs)
+        return msgs
+
+    def test_each_email_creates_a_document(
+        self, db, faker_instance, inbox_fixture_root
+    ) -> None:
+        msgs = self._setup_emails(db, faker_instance, inbox_fixture_root)
+        n_docs = db.execute(
+            text(
+                "SELECT count(*) FROM documents WHERE source_type = 'email'"
+            )
+        ).scalar()
+        assert n_docs == len(msgs)
+
+    def test_document_metadata_includes_subject_and_from(
+        self, db, faker_instance, inbox_fixture_root
+    ) -> None:
+        self._setup_emails(db, faker_instance, inbox_fixture_root)
+        rows = db.execute(
+            text(
+                "SELECT metadata FROM documents WHERE source_type = 'email'"
+            )
+        ).all()
+        for (meta,) in rows:
+            for key in ("source_type", "external_id", "subject", "from_address",
+                        "account_id", "received_at"):
+                assert key in meta, f"email doc metadata missing {key!r}: {meta}"
+            assert meta["subject"], "empty subject"
+            assert meta["from_address"].startswith("contact@"), (
+                f"unexpected from_address shape: {meta['from_address']}"
+            )
+
+    def test_document_content_includes_subject_line(
+        self, db, faker_instance, inbox_fixture_root
+    ) -> None:
+        """The chunker/embedder will see this content. Including the subject
+        in the body content boosts retrieval recall on subject-line keywords."""
+        self._setup_emails(db, faker_instance, inbox_fixture_root)
+        sample = db.execute(
+            text(
+                "SELECT content FROM documents WHERE source_type = 'email' LIMIT 1"
+            )
+        ).first()
+        assert sample is not None
+        assert sample[0].startswith("Subject:"), (
+            f"email document content missing 'Subject:' prefix: "
+            f"{sample[0][:80]!r}"
+        )

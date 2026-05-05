@@ -157,6 +157,7 @@ class InspectionReport(BaseModel):
     diseases_observed: list[DiseaseCode]
     pesticide_exposure_note: str | None = None
     narrative: str
+    tags: list[str] = Field(default_factory=list)
 
 
 class RegulatedItem(BaseModel):

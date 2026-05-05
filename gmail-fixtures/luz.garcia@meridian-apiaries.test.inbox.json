@@ -1,58 +1,72 @@
 [
   {
-    "id": "a4276bf8bc5442b2b9",
-    "thread_id": "a4276bf8bc5442b2b9",
+    "id": "80fd1ef4a1b261b7c1",
+    "thread_id": "80fd1ef4a1b261b7c1",
     "account_id": "luz.garcia@meridian-apiaries.test",
-    "from_address": "contact@blue-ridge-family-orchards.test",
+    "from_address": "contact@mountain-valley-farms.test",
     "to_addresses": [
-      "simone.delacroix@meridian-apiaries.test"
+      "luz.garcia@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Blue Ridge Family Orchards (almond)",
-    "body_text": "Quick note \u2014 ordering 6 of Italian queens for delivery to North Block 1. Invoice to main account.",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hi there, \n\nI hope this message finds you well! I\u2019m reaching out to finalize our pollination needs for this season. We\u2019d like to order 30 hives for our orchard block, targeting the blueberry bloom in early April. If possible, we would prefer a split delivery, with 15 hives arriving in the first week of April and the remaining 15 the following week. \n\nCould you please send over a clear contract reflecting these details? We\u2019re looking to keep everything consistent with last year\u2019s arrangement. Thanks in advance for your help!\n\nBest,  \nDavid Ramirez  \nMountain Valley Farms",
     "body_html": null,
-    "received_at": "2026-04-05T22:57:05.141738+00:00",
+    "received_at": "2026-04-12T16:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "0a30d9a25e404afa90",
-    "thread_id": "0a30d9a25e404afa90",
-    "account_id": "luz.garcia@meridian-apiaries.test",
-    "from_address": "contact@riverbend-farms-lp.test",
-    "to_addresses": [
-      "simone.delacroix@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Riverbend Farms LP (apple)",
-    "body_text": "Hi \u2014 we need 491 hives for apple bloom starting 2026-06-16. Same blocks as last year at North Block 1. Thanks, Gregory Matthews.",
-    "body_html": null,
-    "received_at": "2026-04-20T09:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "fc8396b41d72403c9d",
-    "thread_id": "fc8396b41d72403c9d",
-    "account_id": "luz.garcia@meridian-apiaries.test",
-    "from_address": "contact@mountain-valley-orchards.test",
-    "to_addresses": [
-      "nora.adeyemi@meridian-apiaries.test"
-    ],
-    "subject": "Multi-site planning \u2014 Mountain Valley Orchards",
-    "body_text": "We're looking at 278 hives split across North Block, East Block, and River Block \u2014 staggered placement over three weeks starting 2026-06-23. Need your input on whether that's viable.",
-    "body_html": null,
-    "received_at": "2026-05-01T02:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "a1ebbf7ae2f34c458c",
-    "thread_id": "a1ebbf7ae2f34c458c",
+    "id": "ec5529467721cad151",
+    "thread_id": "ec5529467721cad151",
     "account_id": "luz.garcia@meridian-apiaries.test",
     "from_address": "contact@haley-family-orchards.test",
     "to_addresses": [
-      "devon.hale@meridian-apiaries.test"
+      "luz.garcia@meridian-apiaries.test"
     ],
-    "subject": "Multi-site planning \u2014 Haley Family Orchards",
-    "body_text": "Complicated one: existing contract at North Block for 351 needs to reduce to 220 due to an AFB incident last season. Can we discuss restructuring?",
+    "subject": "Inquiry about Pollination Services",
+    "body_text": "Hi there, \n\nI\u2019m reaching out to learn more about your pollination services for our almond orchard. Specifically, I\u2019m curious about your pricing structure and any packages you may offer. Also, what kind of support do you provide during the pollination season? We\u2019re weighing our options and would appreciate any details you can share. \n\nThanks so much! \n\nBest,  \nDestiny Lawrence  \nHaley Family Orchards",
     "body_html": null,
-    "received_at": "2026-04-30T10:57:05.141738+00:00",
+    "received_at": "2026-04-28T23:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "fe7a37310d04858d27",
+    "thread_id": "fe7a37310d04858d27",
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "from_address": "contact@haley-orchard-co.test",
+    "to_addresses": [
+      "luz.garcia@meridian-apiaries.test"
+    ],
+    "subject": "Inquiry About Pollination Services",
+    "body_text": "Hi there, \n\nI\u2019m reaching out from Haley Orchard Co. to learn more about your pollination services for our almond orchards. We\u2019re considering our options for the upcoming season and would appreciate information on pricing and availability. What are your recommendations for optimal coverage, and are there any specific requirements we should be aware of? \n\nThanks in advance for your help! \n\nBest,  \nDeborah Miller",
+    "body_html": null,
+    "received_at": "2026-04-25T13:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "b5f8df84b74c86481a",
+    "thread_id": "b5f8df84b74c86481a",
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "from_address": "contact@stormchaser-meadery.test",
+    "to_addresses": [
+      "luz.garcia@meridian-apiaries.test"
+    ],
+    "subject": "Inquiry About Pollination Services and Bee Products",
+    "body_text": "Hi there! \n\nI'm Joshua from Stormchaser Meadery, and I'm looking to explore options for pollination services as well as any bee products you might offer that could complement our mead production. Could you provide some information on pricing and availability? I\u2019m especially interested in how your pollination services could enhance our honey yield. \n\nThanks so much for your help!",
+    "body_html": null,
+    "received_at": "2026-04-09T06:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "6b2664060dbfe1c7d6",
+    "thread_id": "6b2664060dbfe1c7d6",
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "from_address": "contact@cascade-orchard-partners.test",
+    "to_addresses": [
+      "luz.garcia@meridian-apiaries.test"
+    ],
+    "subject": "Request for Pollination Services and Hive Management",
+    "body_text": "Hi there,\n\nI hope this message finds you well! I'm reaching out on behalf of Cascade Orchard Partners as we begin planning our pollination needs for the upcoming season. We have multiple sites across the Willamette Valley and will need hives for our cherry, apple, and pear crops.\n\nFor our cherry orchard located in Salem, we would require approximately 60 hives starting from late March to mid-April. The apple trees in our Corvallis orchard will need around 75 hives for a similar duration, and we\u2019d like 50 hives for our pear trees in Junction City from early April into May. \n\nCould you provide details on availability, any necessary contract adjustments, and potential scheduling conflicts? Additionally, we\u2019re interested in exploring your bee products for our local distribution. \n\nThanks for your help, and I look forward to your prompt response!\n\nBest,  \nCarlos Roberts",
+    "body_html": null,
+    "received_at": "2026-05-04T13:02:57.053170+00:00",
     "attachments": []
   }
 ]

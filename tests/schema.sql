@@ -126,7 +126,8 @@ CREATE TABLE customer_reports (
     varroa_count NUMERIC(6, 2) NOT NULL,
     diseases_observed JSONB NOT NULL DEFAULT '[]'::jsonb,
     pesticide_exposure_note TEXT,
-    narrative TEXT NOT NULL
+    narrative TEXT NOT NULL,
+    tags JSONB NOT NULL DEFAULT '[]'::jsonb
 );
 
 CREATE TABLE documents (

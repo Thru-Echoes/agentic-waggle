@@ -1,100 +1,44 @@
 [
   {
-    "id": "2239fcf1adb14cdabe",
-    "thread_id": "2239fcf1adb14cdabe",
+    "id": "98450c59347d820a3d",
+    "thread_id": "98450c59347d820a3d",
     "account_id": "kai.okonkwo@meridian-apiaries.test",
-    "from_address": "contact@mountain-valley-orchards.test",
+    "from_address": "contact@oreilly-family-orchards.test",
     "to_addresses": [
-      "isa.martinez@meridian-apiaries.test"
+      "kai.okonkwo@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Mountain Valley Orchards (almond)",
-    "body_text": "Ready to schedule pollination for almond \u2014 about 222 hives at the River Block block, early February.",
+    "subject": "Request for Pollination Contract",
+    "body_text": "Hi there, \n\nThis is John Atkinson from O'Reilly Family Orchards. I\u2019d like to request a pollination contract for our almond segment. We need 50 hives for our 30-acre block, targeting delivery around March 1st, the same as last year. Please confirm if you can accommodate this timeline and let me know if there are any constraints we should be aware of. \n\nLooking forward to your prompt response!\n\nBest,  \nJohn Atkinson",
     "body_html": null,
-    "received_at": "2026-04-09T22:57:05.141738+00:00",
+    "received_at": "2026-04-13T16:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "c98f3eaad7c14948bb",
-    "thread_id": "c98f3eaad7c14948bb",
-    "account_id": "kai.okonkwo@meridian-apiaries.test",
-    "from_address": "contact@riverbend-family-orchards.test",
-    "to_addresses": [
-      "marcus.okafor@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Riverbend Family Orchards (blueberry)",
-    "body_text": "Hi \u2014 we need 110 hives for blueberry bloom starting 2026-05-28. Same blocks as last year at River Block. Thanks, Michael Lyons.",
-    "body_html": null,
-    "received_at": "2026-04-20T16:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "63b385266a354ef5a6",
-    "thread_id": "63b385266a354ef5a6",
-    "account_id": "kai.okonkwo@meridian-apiaries.test",
-    "from_address": "contact@mountain-valley-farms.test",
-    "to_addresses": [
-      "dana.chen@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Mountain Valley Farms (blueberry)",
-    "body_text": "Hi \u2014 we need 201 hives for blueberry bloom starting 2026-06-11. Same blocks as last year at Highway Block. Thanks, Michael Johnson.",
-    "body_html": null,
-    "received_at": "2026-04-15T21:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "58ffedc4ccce4f5781",
-    "thread_id": "58ffedc4ccce4f5781",
-    "account_id": "kai.okonkwo@meridian-apiaries.test",
-    "from_address": "contact@wenatchee-orchard-partners.test",
-    "to_addresses": [
-      "maya.whitfield@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Wenatchee Orchard Partners (apple)",
-    "body_text": "Perry Saunders here. Confirming pollination for Highway Block: 390 colonies, approx 2026-06-09\u20132026-07-20. Let me know what paperwork you need.",
-    "body_html": null,
-    "received_at": "2026-04-05T22:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "98cd987d4b924e6788",
-    "thread_id": "98cd987d4b924e6788",
+    "id": "32eb61a24bd865afba",
+    "thread_id": "32eb61a24bd865afba",
     "account_id": "kai.okonkwo@meridian-apiaries.test",
     "from_address": "contact@seven-acres-farms-lp.test",
     "to_addresses": [
-      "nora.adeyemi@meridian-apiaries.test"
+      "kai.okonkwo@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Seven Acres Farms LP (cherry)",
-    "body_text": "Quick note \u2014 ordering 7 of Italian queens for delivery to Highway Block. Invoice to main account.",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hello Meridian Apiaries Team,  \n\nI hope this message finds you well! We are preparing for the upcoming growing season at Seven Acres Farms and would like to finalize our pollination needs. We require 12 hives for our orchard tree fruit segment, specifically targeting our cherry block, expected to bloom around late March.  \n\nCould you please send over a clear pollination contract, including pricing and terms, as well as any relevant details about hive placement and timing? If possible, we would appreciate maintaining the same arrangements as last year. Thank you for your assistance!  \n\nBest,  \nSylvia Martinez",
     "body_html": null,
-    "received_at": "2026-04-04T10:57:05.141738+00:00",
+    "received_at": "2026-04-19T06:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "71a89b67c7a248b9a4",
-    "thread_id": "71a89b67c7a248b9a4",
+    "id": "8a70dd5463f636880e",
+    "thread_id": "8a70dd5463f636880e",
     "account_id": "kai.okonkwo@meridian-apiaries.test",
-    "from_address": "contact@old-mission-growers.test",
+    "from_address": "contact@golden-west-co.test",
     "to_addresses": [
-      "maya.whitfield@meridian-apiaries.test"
+      "kai.okonkwo@meridian-apiaries.test"
     ],
-    "subject": "Question from Old Mission Growers",
-    "body_text": "Do we have capacity for a blueberry job this year? Haven't fully scoped it yet but probably ~281 hives.",
+    "subject": "Regulatory Compliance Inquiry",
+    "body_text": "Hi there,\n\nI hope this message finds you well! I wanted to check in regarding the latest bee product regulations. Have there been any recent updates or compliance requirements we should be aware of? We always strive to stay on top of these matters to ensure we're meeting all necessary standards.\n\nThanks in advance for your help!\n\nBest,  \nErnest Morris  \nGolden West Co.",
     "body_html": null,
-    "received_at": "2026-04-26T23:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "dbc39c8ae25b471ebb",
-    "thread_id": "dbc39c8ae25b471ebb",
-    "account_id": "kai.okonkwo@meridian-apiaries.test",
-    "from_address": "contact@martinez-and-sons-orchards.test",
-    "to_addresses": [
-      "marcus.okafor@meridian-apiaries.test"
-    ],
-    "subject": "From Martinez & Sons Orchards",
-    "body_text": "Unrelated: can you point me to the updated safety docs?",
-    "body_html": null,
-    "received_at": "2026-04-06T19:57:05.141738+00:00",
+    "received_at": "2026-04-08T11:02:57.053170+00:00",
     "attachments": []
   }
 ]

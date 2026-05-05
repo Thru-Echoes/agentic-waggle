@@ -92,9 +92,21 @@ class VectorSearchProvider:
         top_k: int = 5,
         filters: dict[str, Any] | None = None,
     ) -> list[SearchResult]:
-        """Cosine-similarity search over `chunks`. Returns top_k hits.
+        """Hybrid (semantic + structured) cosine-similarity search over `chunks`.
 
-        Side effects: runs a SQL query against `self.db`.
+        Supported filter keys (all optional, additive AND semantics):
+          * `source_type`        — exact match: 'customer_report' | 'email' |
+                                   'product_data_sheet' | 'regulatory_doc'
+          * `customer_site_id`   — UUID; matches `metadata.customer_site_id`
+          * `site_id`            — alias of `customer_site_id` (legacy)
+          * `visit_date_after`   — date; matches reports with visit_date >=
+          * `min_varroa`         — numeric; varroa_count >= threshold
+          * `tag`                — string; chunk's `metadata.tags` array
+                                   contains this tag (jsonb `?` operator)
+
+        Returns top_k hits ordered by ascending cosine distance.
+
+        Side effects: SQL query against `self.db`.
         Raises RuntimeError if no session was provided at construction.
         """
         if self.db is None:
@@ -104,29 +116,49 @@ class VectorSearchProvider:
             )
 
         query_vec = self.embed(query)
-        # SQLAlchemy's `:name` param syntax collides with Postgres's `::`
-        # type-cast operator — `:site_id::uuid` is parsed by SA as `:site_id`
-        # followed by garbage, producing a syntax error. Use `CAST(... AS T)`
-        # everywhere for type-casts so param names and casts never touch.
+        f = filters or {}
+        # Accept either `customer_site_id` (preferred) or `site_id` (legacy).
+        site_filter = f.get("customer_site_id") or f.get("site_id")
+
+        # SQLAlchemy's `:name` syntax collides with Postgres `::` type-casts,
+        # so use `CAST(... AS T)` exclusively. NULL-checks short-circuit each
+        # filter so unspecified keys impose no constraint.
         sql = """
             SELECT id, content, metadata,
                    1 - (embedding <=> CAST(:qv AS vector)) AS score
             FROM chunks
             WHERE (
-                CAST(:site_id AS uuid) IS NULL
-                OR CAST(metadata->>'site_id' AS uuid) = CAST(:site_id AS uuid)
+                CAST(:source_type AS text) IS NULL
+                OR metadata->>'source_type' = CAST(:source_type AS text)
             )
               AND (
-                :after IS NULL
+                CAST(:site_id AS uuid) IS NULL
+                OR CAST(metadata->>'customer_site_id' AS uuid)
+                   = CAST(:site_id AS uuid)
+              )
+              AND (
+                CAST(:after AS date) IS NULL
                 OR CAST(metadata->>'visit_date' AS date) >= CAST(:after AS date)
+              )
+              AND (
+                CAST(:min_varroa AS numeric) IS NULL
+                OR (metadata->>'varroa_count')::numeric
+                   >= CAST(:min_varroa AS numeric)
+              )
+              AND (
+                CAST(:tag AS text) IS NULL
+                OR (metadata->'tags') ? CAST(:tag AS text)
               )
             ORDER BY embedding <=> CAST(:qv AS vector)
             LIMIT :k
         """
         params = {
             "qv": query_vec,
-            "site_id": (filters or {}).get("site_id"),
-            "after": (filters or {}).get("visit_date_after"),
+            "source_type": f.get("source_type"),
+            "site_id": site_filter,
+            "after": f.get("visit_date_after"),
+            "min_varroa": f.get("min_varroa"),
+            "tag": f.get("tag"),
             "k": top_k,
         }
         rows = self.db.execute(text(sql), params).mappings().all()

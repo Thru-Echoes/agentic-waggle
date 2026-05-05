@@ -1,0 +1,722 @@
+[
+  {
+    "customer_name": "St. Agnes Pollination",
+    "from_customer": true,
+    "account_id": "ari.solomon@meridian-apiaries.test",
+    "to_email": "ari.solomon@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for St. Agnes Pollination",
+    "body_text": "Hi there, \n\nI hope this message finds you well! We are looking to finalize our pollination contract for the orchard almond segment this year. We'd like to order 40 hives to cover our 20-acre block on Oak Lane, similar to last year's arrangement. The target delivery date is set for March 10, aligning with the blueberry bloom.\n\nPlease let me know if you can accommodate a split delivery, as we might need some hives earlier for a staggered pollination schedule. Looking forward to your prompt response so we can get this sorted out!\n\nBest,  \nCourtney Gonzalez",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "O'Reilly Family Orchards",
+    "from_customer": true,
+    "account_id": "kai.okonkwo@meridian-apiaries.test",
+    "to_email": "kai.okonkwo@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract",
+    "body_text": "Hi there, \n\nThis is John Atkinson from O'Reilly Family Orchards. I\u2019d like to request a pollination contract for our almond segment. We need 50 hives for our 30-acre block, targeting delivery around March 1st, the same as last year. Please confirm if you can accommodate this timeline and let me know if there are any constraints we should be aware of. \n\nLooking forward to your prompt response!\n\nBest,  \nJohn Atkinson",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "St. Agnes Pollination",
+    "from_customer": true,
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "to_email": "elena.vasquez@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hi there,  \n\nI hope this message finds you well! We're gearing up for the upcoming season and would like to request a new pollination contract for our almond orchard. We're looking for the same hive count as last year, which was 40 hives, for delivery around the start of the almond bloom. Please confirm if you can accommodate a split delivery, as we\u2019d like to stagger our hives to optimize pollination.  \n\nAdditionally, if there are any new considerations or updates regarding your services, please let us know. Thanks for your assistance!  \n\nBest,  \nMark Lee  \nSt. Agnes Pollination",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Old Mission Growers",
+    "from_customer": true,
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "to_email": "simone.delacroix@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Old Mission Growers",
+    "body_text": "Hello Meridian Apiaries Team,\n\nI hope this message finds you well! I\u2019d like to request a pollination contract for our blueberry fields. We will need 40 hives, targeting the same blocks as last year. The expected delivery date should align with the blueberry bloom, around mid-April. Additionally, if possible, we would appreciate a split delivery over the bloom period to ensure optimal coverage.\n\nPlease send over the contract details at your earliest convenience. If you need any more specifics, feel free to reach out!\n\nThank you,  \nDavid Douglas Jr.  \nOld Mission Growers",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Martinez & Sons Orchards",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Martinez & Sons Orchards",
+    "body_text": "Hi there! \n\nI'm reaching out to request a clear pollination contract for our upcoming blueberry bloom this season at Martinez & Sons Orchards. We\u2019re looking for 20 hives, same as last year, to cover our 10-acre block. Ideally, we\u2019d like the hives to arrive on April 15th, but we're open to a split delivery if necessary. \n\nPlease send over the contract details at your earliest convenience so we can finalize everything. Thanks for your help! \n\nBest,  \nRobert Dominguez",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Seven Acres Farms LP",
+    "from_customer": true,
+    "account_id": "kai.okonkwo@meridian-apiaries.test",
+    "to_email": "kai.okonkwo@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hello Meridian Apiaries Team,  \n\nI hope this message finds you well! We are preparing for the upcoming growing season at Seven Acres Farms and would like to finalize our pollination needs. We require 12 hives for our orchard tree fruit segment, specifically targeting our cherry block, expected to bloom around late March.  \n\nCould you please send over a clear pollination contract, including pricing and terms, as well as any relevant details about hive placement and timing? If possible, we would appreciate maintaining the same arrangements as last year. Thank you for your assistance!  \n\nBest,  \nSylvia Martinez",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Riverbend Family Orchards",
+    "from_customer": true,
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "to_email": "elena.vasquez@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Riverbend Family Orchards",
+    "body_text": "Dear [Apiarist Sales Rep's Name], \n\nI hope this message finds you well! We would like to proceed with our pollination needs for the almond segment this year. Please prepare a contract for 15 hives to be delivered to our orchard by February 15th, aligning with the same schedule as last year. If possible, we\u2019d like to arrange for a split delivery, with the second batch coming just before peak bloom. \n\nLet me know if you need any additional information to move forward. Thank you for your assistance!\n\nBest,  \nVictoria Larson  \nRiverbend Family Orchards",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Seven Acres Farms LP",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hello Meridian Apiaries Team,  \n\nI hope this email finds you well! We\u2019re looking to secure 50 hives for our blueberry block at Seven Acres Farms this year. We aim for the same delivery schedule as last year, ideally in early April to coincide with the bloom. Please confirm if you can accommodate this and send over the updated contract at your earliest convenience. Thank you, and looking forward to your prompt response!  \n\nBest,  \nKimberly Merritt  \nSeven Acres Farms LP",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Wenatchee Family Orchards",
+    "from_customer": true,
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "to_email": "dana.chen@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Wenatchee Family Orchards",
+    "body_text": "Hi there, \n\nI hope this message finds you well! We would like to proceed with a pollination contract for our blueberry segment again this year. Last year, we used 12 hives for our 10-acre block, and we\u2019d like to maintain the same hive count for the upcoming bloom, anticipated around late April. If possible, we would appreciate a split delivery to help manage the flowering stages more effectively. \n\nCould you send over a clear contract or order confirmation at your earliest convenience? Thank you!\n\nBest,  \nPaul Larsen",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Riverbend Farms LP",
+    "from_customer": true,
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "to_email": "dana.chen@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Riverbend Farms",
+    "body_text": "Hello, \n\nI hope this message finds you well! We\u2019re looking to finalize our pollination contract for Riverbend Farms for the upcoming almond season. \n\nWe will need 40 hives placed at our northwest block from February 15 to March 15, similar to last year. Please confirm if you can accommodate this timeline and if you\u2019ll provide split deliveries for optimal coverage.\n\nLooking forward to your prompt reply!\n\nBest,  \nDenise Jones  \nRiverbend Farms LP",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Wenatchee Orchard Partners",
+    "from_customer": true,
+    "account_id": "ari.solomon@meridian-apiaries.test",
+    "to_email": "ari.solomon@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Dear Meridian Apiaries Team, \n\nI hope this message finds you well. I'm reaching out on behalf of Wenatchee Orchard Partners regarding our upcoming pollination needs for the ORCHARD_ALMOND segment. We require 100 hives for our target site in Block 3, with an expected delivery date around March 15th, same as last year. Please confirm availability and let me know if you need any additional information or if there are any constraints we should be aware of.\n\nThank you for your assistance!\n\nBest,  \nFrancisco Fernandez",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Riverbend Family Orchards",
+    "from_customer": true,
+    "account_id": "priya.ramaswamy@meridian-apiaries.test",
+    "to_email": "priya.ramaswamy@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract",
+    "body_text": "Dear [Apiarist Sales Rep's Name], \n\nI hope this message finds you well! I\u2019d like to confirm our pollination needs for Riverbend Family Orchards this season. We are looking for 50 hives to cover our almond segment, targeting the same blocks as last year. The expected delivery date is around February 15th, coinciding with the almond bloom. If possible, we\u2019d also like to discuss a split delivery option to ensure maximum pollination efficiency. \n\nPlease send over a clear contract reflecting these details at your earliest convenience. Thanks for your help!\n\nBest,  \nMichael McCarthy",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "St. Agnes Pollination",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for St. Agnes Pollination",
+    "body_text": "Dear [Apiarist Sales Rep's Name], \n\nI hope this message finds you well! I am writing to request a clear and specific pollination contract for our upcoming almond orchard at St. Agnes. We will need 40 hives delivered to Block 12, targeting the bloom period from March 15 to March 30. If possible, we\u2019d prefer the same delivery schedule as last year. \n\nPlease let me know if you need any further details or if there are any constraints we should consider. Looking forward to your prompt response.\n\nBest,  \nJoshua Perry",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Seven Acres Farms",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Seven Acres Farms",
+    "body_text": "Hello, \n\nI hope this message finds you well! We are looking to secure honeybee hives for our almond orchard at Seven Acres Farms for the upcoming bloom season. Last year, we utilized 80 hives, and we would like to maintain that same count. Our target date for delivery is around February 15, 2024, and it would be ideal to avoid any split deliveries if possible. \n\nPlease send over the updated contract for our review. Thank you for your assistance! \n\nBest,  \nRandy Shah",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "O'Reilly Family Orchards",
+    "from_customer": true,
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "to_email": "simone.delacroix@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for O'Reilly Family Orchards",
+    "body_text": "Dear Meridian Apiaries Team,  \n\nI hope this message finds you well! We are gearing up for the upcoming almond bloom and would like to request a pollination contract for 150 hives at O'Reilly Family Orchards. The target site is Block A, and we expect the hives to arrive on February 15, 2024, just as we did last year. If possible, we would appreciate a split delivery to accommodate our timing. Please let me know if you need any additional information to finalize this order.  \n\nThank you for your assistance!  \n\nBest,  \nTommy Evans",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Sierra Crest Orchard Partners",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hello, \n\nI hope this message finds you well! We\u2019re gearing up for the upcoming almond bloom at Sierra Crest Orchard Partners and would like to finalize our pollination contract. We will need 50 hives for the designated block 3 this year, as we had last year. Our target dates are from February 15 through March 15, aligning with the expected bloom. \n\nCould you please send over the contract details, including any constraints or options for split delivery if needed? Looking forward to your prompt response so we can secure the hives in time!\n\nBest,  \nMorgan Marsh",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Blue Ridge Family Orchards",
+    "from_customer": true,
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "to_email": "dana.chen@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Blue Ridge Family Orchards",
+    "body_text": "Hi there, \n\nI hope this message finds you well! I'm reaching out to request a pollination contract for our almond segment at Blue Ridge Family Orchards. We will need 30 hives for the upcoming bloom, with delivery expected around March 1st. If possible, I\u2019d like to keep the terms the same as last year, ensuring we have a split delivery to cover our bloom period effectively. Please let me know if you require any additional information or if there are constraints we should be aware of this season.\n\nThanks for your help! \n\nBest,  \nJeffrey Johnson",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Mountain Valley Orchards",
+    "from_customer": true,
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "to_email": "simone.delacroix@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hi there,  \n\nI hope this message finds you well! I\u2019d like to request a pollination contract for Mountain Valley Orchards to cover our almond segment. We are looking for 30 hives, targeting the northwest block of our orchard. The expected delivery dates are from March 15 to April 5, aligning with last year\u2019s schedule. Please confirm if there are any changes or constraints we should be aware of.  \n\nThank you for your assistance! Looking forward to your prompt response.  \n\nBest,  \nSara Calhoun",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Goldenridge Fruit Co.",
+    "from_customer": true,
+    "account_id": "isa.martinez@meridian-apiaries.test",
+    "to_email": "isa.martinez@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hi there, \n\nI hope this email finds you well! We\u2019re gearing up for the upcoming season at Goldenridge Fruit Co. and would like to request a clear pollination contract. We're looking for 50 hives for our blueberry block, similar to last year\u2019s arrangement. The expected delivery date is right at the start of the bloom, around March 15th. Please confirm if this fits your schedule or if there are any constraints we should be aware of. \n\nThanks for your assistance! Looking forward to hearing from you soon.\n\nBest,  \nLeslie Alvarado",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "St. Agnes Pollination",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hi there, \n\nI'm reaching out to finalize our pollination needs for this season. We\u2019re looking to secure 40 hives for the St. Agnes Orchard, specifically for the almond segment. The expected delivery date is around mid-February, aligning with the almond bloom. If possible, I\u2019d like to go with the same terms as last year, including the option for a split delivery if it's available.\n\nPlease send over the contract details at your earliest convenience so we can proceed. Thank you!\n\nBest,  \nJoel Williams",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Sierra Crest Orchard Partners",
+    "from_customer": true,
+    "account_id": "theo.papadakis@meridian-apiaries.test",
+    "to_email": "theo.papadakis@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract for Sierra Crest Orchard",
+    "body_text": "Hi there! \n\nI hope this message finds you well. I\u2019m reaching out to finalize our pollination contract for the upcoming almond bloom at Sierra Crest Orchard, just like last year. We\u2019ll need 30 hives delivered to Block A starting around February 15th, with expectations of peak bloom around the 20th. If possible, could we arrange for a split delivery to ease the setup? \n\nLooking forward to your prompt reply so we can get everything in place. Thanks! \n\nBest,  \nGabriel Juarez",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Sierra Crest Orchard Partners",
+    "from_customer": true,
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "to_email": "jun-ho.park@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Sierra Crest Orchard",
+    "body_text": "Dear [Apiarist Sales Rep's Name],\n\nI hope this message finds you well! We are looking to secure pollination services for our almond orchard this coming season. Last year, we successfully used 50 hives, and we would like to maintain that same count for this year. The target site will remain the same as last year, and we aim for delivery around the first week of February to coincide with the bloom. \n\nCould you please send over a clear contract for our review? If there are any updates or changes we should be aware of, please let me know. Thank you for your assistance!\n\nBest regards,  \nSandra King  \nSierra Crest Orchard Partners",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "St. Agnes Pollination",
+    "from_customer": true,
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "to_email": "dana.chen@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for St. Agnes Orchard",
+    "body_text": "Dear Sales Rep,  \n\nI hope this message finds you well! We're gearing up for the almond bloom this coming season and would like to request a pollination contract for 100 hives at our St. Agnes orchard. Ideally, we\u2019d like to have the hives delivered by February 15th, same as last year. If possible, could you confirm availability for split delivery, as we anticipate needing additional hives for our blueberry block later in the season?  \n\nThank you for your assistance! Looking forward to your prompt reply.  \n\nBest,  \nJoshua Cooke",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Haley Family Orchards",
+    "from_customer": true,
+    "account_id": "ari.solomon@meridian-apiaries.test",
+    "to_email": "ari.solomon@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract",
+    "body_text": "Dear [Apiarist Name], \n\nI hope this message finds you well! I\u2019m reaching out to request a detailed pollination contract for our almond orchard. We\u2019d like to secure 50 hives for our 40-acre block, targeting the bloom period starting around mid-February, similar to last year. Additionally, please confirm if split delivery can be accommodated, as we may need some hives earlier for our blueberry fields. \n\nLooking forward to your timely response so we can finalize arrangements soon. Thank you!\n\nBest,  \nRachael Pearson  \nHaley Family Orchards",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "O'Reilly Family Orchards",
+    "from_customer": true,
+    "account_id": "ari.solomon@meridian-apiaries.test",
+    "to_email": "ari.solomon@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for O'Reilly Family Orchards",
+    "body_text": "Dear [Apiarist Sales Rep's Name],\n\nI hope this message finds you well! We are looking to secure a pollination contract for our almond orchard. Could you please provide a clear outline for 100 hives, targeting our Block A from February 15 to March 15, 2024? We\u2019d like to maintain the same terms as last year, and if possible, a split delivery would be ideal to accommodate our farm schedule.\n\nThank you for your assistance! I look forward to hearing from you soon.\n\nBest,  \nAlex Hernandez  \nO'Reilly Family Orchards",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Riverbend Family Orchards",
+    "from_customer": true,
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "to_email": "dana.chen@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Riverbend Family Orchards",
+    "body_text": "Hi there,  \n\nI hope this message finds you well! We\u2019re looking to finalize our pollination contract for the upcoming season. We\u2019d like to request 40 hives for our almond orchard, targeting delivery around February 15th, similar to last year. Please confirm if you can accommodate this schedule.  \n\nAdditionally, if possible, we would appreciate a split delivery option for the hives to ensure even pollination across the block. Let me know if you need any further details!  \n\nThanks!  \n\nKristy Robinson  \nRiverbend Family Orchards",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Old Mission Growers",
+    "from_customer": true,
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "to_email": "jun-ho.park@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Old Mission Growers",
+    "body_text": "Hello, \n\nI hope this message finds you well! We would like to place our pollination order for this year, similar to last year's agreement. Please confirm the delivery of 30 hives for our blueberry blocks starting around April 10th. If possible, we\u2019d like to arrange for a split delivery over the bloom period. \n\nPlease send over a clear contract as soon as you can so we can review and finalize everything. Let me know if you need any additional details. \n\nThank you!  \nCarol Lawson",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Wenatchee Family Orchards",
+    "from_customer": true,
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "to_email": "sam.oreilly@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Wenatchee Family Orchards",
+    "body_text": "Hi there!  \n\nI hope this message finds you well! We\u2019re looking to finalize our pollination needs for the upcoming blueberry bloom at Wenatchee Family Orchards. Last year, we used 24 hives for Block A, and we\u2019d like to maintain that same count this season. Ideally, we\u2019d want the hives delivered around April 15 and would appreciate a split delivery if possible to accommodate blooming times.  \n\nCould you please send over a clear contract outlining the terms? Thanks for your help!  \n\nBest,  \nCarla Collins",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Old Mission Farm",
+    "from_customer": true,
+    "account_id": "isa.martinez@meridian-apiaries.test",
+    "to_email": "isa.martinez@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract and Hive Details",
+    "body_text": "Hi there,  \n\nI hope this message finds you well! I\u2019d like to request a detailed pollination contract for our orchard at Old Mission Farm. We're expecting to use 12 hives for our apple trees, specifically targeting the first bloom around mid-April. If possible, could we arrange for a split delivery? It worked well for us last year. Please let me know if you need any further details or if we can stick to the same parameters as last season.  \n\nThanks so much for your help!  \n\nBest,  \nLaura Odonnell",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Sierra Crest Orchard Partners",
+    "from_customer": true,
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "to_email": "simone.delacroix@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract and Order Details",
+    "body_text": "Hello!\n\nI hope this message finds you well. We at Sierra Crest Orchard Partners are looking to finalize our pollination needs for the upcoming almond season. We would like to request a contract specifying 100 hives for our target block, which is located in the central region of our orchard. \n\nIf possible, we'd like to arrange delivery for around the same time as last year, ideally beginning in mid-February. Please let us know if there are any constraints we should be aware of or if you require any additional information to proceed.\n\nThank you for your assistance!\n\nBest,  \nChristina Vargas",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Mesa Orchard Co.",
+    "from_customer": true,
+    "account_id": "ari.solomon@meridian-apiaries.test",
+    "to_email": "ari.solomon@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Mesa Orchard Co.",
+    "body_text": "Hi there, \n\nI hope this message finds you well! We\u2019re looking to secure a pollination contract for our peach and cherry blocks this coming spring. Last year, we used 12 hives, and we\u2019d like to maintain that same number for this season. The target site is the same as last year, with expected bloom dates around late April through early May. \n\nIf there are any constraints or details we need to consider for this arrangement, please let me know. Looking forward to your prompt response so we can finalize this soon!\n\nBest,  \nRaymond Jefferson  \nMesa Orchard Co.",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Goldenridge Fruit Co.",
+    "from_customer": true,
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "to_email": "sam.oreilly@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hi there,  \n\nI hope you\u2019re doing well! We are looking to secure a pollination contract for our blueberry fields at Goldenridge Fruit Co. this upcoming season. We would like to request 30 hives, delivered for the blueberry bloom period, ideally starting around March 15th. If possible, could we arrange for a split delivery with half the hives arriving a week before the bloom?  \n\nPlease let me know if you can accommodate this request or if you need any more details. Thanks, and I look forward to hearing from you soon!  \n\nBest,  \nKylie Williams",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Foothill Orchards",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Foothill Orchards",
+    "body_text": "Hi there, \n\nI hope this message finds you well! I\u2019d like to request a detailed pollination contract for Foothill Orchards for the upcoming season. We require 30 hives for the apple blocks, targeting a delivery during the cherry bloom, around mid-April. If possible, please keep the same terms as last year, with the option for split delivery if there are any constraints. \n\nLooking forward to your prompt response so we can finalize everything soon!\n\nBest,  \nAndrea Holland",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "O'Reilly Family Orchards",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hi there, \n\nI hope this finds you well! I\u2019m reaching out on behalf of O'Reilly Family Orchards to request a detailed pollination contract for our almond segment. We would like to secure 40 hives for our almond block, targeting delivery around February 15th. If possible, we\u2019d appreciate having the same terms as last year, including a split delivery if needed.\n\nPlease let me know if you need any additional information or if there are any constraints we should be aware of. Looking forward to your prompt response!\n\nBest,  \nAshley Yu",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Mesa Orchard Co.",
+    "from_customer": true,
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "to_email": "elena.vasquez@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Mesa Orchard Co.",
+    "body_text": "Hi there! \n\nI hope you\u2019re doing well. I would like to request a pollination contract for our upcoming season. We need 40 hives for our blueberry block, which should align with last year's schedule around the bloom period. Ideally, we\u2019d like to have the hives delivered by mid-April. If possible, please confirm if split delivery can be arranged as we may need additional support later in the season. \n\nThanks for your assistance! Looking forward to your prompt response. \n\nBest,  \nJessica Gross  \nMesa Orchard Co.",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Mesa Orchard Co.",
+    "from_customer": true,
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "to_email": "jun-ho.park@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Mesa Orchard Co.",
+    "body_text": "Hi there, \n\nI hope this message finds you well! We are looking to secure a pollination contract for this upcoming season for our orchard. Last year, we used 50 hives and would like to stick with that quantity for the same block. Our target site is the Blueberry section, with bloom expected around early April. If possible, we would appreciate a split delivery to accommodate peak bloom times. \n\nPlease let us know if you can provide a clear contract outlining these details. Thank you for your assistance!\n\nBest,  \nTamara Hampton  \nMesa Orchard Co.",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Seven Acres Farms LP",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for 2024",
+    "body_text": "Hi there,\n\nI hope this message finds you well! We're looking to secure 30 hives for our blueberry block at Seven Acres Farms this season, same as last year. The expected bloom dates are around mid-April, so we would appreciate delivery a week prior if possible. \n\nPlease confirm if you can accommodate this arrangement and send over a detailed contract or product order at your earliest convenience. Thanks so much for your assistance!\n\nBest,  \nLeslie Morris",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Blue Ridge Family Orchards",
+    "from_customer": true,
+    "account_id": "renee.boucher@meridian-apiaries.test",
+    "to_email": "renee.boucher@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract for Blue Ridge Family Orchards",
+    "body_text": "Dear Meridian Apiaries Team,  \n\nI hope this message finds you well! I\u2019d like to place an order for 40 hives for our almond orchards at Blue Ridge Family Orchards, targeting delivery for the first week of February, coinciding with the almond bloom. Please confirm that this arrangement can be made, just as we did last year. If possible, I would also appreciate the option for a split delivery to ensure optimal pollination during peak bloom.  \n\nThank you for your attention to this matter. Looking forward to hearing from you soon!  \n\nBest,  \nJerry Christensen",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Old Mission Farm",
+    "from_customer": true,
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "to_email": "simone.delacroix@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract",
+    "body_text": "Hi there, \n\nI hope this message finds you well! I'm reaching out from Old Mission Farm to finalize our pollination needs for the upcoming season. We would like to request 30 hives for our blueberry block, targeting delivery for the first week of March, same as last year. \n\nPlease confirm if you can accommodate this and send over the contract details at your earliest convenience. Looking forward to working together again!\n\nBest,  \nJohnny Nguyen",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Mountain Valley Farms",
+    "from_customer": true,
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "to_email": "luz.garcia@meridian-apiaries.test",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hi there, \n\nI hope this message finds you well! I\u2019m reaching out to finalize our pollination needs for this season. We\u2019d like to order 30 hives for our orchard block, targeting the blueberry bloom in early April. If possible, we would prefer a split delivery, with 15 hives arriving in the first week of April and the remaining 15 the following week. \n\nCould you please send over a clear contract reflecting these details? We\u2019re looking to keep everything consistent with last year\u2019s arrangement. Thanks in advance for your help!\n\nBest,  \nDavid Ramirez  \nMountain Valley Farms",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Goldenridge Fruit Co.",
+    "from_customer": true,
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "to_email": "jun-ho.park@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Goldenridge Fruit Co.",
+    "body_text": "Dear [Apiarist Sales Rep Name],\n\nI hope this message finds you well! We would like to request a clear contract for pollination services for our orchard this upcoming blueberry bloom. We will need 30 hives for our 40-acre block at Goldenridge, with delivery scheduled for March 15th. If possible, we would like to arrange for a split delivery, as we had last year, to ensure optimal coverage.\n\nPlease let me know if you need any further information to proceed. Thank you for your assistance!\n\nBest regards,  \nKellie Lee",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Blue Ridge Family Orchards",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Blue Ridge Family Orchards",
+    "body_text": "Dear Meridian Apiaries Team, \n\nI hope this message finds you well. I am writing to request a pollination contract for our almond segment at Blue Ridge Family Orchards. We would like to order 45 hives, similar to last year, for our targeted site. We are looking at the expected delivery in early March, coinciding with the bloom. If possible, please confirm the arrangements for a split delivery option, as we might require some hives slightly earlier for our early-blooming varieties.\n\nThank you for your assistance!\n\nBest regards,  \nPeter Vaughn, DDS",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Mountain Valley Farms",
+    "from_customer": true,
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "to_email": "elena.vasquez@meridian-apiaries.test",
+    "subject": "Pollination Contract Request",
+    "body_text": "Dear [Apiarist Sales Rep's Name], \n\nI hope this message finds you well. We\u2019d like to request a pollination contract for our orchard, specifically targeting our blueberry block. We need 20 hives, with expected delivery dates aligning with last year\u2019s schedule in early April. If possible, could we arrange for a split delivery to ensure optimal coverage during the bloom? \n\nPlease send us a clear outline of the contract terms and availability at your earliest convenience. Thank you for your assistance!\n\nBest,  \nAnna Walker  \nMountain Valley Farms",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Old Mission Growers",
+    "from_customer": true,
+    "account_id": "ari.solomon@meridian-apiaries.test",
+    "to_email": "ari.solomon@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Old Mission Growers",
+    "body_text": "Hi there, \n\nThis is Kevin Kennedy from Old Mission Growers. I would like to request a clear pollination contract for our blueberry fields this year. We need 20 hives delivered to Block A, with expected arrival around April 15, aligning with the bloom. Please keep the terms the same as last year, and let me know if a split delivery is possible. \n\nLooking forward to your prompt response so we can finalize this soon! \n\nBest,  \nKevin",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Juniper Hill Orchard Partners",
+    "from_customer": true,
+    "account_id": "nora.adeyemi@meridian-apiaries.test",
+    "to_email": "nora.adeyemi@meridian-apiaries.test",
+    "subject": "Pollination Contract Request for Juniper Hill Orchard",
+    "body_text": "Hello,\n\nI hope this message finds you well! We are looking to secure a pollination contract for our Juniper Hill Orchard this season, similar to last year. We will need 30 hives for our apple and pear blocks. \n\nThe target dates for hive placement would ideally be around the blueberry bloom, which we expect to start in mid-April. If possible, we\u2019d like to discuss the option for a split delivery to ensure optimal pollination coverage. Please let me know if you can provide a detailed contract or if there are any constraints we should be aware of. \n\nThank you!  \nPatrick Rivera",
+    "_kind": "clear_order"
+  },
+  {
+    "customer_name": "Heartland Apiary Trading Co.",
+    "from_customer": true,
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "to_email": "jun-ho.park@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there, \n\nI hope this message finds you well! I'm reaching out to explore some options regarding your pollination services. We are currently assessing our needs for the upcoming season and would love to get a better understanding of your pricing structure and any packages you might offer. \n\nAdditionally, could you provide details on the types of bee products you have available? This will help us in making a well-informed decision. Thanks for your assistance! \n\nBest,  \nDavid Griffith  \nHeartland Apiary Trading Co.",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Goldenridge Fruit Co.",
+    "from_customer": true,
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "to_email": "sam.oreilly@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there, \n\nI\u2019m reaching out to gather some information on your pollination services for our orchard. We\u2019re looking to understand your pricing structure and the different options available. Specifically, I\u2019d like to know how the timing works for your bees\u2019 availability and if you offer any packages or discounts for larger orchards. \n\nThanks for your help!\n\nBest,  \nTiffany Vaughn  \nGoldenridge Fruit Co.",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Haley Family Orchards",
+    "from_customer": true,
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "to_email": "luz.garcia@meridian-apiaries.test",
+    "subject": "Inquiry about Pollination Services",
+    "body_text": "Hi there, \n\nI\u2019m reaching out to learn more about your pollination services for our almond orchard. Specifically, I\u2019m curious about your pricing structure and any packages you may offer. Also, what kind of support do you provide during the pollination season? We\u2019re weighing our options and would appreciate any details you can share. \n\nThanks so much! \n\nBest,  \nDestiny Lawrence  \nHaley Family Orchards",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Urban Hive Pantry",
+    "from_customer": true,
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "to_email": "maya.whitfield@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hello there,\n\nI hope this message finds you well! I\u2019m exploring pollination options for our specialty food business, Urban Hive Pantry. Could you provide some details on your services and pricing? I\u2019m particularly interested in how your offerings could benefit our production. Any insights or information would be greatly appreciated as I weigh our options.\n\nThank you so much!\n\nBest,  \nDr. Elizabeth Ward",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Old Mission Farm",
+    "from_customer": true,
+    "account_id": "isa.martinez@meridian-apiaries.test",
+    "to_email": "isa.martinez@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there, \n\nI\u2019m reaching out on behalf of Old Mission Farm as we prepare for the upcoming season. We\u2019re exploring our options for pollination services, specifically for our orchard trees. Could you provide details on your pricing and availability? Additionally, are there any packages that might be more beneficial for our specific needs? \n\nThanks so much for your help! \n\nBest,  \nBeth Williams",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "St. Agnes Pollination",
+    "from_customer": true,
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "to_email": "maya.whitfield@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services",
+    "body_text": "Hello, \n\nI hope this message finds you well! I\u2019m reaching out to gather some information about your pollination services for almond orchards. We\u2019re considering options for the upcoming season and would love to understand your pricing structure and availability. Can you also provide any insights on the different packages you offer? \n\nThanks in advance for your help!\n\nBest,  \nBeth Oneill  \nSt. Agnes Pollination",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Beelore & Co.",
+    "from_customer": true,
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "to_email": "sam.oreilly@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there, \n\nI hope this message finds you well! I'm exploring options for pollination services for Beelore & Co. and would like to know more about your offerings. What are your pricing models, and do you have any minimum commitments? Also, could you provide details on the types of bees you use and their effectiveness in specialty food crops? Looking forward to your insights! \n\nBest,  \nLaura Harrison",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Cascadia Honey Co.",
+    "from_customer": true,
+    "account_id": "theo.papadakis@meridian-apiaries.test",
+    "to_email": "theo.papadakis@meridian-apiaries.test",
+    "subject": "Inquiry about Pollination Services and Pricing",
+    "body_text": "Hi there! \n\nI\u2019m exploring options for our upcoming pollination needs and wanted to know more about your services. Could you provide some insight into your pricing structure and availability? We work with a variety of crops, so any details on specific pollination options would be helpful. \n\nLooking forward to your response! \n\nBest,  \nAnthony Everett  \nCascadia Honey Co.",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Mountain Comb Co.",
+    "from_customer": true,
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "to_email": "sam.oreilly@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination and Honey Products",
+    "body_text": "Hi there! \n\nI hope this message finds you well. I\u2019m interested in exploring options for both pollination services and bee products for our honey wholesale business at Mountain Comb Co. Could you provide some information on your pricing and availability? Also, do you offer any packages for both services? I'd love to know more before making a commitment. \n\nThanks a lot! \n\nBest,  \nJennifer Jones",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "St. Agnes Pollination",
+    "from_customer": true,
+    "account_id": "priya.ramaswamy@meridian-apiaries.test",
+    "to_email": "priya.ramaswamy@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there,  \n\nI hope this message finds you well! I\u2019m reaching out to explore options for your pollination services, specifically for our almond orchard at St. Agnes Pollination. Could you provide some details on pricing and availability? We\u2019re also considering the best time to schedule the pollination, so any insights there would be great. Looking forward to hearing from you soon!  \n\nBest,  \nJustin Torres",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Seven Acres Farms LP",
+    "from_customer": true,
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "to_email": "sam.oreilly@meridian-apiaries.test",
+    "subject": "Inquiry about Pollination Services and Pricing",
+    "body_text": "Hello there, \n\nI'm reaching out on behalf of Seven Acres Farms. We're currently evaluating our options for pollination services and are interested in what Meridian Apiaries offers for our orchard tree fruit segment. Could you provide some information about your pricing structures and any package deals? Additionally, I'm curious about the best times to book for the upcoming season. \n\nThanks in advance for your help!\n\nBest,  \nJennifer Carlson",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Juniper Bee Co.",
+    "from_customer": true,
+    "account_id": "ari.solomon@meridian-apiaries.test",
+    "to_email": "ari.solomon@meridian-apiaries.test",
+    "subject": "Inquiry about Pollination Services and Pricing",
+    "body_text": "Hi there! \n\nI\u2019m reaching out to get some more information on your pollination services. We're considering expanding our options for the upcoming season and would love to know more about your pricing and availability. Additionally, if you have any package deals or special offers, I\u2019d be interested in hearing about those as well. \n\nThanks in advance for your help! \n\nBest,  \nJamie Kerr  \nJuniper Bee Co.",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Old Mission Farm",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services",
+    "body_text": "Hello there, \n\nI\u2019m reaching out on behalf of Old Mission Farm regarding your pollination services. We\u2019re considering options for our orchard this season and would love to know more about your pricing and availability. Could you also share any details on the specific bee species you recommend for our fruit trees? \n\nThanks for your help!\n\nBest,  \nMarc Lynch",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Haley Orchard Co.",
+    "from_customer": true,
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "to_email": "luz.garcia@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services",
+    "body_text": "Hi there, \n\nI\u2019m reaching out from Haley Orchard Co. to learn more about your pollination services for our almond orchards. We\u2019re considering our options for the upcoming season and would appreciate information on pricing and availability. What are your recommendations for optimal coverage, and are there any specific requirements we should be aware of? \n\nThanks in advance for your help! \n\nBest,  \nDeborah Miller",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Seven Acres Farms LP",
+    "from_customer": true,
+    "account_id": "devon.hale@meridian-apiaries.test",
+    "to_email": "devon.hale@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there, \n\nI hope this message finds you well! We're currently looking into options for pollination services for our orchard, and I wanted to get a better idea of your offerings and pricing. Could you provide some details on what you recommend for tree fruit pollination and any packages you might have? \n\nThanks so much for your help! \n\nBest,  \nBrooke Ortiz  \nSeven Acres Farms LP",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Cobblestone Hives",
+    "from_customer": true,
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "to_email": "dana.chen@meridian-apiaries.test",
+    "subject": "Inquiry on Pollination Services and Pricing",
+    "body_text": "Hi there,  \n\nI'm David Mann from Cobblestone Hives, and I'm exploring options for your pollination services this upcoming season. Could you provide more details on your pricing and any packages you offer? Also, I'm curious about the types of crops you typically service and if you have any recommendations for someone just starting out. Looking forward to your insights!  \n\nBest,  \nDavid",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Heartland Apiary Trading Co.",
+    "from_customer": true,
+    "account_id": "renee.boucher@meridian-apiaries.test",
+    "to_email": "renee.boucher@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there! \n\nI hope this message finds you well. I\u2019m exploring options for pollination services for our upcoming season and would love to know more about your offerings. Specifically, could you provide details on pricing and availability? Any additional information on your bee products would also be appreciated. \n\nThanks so much! Looking forward to hearing from you soon. \n\nBest,  \nTammy French  \nHeartland Apiary Trading Co.",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Stormchaser Meadery",
+    "from_customer": true,
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "to_email": "luz.garcia@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Bee Products",
+    "body_text": "Hi there! \n\nI'm Joshua from Stormchaser Meadery, and I'm looking to explore options for pollination services as well as any bee products you might offer that could complement our mead production. Could you provide some information on pricing and availability? I\u2019m especially interested in how your pollination services could enhance our honey yield. \n\nThanks so much for your help!",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Juniper Hill Orchard Partners",
+    "from_customer": true,
+    "account_id": "priya.ramaswamy@meridian-apiaries.test",
+    "to_email": "priya.ramaswamy@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services",
+    "body_text": "Hello there,\n\nI\u2019m Christopher Parker from Juniper Hill Orchard Partners. We're currently exploring pollination options for our upcoming fruit season and would love to know more about your services. Could you share some details on your pricing and availability? Additionally, do you offer any specific products that we might find beneficial for our orchards? \n\nThanks in advance for your help!\n\nBest,  \nChristopher",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "North Wind Mead Co.",
+    "from_customer": true,
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "to_email": "maya.whitfield@meridian-apiaries.test",
+    "subject": "Inquiry About Pollination Services and Products",
+    "body_text": "Hi there, \n\nI\u2019m reaching out from North Wind Mead Co. to learn more about your pollination services and any bee products you offer. We\u2019re considering options for next season and want to see what might be available, including pricing and any volume discounts. Also, do you provide recommendations for specific flower types that pair well with mead production?\n\nLooking forward to your insights!\n\nBest,  \nJohn Torres",
+    "_kind": "ambiguous"
+  },
+  {
+    "customer_name": "Golden West Co.",
+    "from_customer": true,
+    "account_id": "jun-ho.park@meridian-apiaries.test",
+    "to_email": "jun-ho.park@meridian-apiaries.test",
+    "subject": "Quick Compliance Inquiry",
+    "body_text": "Hi there,\n\nI hope this message finds you well! I wanted to touch base regarding the upcoming regulatory updates for honey labeling. Could you confirm if Meridian Apiaries will be providing any guidance on compliance in our newsletters? I want to ensure Golden West Co. stays ahead of any changes.\n\nThanks, and looking forward to your reply!\n\nBest,  \nKatherine Miller",
+    "_kind": "non_order"
+  },
+  {
+    "customer_name": "Five Rivers Apiaries",
+    "from_customer": true,
+    "account_id": "marcus.okafor@meridian-apiaries.test",
+    "to_email": "marcus.okafor@meridian-apiaries.test",
+    "subject": "Quick Compliance Question",
+    "body_text": "Hi there,\n\nI hope this message finds you well! I wanted to touch base regarding the upcoming regulatory changes we discussed at the conference last month. Do you have any updates or additional resources on best practices for compliance?\n\nThanks for your help!\n\nBest,  \nLindsey Johnson  \nFive Rivers Apiaries",
+    "_kind": "non_order"
+  },
+  {
+    "customer_name": "Haley Farms LP",
+    "from_customer": true,
+    "account_id": "isa.martinez@meridian-apiaries.test",
+    "to_email": "isa.martinez@meridian-apiaries.test",
+    "subject": "Quick Compliance Question",
+    "body_text": "Hi there! I hope you\u2019re doing well at Meridian Apiaries. I just wanted to reach out to clarify some regulatory requirements regarding pollination services for our almond orchard. If you could provide any insights or documentation that might help ensure our compliance, I would greatly appreciate it. \n\nLooking forward to hearing from you soon! \n\nBest,  \nDebra",
+    "_kind": "non_order"
+  },
+  {
+    "customer_name": "Mountain Comb Co.",
+    "from_customer": true,
+    "account_id": "elena.vasquez@meridian-apiaries.test",
+    "to_email": "elena.vasquez@meridian-apiaries.test",
+    "subject": "Quick Compliance Question",
+    "body_text": "Hi there,  \n\nI hope you\u2019re doing well! I wanted to follow up on our last conversation about the recent regulatory updates. Could you confirm if Meridian Apiaries has any new compliance documents that we should be aware of? It\u2019s important for us to stay aligned with all requirements.  \n\nThanks for your help!  \n\nBest,  \nCatherine Richards  \nMountain Comb Co.",
+    "_kind": "non_order"
+  },
+  {
+    "customer_name": "Beelore & Co.",
+    "from_customer": true,
+    "account_id": "renee.boucher@meridian-apiaries.test",
+    "to_email": "renee.boucher@meridian-apiaries.test",
+    "subject": "Quick Follow-Up on Recent Conference",
+    "body_text": "Hi there! \n\nI just wanted to drop a quick note to say how great it was to connect at the conference last week. I appreciated the insights you shared on sustainable practices in apiculture. Also, could you remind me of the compliance requirements for our upcoming shipment? I want to ensure we're fully aligned with regulations. Thanks, and looking forward to hearing from you soon!\n\nBest,  \nJason Morris  \nBeelore & Co.",
+    "_kind": "non_order"
+  },
+  {
+    "customer_name": "Haley Orchard Co.",
+    "from_customer": true,
+    "account_id": "devon.hale@meridian-apiaries.test",
+    "to_email": "devon.hale@meridian-apiaries.test",
+    "subject": "Quick Compliance Question",
+    "body_text": "Hi there,\n\nI hope this message finds you well! I'm reaching out to clarify a couple of points regarding the recent regulatory updates in our sector. Can you confirm if our current pollination practices are compliant with the new standards? Additionally, any updates on upcoming conferences would be appreciated. \n\nThanks for your help!\n\nBest,  \nMichael Roberts  \nHaley Orchard Co.",
+    "_kind": "non_order"
+  },
+  {
+    "customer_name": "Golden West Co.",
+    "from_customer": true,
+    "account_id": "kai.okonkwo@meridian-apiaries.test",
+    "to_email": "kai.okonkwo@meridian-apiaries.test",
+    "subject": "Regulatory Compliance Inquiry",
+    "body_text": "Hi there,\n\nI hope this message finds you well! I wanted to check in regarding the latest bee product regulations. Have there been any recent updates or compliance requirements we should be aware of? We always strive to stay on top of these matters to ensure we're meeting all necessary standards.\n\nThanks in advance for your help!\n\nBest,  \nErnest Morris  \nGolden West Co.",
+    "_kind": "non_order"
+  },
+  {
+    "customer_name": "Golden West Co.",
+    "from_customer": true,
+    "account_id": "isa.martinez@meridian-apiaries.test",
+    "to_email": "isa.martinez@meridian-apiaries.test",
+    "subject": "Quick Compliance Question",
+    "body_text": "Hi there,\n\nI hope you\u2019re doing well! I wanted to drop a quick note regarding the recent regulatory updates related to honey labeling. Could you clarify if there have been any changes that we need to be aware of for our products? \n\nThanks in advance for your help!\n\nBest,  \nKimberly Gutierrez  \nGolden West Co.",
+    "_kind": "non_order"
+  },
+  {
+    "customer_name": "Seven Acres Farms",
+    "from_customer": true,
+    "account_id": "nora.adeyemi@meridian-apiaries.test",
+    "to_email": "nora.adeyemi@meridian-apiaries.test",
+    "subject": "Pollination Services and Hive Logistics for 2024 Season",
+    "body_text": "Hi there,\n\nI hope this message finds you well! As we prepare for the upcoming season at Seven Acres Farms, I wanted to discuss our pollination needs across multiple sites for our almond and cherry orchards. We're planning to start almond pollination on February 1st, 2024, and will need around 80 hives across our 40-acre orchard in Salem. \n\nFollowing that, we anticipate cherry pollination in our other location near Medford, which will require about 60 hives starting around April 1st. Given the tight schedule, could we also explore the possibility of securing hives for our blueberries in June? This would involve an additional 50 hives. \n\nIf we could touch base soon to discuss any potential contract restructuring and how we can optimize the timing for hive deliveries, that would be great. Looking forward to hearing back from you!\n\nBest,  \nKathleen Ramos  \nSeven Acres Farms",
+    "_kind": "complex"
+  },
+  {
+    "customer_name": "Cascade Orchard Partners",
+    "from_customer": true,
+    "account_id": "luz.garcia@meridian-apiaries.test",
+    "to_email": "luz.garcia@meridian-apiaries.test",
+    "subject": "Request for Pollination Services and Hive Management",
+    "body_text": "Hi there,\n\nI hope this message finds you well! I'm reaching out on behalf of Cascade Orchard Partners as we begin planning our pollination needs for the upcoming season. We have multiple sites across the Willamette Valley and will need hives for our cherry, apple, and pear crops.\n\nFor our cherry orchard located in Salem, we would require approximately 60 hives starting from late March to mid-April. The apple trees in our Corvallis orchard will need around 75 hives for a similar duration, and we\u2019d like 50 hives for our pear trees in Junction City from early April into May. \n\nCould you provide details on availability, any necessary contract adjustments, and potential scheduling conflicts? Additionally, we\u2019re interested in exploring your bee products for our local distribution. \n\nThanks for your help, and I look forward to your prompt response!\n\nBest,  \nCarlos Roberts",
+    "_kind": "complex"
+  },
+  {
+    "customer_name": "Old Mission Growers",
+    "from_customer": true,
+    "account_id": "dana.chen@meridian-apiaries.test",
+    "to_email": "dana.chen@meridian-apiaries.test",
+    "subject": "Hive Request for Upcoming Season",
+    "body_text": "Hi there,\n\nThis is William Lynch from Old Mission Growers. We're gearing up for the upcoming season and wanted to discuss our pollination needs across our various sites. We're looking at 150 hives for our apple orchard in Hood River, ideally starting around April 5th and running through May 15th. Additionally, we\u2019ll need 100 hives for our blueberry fields in Salem, starting June 1st and extending through June 25th.\n\nWe'd also like to explore the possibility of restructuring our contract for this year to accommodate these changes. It would be great to have a chat about how we can manage these schedules effectively while ensuring optimal pollination for both crops. \n\nPlease let me know your availability for a call this week. Looking forward to your insights!\n\nBest,  \nWilliam Lynch  \nOld Mission Growers",
+    "_kind": "complex"
+  },
+  {
+    "customer_name": "Blue Ridge Family Orchards",
+    "from_customer": true,
+    "account_id": "devon.hale@meridian-apiaries.test",
+    "to_email": "devon.hale@meridian-apiaries.test",
+    "subject": "Pollination Services Inquiry for Blue Ridge Family Orchards",
+    "body_text": "Hello, \n\nI hope this message finds you well! I\u2019m reaching out to discuss our pollination needs for the upcoming season at Blue Ridge Family Orchards. We\u2019re looking at approximately 200 hives across our almond and stone fruit segments, with a schedule that spans from late February through early May.\n\nSpecifically, we\u2019ll need 120 hives for our almond trees starting February 25 and extending through March 15. Following that, we\u2019d like to transition to 80 hives for our peach and cherry blossoms from April 10 to May 5. Given the overlapping growing seasons, could we explore a contract that allows for flexibility between sites?\n\nPlease let me know if you can accommodate these requests and any adjustments we might need to consider. Looking forward to your prompt response so we can finalize our plans!\n\nBest,  \nAdam Russell  \nBlue Ridge Family Orchards",
+    "_kind": "complex"
+  },
+  {
+    "customer_name": "Blue Ridge Family Orchards",
+    "from_customer": true,
+    "account_id": "sam.oreilly@meridian-apiaries.test",
+    "to_email": "sam.oreilly@meridian-apiaries.test",
+    "subject": "Pollination Services Request for Blue Ridge Family Orchards",
+    "body_text": "Hello there, \n\nI hope this message finds you well! I\u2019m reaching out to discuss our upcoming pollination needs for our various crops at Blue Ridge Family Orchards. We\u2019re expanding this year and will require your services across multiple sites. Specifically, we\u2019ll need 60 hives for our almond segment starting March 15 for a two-week period, followed by 40 hives for our apple orchards starting April 10. \n\nAdditionally, we might want to look into restructuring our contract for a more flexible schedule this season, as we anticipate needing extra hives for our cherry blossoms in late May, depending on the bloom. Could you provide insights on hive availability for these dates? \n\nLet\u2019s also discuss the possibility of securing a long-term plan since we are looking to streamline our operations in the upcoming seasons. \n\nLooking forward to your prompt response!\n\nBest,  \nBruce Collier",
+    "_kind": "complex"
+  },
+  {
+    "customer_name": "Mountain Valley Farms",
+    "from_customer": true,
+    "account_id": "maya.whitfield@meridian-apiaries.test",
+    "to_email": "maya.whitfield@meridian-apiaries.test",
+    "subject": "Pollination Services Request for Multi-Site Orchards",
+    "body_text": "Hello,\n\nI hope this message finds you well! I\u2019m reaching out to discuss our upcoming pollination needs for Mountain Valley Farms. We have three sites in Oregon: the Golden Orchard, which focuses on peaches, will need 20 hives from mid-April to the end of May. The Apple Grove, with a variety of apples, requires 25 hives, starting around March 25 through the first week of June. Lastly, our Cherry Hill site will need 15 hives from late April through the end of May.\n\nIn addition, we\u2019d like to explore the possibility of restructuring our contract to accommodate these varying schedules. If there are any specific recommendations or adjustments you suggest, I\u2019d love to hear your thoughts. We\u2019re eager to ensure a smooth pollination process this season to maximize our yield.\n\nLooking forward to your prompt response, as we need to finalize these arrangements soon!\n\nWarm regards,  \nDenise Davenport",
+    "_kind": "complex"
+  },
+  {
+    "customer_name": "Mountain Valley Farms",
+    "from_customer": true,
+    "account_id": "ari.solomon@meridian-apiaries.test",
+    "to_email": "ari.solomon@meridian-apiaries.test",
+    "subject": "Pollination Services and Hive Contracts for 2024",
+    "body_text": "Hello Meridian Apiaries Team,  \n\nI hope this message finds you well! I\u2019m reaching out to discuss our upcoming pollination needs for Mountain Valley Farms across our various sites in Oregon. For our peach and cherry orchards, we\u2019re looking at needing approximately 30 hives each for the weeks of March 25 through April 15.  \n\nAdditionally, we plan to expand our apple orchard this year, which will require an extra 40 hives from May 1 to June 15. Could you let me know if you can accommodate this schedule? Also, I\u2019d like to discuss restructuring our contract to cover these changes and potentially lock in some hives for our upcoming blueberry season in July.  \n\nThanks for your help! I appreciate your prompt response as we begin planning.  \n\nBest,  \nCharles Lee",
+    "_kind": "complex"
+  }
+]

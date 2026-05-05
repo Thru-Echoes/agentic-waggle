@@ -1,44 +1,72 @@
 [
   {
-    "id": "f8502b39e21b4a4eba",
-    "thread_id": "f8502b39e21b4a4eba",
+    "id": "a3b9bc34a5fac3dbc2",
+    "thread_id": "a3b9bc34a5fac3dbc2",
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "from_address": "contact@old-mission-growers.test",
+    "to_addresses": [
+      "simone.delacroix@meridian-apiaries.test"
+    ],
+    "subject": "Pollination Contract Request for Old Mission Growers",
+    "body_text": "Hello Meridian Apiaries Team,\n\nI hope this message finds you well! I\u2019d like to request a pollination contract for our blueberry fields. We will need 40 hives, targeting the same blocks as last year. The expected delivery date should align with the blueberry bloom, around mid-April. Additionally, if possible, we would appreciate a split delivery over the bloom period to ensure optimal coverage.\n\nPlease send over the contract details at your earliest convenience. If you need any more specifics, feel free to reach out!\n\nThank you,  \nDavid Douglas Jr.  \nOld Mission Growers",
+    "body_html": null,
+    "received_at": "2026-05-01T01:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "b45794c35b994a855d",
+    "thread_id": "b45794c35b994a855d",
+    "account_id": "simone.delacroix@meridian-apiaries.test",
+    "from_address": "contact@oreilly-family-orchards.test",
+    "to_addresses": [
+      "simone.delacroix@meridian-apiaries.test"
+    ],
+    "subject": "Pollination Contract Request for O'Reilly Family Orchards",
+    "body_text": "Dear Meridian Apiaries Team,  \n\nI hope this message finds you well! We are gearing up for the upcoming almond bloom and would like to request a pollination contract for 150 hives at O'Reilly Family Orchards. The target site is Block A, and we expect the hives to arrive on February 15, 2024, just as we did last year. If possible, we would appreciate a split delivery to accommodate our timing. Please let me know if you need any additional information to finalize this order.  \n\nThank you for your assistance!  \n\nBest,  \nTommy Evans",
+    "body_html": null,
+    "received_at": "2026-04-13T01:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "c37981e1cf77fd5dc8",
+    "thread_id": "c37981e1cf77fd5dc8",
     "account_id": "simone.delacroix@meridian-apiaries.test",
     "from_address": "contact@mountain-valley-orchards.test",
     "to_addresses": [
-      "elena.vasquez@meridian-apiaries.test"
+      "simone.delacroix@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Mountain Valley Orchards (blueberry)",
-    "body_text": "Quick note \u2014 ordering 18 of 5-frame nucs for delivery to Highway Block. Invoice to main account.",
+    "subject": "Request for Pollination Contract Details",
+    "body_text": "Hi there,  \n\nI hope this message finds you well! I\u2019d like to request a pollination contract for Mountain Valley Orchards to cover our almond segment. We are looking for 30 hives, targeting the northwest block of our orchard. The expected delivery dates are from March 15 to April 5, aligning with last year\u2019s schedule. Please confirm if there are any changes or constraints we should be aware of.  \n\nThank you for your assistance! Looking forward to your prompt response.  \n\nBest,  \nSara Calhoun",
     "body_html": null,
-    "received_at": "2026-04-23T08:57:05.141738+00:00",
+    "received_at": "2026-04-27T20:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "de94b1571eb7416a93",
-    "thread_id": "de94b1571eb7416a93",
+    "id": "8c1b321a1b445562c0",
+    "thread_id": "8c1b321a1b445562c0",
     "account_id": "simone.delacroix@meridian-apiaries.test",
-    "from_address": "contact@blue-ridge-farms.test",
+    "from_address": "contact@sierra-crest-orchard-partners.test",
     "to_addresses": [
-      "renee.boucher@meridian-apiaries.test"
+      "simone.delacroix@meridian-apiaries.test"
     ],
-    "subject": "Question from Blue Ridge Farms",
-    "body_text": "Do we have capacity for a almond job this year? Haven't fully scoped it yet but probably ~142 hives.",
+    "subject": "Request for Pollination Contract and Order Details",
+    "body_text": "Hello!\n\nI hope this message finds you well. We at Sierra Crest Orchard Partners are looking to finalize our pollination needs for the upcoming almond season. We would like to request a contract specifying 100 hives for our target block, which is located in the central region of our orchard. \n\nIf possible, we'd like to arrange delivery for around the same time as last year, ideally beginning in mid-February. Please let us know if there are any constraints we should be aware of or if you require any additional information to proceed.\n\nThank you for your assistance!\n\nBest,  \nChristina Vargas",
     "body_html": null,
-    "received_at": "2026-04-15T21:57:05.141738+00:00",
+    "received_at": "2026-04-21T08:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "b0874b7f4a47444c99",
-    "thread_id": "b0874b7f4a47444c99",
+    "id": "0f8d490d7816f73ff5",
+    "thread_id": "0f8d490d7816f73ff5",
     "account_id": "simone.delacroix@meridian-apiaries.test",
-    "from_address": "contact@riverbend-farms-lp.test",
+    "from_address": "contact@old-mission-farm.test",
     "to_addresses": [
-      "marcus.okafor@meridian-apiaries.test"
+      "simone.delacroix@meridian-apiaries.test"
     ],
-    "subject": "Question from Riverbend Farms LP",
-    "body_text": "Do we have capacity for a blueberry job this year? Haven't fully scoped it yet but probably ~96 hives.",
+    "subject": "Request for Pollination Contract",
+    "body_text": "Hi there, \n\nI hope this message finds you well! I'm reaching out from Old Mission Farm to finalize our pollination needs for the upcoming season. We would like to request 30 hives for our blueberry block, targeting delivery for the first week of March, same as last year. \n\nPlease confirm if you can accommodate this and send over the contract details at your earliest convenience. Looking forward to working together again!\n\nBest,  \nJohnny Nguyen",
     "body_html": null,
-    "received_at": "2026-04-18T12:57:05.141738+00:00",
+    "received_at": "2026-04-20T23:02:57.053170+00:00",
     "attachments": []
   }
 ]

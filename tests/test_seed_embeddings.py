@@ -32,13 +32,13 @@ def _seed_min_for_embeddings(db, faker_instance) -> None:
 
 
 class TestEmbeddings:
-    def test_rough_chunk_short_text_returns_single_chunk(self) -> None:
-        chunks = embeddings_gen._rough_chunk("A short inspection note.")
+    def test_chunk_text_short_text_returns_single_chunk(self) -> None:
+        chunks = embeddings_gen._chunk_text("A short inspection note.")
         assert len(chunks) == 1
 
-    def test_rough_chunk_empty_returns_single_empty(self) -> None:
-        # The chunker returns the (possibly empty) text as-is for short input.
-        assert embeddings_gen._rough_chunk("") == [""]
+    def test_chunk_text_empty_returns_no_chunks(self) -> None:
+        # An empty document produces no chunks (nothing meaningful to embed).
+        assert embeddings_gen._chunk_text("") == []
 
     def test_run_embeds_every_document(self, db, faker_instance) -> None:
         _seed_min_for_embeddings(db, faker_instance)
@@ -46,7 +46,7 @@ class TestEmbeddings:
         assert doc_count == 40
         embeddings_gen.run(db)
         chunk_count = db.execute(text("SELECT COUNT(*) FROM chunks")).scalar()
-        # At least one chunk per document.
+        # At least one chunk per document; richer narratives may produce more.
         assert chunk_count >= 40
 
     def test_every_chunk_has_384_dim_embedding(self, db, faker_instance) -> None:
@@ -77,3 +77,118 @@ class TestEmbeddings:
             "Re-run of embeddings produced different chunk rows; it should "
             "have been a pure no-op."
         )
+
+
+class TestChunkerSemantics:
+    """Direct unit-style tests on the new sentence-aware chunker. No DB
+    needed — the function is pure."""
+
+    def test_long_text_splits_into_multiple_chunks(self) -> None:
+        """A 2000+ char doc with paragraph + sentence boundaries should
+        produce 2-3 chunks, not 1."""
+        long_text = (
+            "On May 15, 2025 we visited the East Block. "
+            "240 hives placed in the southwest corner with full sun exposure. "
+            "Almond bloom approximately 80% open with strong pollen flow. "
+        ) * 8
+        chunks = embeddings_gen._chunk_text(long_text)
+        assert len(chunks) >= 2, (
+            f"expected multi-chunk output for {len(long_text)}-char input; "
+            f"got {len(chunks)}"
+        )
+
+    def test_single_sentence_returns_single_chunk(self) -> None:
+        chunks = embeddings_gen._chunk_text(
+            "Single short sentence about almond bloom."
+        )
+        assert len(chunks) == 1
+        assert chunks[0] == "Single short sentence about almond bloom."
+
+    def test_chunks_respect_target_size_with_some_slack(self) -> None:
+        """No chunk should be more than ~1.5x the target size."""
+        from seed.embeddings import CHUNK_TARGET_CHARS
+
+        long_text = ("This is one sentence that wraps nicely. " * 60).strip()
+        chunks = embeddings_gen._chunk_text(long_text)
+        for c in chunks:
+            assert len(c) <= int(CHUNK_TARGET_CHARS * 1.5), (
+                f"chunk too long ({len(c)} chars): {c[:80]}..."
+            )
+
+
+class TestMultiSourceCorpus:
+    """The chunker now runs across customer_reports + emails +
+    product_data_sheets + regulatory_docs. Each source must produce chunks
+    with type-specific metadata."""
+
+    def _full_seed(self, db, faker_instance, inbox_fixture_root):
+        from seed import generate as seed_generate
+        from seed import emails as emails_mod
+
+        emails_mod.GMAIL_FIXTURE_ROOT = inbox_fixture_root
+        # Override DATABASE_URL so seed.generate uses the test DB
+        import os
+        os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
+        seed_generate.run(drop_existing=False)
+
+    def test_chunks_present_for_every_source_type(
+        self, db, faker_instance, inbox_fixture_root
+    ) -> None:
+        self._full_seed(db, faker_instance, inbox_fixture_root)
+        counts = dict(
+            db.execute(
+                text(
+                    "SELECT metadata->>'source_type', count(*) "
+                    "FROM chunks GROUP BY 1"
+                )
+            ).all()
+        )
+        for src in (
+            "customer_report",
+            "email",
+            "product_data_sheet",
+            "regulatory_doc",
+        ):
+            assert counts.get(src, 0) > 0, (
+                f"no chunks for source_type={src!r}: {counts}"
+            )
+
+    def test_chunk_metadata_includes_chunk_index_and_total(
+        self, db, faker_instance, inbox_fixture_root
+    ) -> None:
+        self._full_seed(db, faker_instance, inbox_fixture_root)
+        rows = db.execute(
+            text("SELECT metadata FROM chunks LIMIT 5")
+        ).all()
+        for (meta,) in rows:
+            assert "chunk_index" in meta
+            assert "chunk_total" in meta
+            assert "chunk_chars" in meta
+            assert "source_type" in meta
+            assert isinstance(meta["chunk_index"], int)
+            assert isinstance(meta["chunk_total"], int)
+            assert 0 <= meta["chunk_index"] < meta["chunk_total"]
+
+    def test_customer_report_chunks_have_filterable_fields(
+        self, db, faker_instance, inbox_fixture_root
+    ) -> None:
+        """For hybrid retrieval, customer_report chunks must carry
+        customer_site_id, varroa_count, diseases_observed, tags."""
+        self._full_seed(db, faker_instance, inbox_fixture_root)
+        rows = db.execute(
+            text(
+                "SELECT metadata FROM chunks "
+                "WHERE metadata->>'source_type' = 'customer_report'"
+            )
+        ).all()
+        assert rows
+        for (meta,) in rows:
+            for key in (
+                "customer_site_id",
+                "varroa_count",
+                "diseases_observed",
+                "tags",
+            ):
+                assert key in meta, (
+                    f"customer_report chunk missing filter field {key!r}: {meta}"
+                )

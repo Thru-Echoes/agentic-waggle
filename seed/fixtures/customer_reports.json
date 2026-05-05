@@ -1,0 +1,805 @@
+[
+  {
+    "customer_name": "Martinez & Sons Orchards",
+    "site_name": "East Block 2",
+    "author_email": "sam.oreilly@meridian-apiaries.test",
+    "visit_date": "2025-05-25",
+    "hives_placed": 155,
+    "varroa_count": 1.19,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "Visited Martinez & Sons Orchards at East Block 2 on 2025-05-25. Total of 155 hives at the site. Weather clear, mild temp around 75\u00b0F, light breeze. Bees active, foraging heavily on nearby blueberries. Varroa count at 1.19 mites per 100 bees. Well below treatment threshold of 3.0\u2014indicates good colony health. No diseases detected during inspection. Queen status appears solid; all hives exhibiting consistent brood patterns. Brood frames show healthy capping, good worker presence. Stores adequate, plenty of honey reserves for the upcoming bloom.\n\nNeighboring farms quiet\u2014no activity that could be disruptive. No pesticide concerns noted, hives intact. Recommend continue monitoring varroa levels, but no immediate action necessary. Keep an eye on stores as we move into peak bloom. Will check in again in two weeks for another round of assessments.",
+    "tags": [
+      "low_varroa",
+      "routine_inspection",
+      "blueberry_crops",
+      "healthy_colonies"
+    ],
+    "_scenario": "routine_low_varroa"
+  },
+  {
+    "customer_name": "Cascade Orchard Partners",
+    "site_name": "West Block 2",
+    "author_email": "isa.martinez@meridian-apiaries.test",
+    "visit_date": "2025-12-30",
+    "hives_placed": 117,
+    "varroa_count": 4.31,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On December 30, 2025, I had the opportunity to visit the apiary owned by Cascade Orchard Partners, specifically at their West Block 2 site. The weather was rather mild for this time of year, with temperatures hovering around 45 degrees Fahrenheit, and thankfully, it was a clear day with no precipitation forecasted. I drove through the orchard, admiring the rows of apple trees, which will soon be in bloom, but for now, the branches were barren and dormant for winter. Upon arrival at the site, I counted a total of 117 hives present, aligning with the records provided by the customer.\n\nDuring the inspection, I prioritized checking for varroa mites, as they are a pressing concern for honeybee health. I conducted a thorough monitoring procedure and noted that the varroa count was at 4.31 mites per 100 bees, which exceeds the treatment threshold of 3.0. This indicates an urgent need for intervention, as elevated levels of varroa can compromise the bees\u2019 immune systems and overall hive vitality. Fortunately, I observed no signs of diseases during my inspection, which is a relief and indicates that the colonies are currently healthy despite the mite pressures.\n\nAdditionally, I took time to examine the queen status across several hives. I noticed that most queens were present and actively laying eggs, as evidenced by a good brood pattern that showcased a healthy supply of both capped and unsealed brood. The bees appeared to have adequate stores of honey, which will be critical to support them through the winter months. However, considering the elevated varroa count, I recommend implementing a treatment protocol as soon as feasible to mitigate any potential losses.\n\nThroughout the visit, I also observed some neighbor activities that could impact the bees, including a nearby tractor performing some orchard maintenance. No immediate pesticide concerns were noted, but it\u2019s always wise to maintain communication with neighboring growers to ensure that no treatments could inadvertently affect the colonies. Overall, follow-up actions will include scheduling a varroa treatment while continuously monitoring the hive's health leading into the spring bloom.",
+    "tags": [
+      "varroa_alert",
+      "hive_health_check",
+      "winter_preparation",
+      "apple_crops"
+    ],
+    "_scenario": "varroa_alert_climbing"
+  },
+  {
+    "customer_name": "Old Mission Farm",
+    "site_name": "Orchard Rd 2",
+    "author_email": "luz.garcia@meridian-apiaries.test",
+    "visit_date": "2025-06-16",
+    "hives_placed": 447,
+    "varroa_count": 2.27,
+    "diseases_observed": [
+      "EFB"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On June 16, 2025, I conducted an inspection at Old Mission Farm, located at Orchard Rd 2, where we have 447 hives deployed for apple crop pollination. The weather was clear with temperatures around 75\u00b0F, which facilitated a productive inspection. As per SOP 3.4.2, I initiated the inspection by assessing varroa levels. The current count was measured at 2.27 mites per 100 bees, which is below the established treatment threshold of 3.0, indicating that the hives are currently within acceptable limits.\n\nHowever, during the inspection, I observed signs of European Foulbrood (EFB) in several colonies, which warrants immediate attention per SOP 5.1.1. Specifically, I noted the presence of sunken and discolored brood in affected hives, along with a foul smell emanating from some of them. I recommend implementing a treatment plan that includes requeening affected colonies and increasing monitoring frequency, as per the protocol for EFB management.\n\nQueen status across the hives was satisfactory, with most queens exhibiting good laying patterns. The brood patterns were consistent, though some impacted by EFB displayed irregular patterns. In terms of stores, the hives are adequately provisioned with honey and pollen, ensuring that the colonies have the necessary resources to cope with the stress of the disease.\n\nI observed minimal neighbor activity, which suggests no recent pesticide applications in the vicinity, and there were no specific pesticide concerns affecting this site. For follow-up actions, I recommend communicating the EFB finding to the customer and scheduling a follow-up inspection in two weeks to monitor the situation. \n\nIn summary, while the varroa levels are manageable, the presence of EFB will require prompt action to prevent further spread within the apiary.",
+    "tags": [
+      "efb_detection",
+      "varroa_management",
+      "queen_status",
+      "follow_up_needed"
+    ],
+    "_scenario": "disease_observation_efb"
+  },
+  {
+    "customer_name": "Artisan Ferment & Food",
+    "site_name": "Main Warehouse",
+    "author_email": "luz.garcia@meridian-apiaries.test",
+    "visit_date": "2025-08-24",
+    "hives_placed": 155,
+    "varroa_count": 1.82,
+    "diseases_observed": [
+      "AFB"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "During my visit to Artisan Ferment & Food's Main Warehouse site on August 24, 2025, I conducted a thorough inspection of the 155 hives located on the property. The weather was cooperative, mild, and dry, which is ideal for observing bee activity. I noted that the hive entrances were bustling, with bees actively foraging, suggesting they are in good spirits and health. The varroa count registered at 1.82 mites per 100 bees, comfortably below the treatment threshold of 3.0, which is a positive sign compared to my previous visit in June where we were closer to the threshold. \n\nHowever, I did encounter a concerning case of American Foulbrood (AFB) in one of the hives. This necessitated immediate quarantine measures for that particular colony to prevent any potential spread to the others. AFB remains a persistent threat in our operations, and while it\u2019s not uncommon to encounter it, it\u2019s important we remain vigilant. The brood pattern in the colonies showed variation; some hives had excellent brood development, while others were noticeably spotty, which could indicate queen issues or health concerns. I recommend we monitor these hives closely in the upcoming weeks to assess any developing problems.\n\nWith almond crop preparation approaching, there's an urgency to ensure all hives are healthy and strong. Stores appear adequate at this time, but a follow-up feeding may be prudent in the next month if we experience dry conditions before almond bloom. There have been no pesticide concerns reported in the neighboring areas, allowing us to focus on maintaining the health of our bees without that added stressor. I will continue to keep an eye on the AFB situation and ensure that any affected hives are managed appropriately.",
+    "tags": [
+      "afb_detection",
+      "quarantine_procedures",
+      "hive_health",
+      "almond_bloom_preparation"
+    ],
+    "_scenario": "disease_observation_afb_quarantine"
+  },
+  {
+    "customer_name": "Cascadia Honey Co.",
+    "site_name": "Warehouse 2",
+    "author_email": "nora.adeyemi@meridian-apiaries.test",
+    "visit_date": "2026-05-02",
+    "hives_placed": 474,
+    "varroa_count": 3.08,
+    "diseases_observed": [
+      "TROPILAELAPS"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "I swung by Cascadia Honey Co.\u2019s Warehouse 2 on May 2nd, 2026, and boy was it a mixed bag out there with those hives! We\u2019ve got 474 buzzing boxes in the almond crop context, and it seems like my hive inspections are becoming dramatics in their own right. First off, I spotted a varroa count of 3.08 mites per 100 bees\u2014just slightly above our treatment threshold of 3.0. You know that feeling when you\u2019re on the edge of a rollercoaster? That\u2019s how I felt checking those numbers. Any higher and we\u2019d be in a pickle! \n\nNow onto the more pressing news: there's been a federal alert regarding TROPILAELAPS. I couldn't find any evidence of these pests in our hives today, but it\u2019s definitely worth keeping an eye on. We can't afford to get caught flat-footed with that kind of threat looming. On a brighter note, the queens are lookin' good, each with a decent brood pattern that gives me hope for a productive season. I noticed the boxes were well-stocked, with ample nectar and pollen, which is always a reassuring sign. \n\nThe weather was cooperative today, a gentle 75 degrees and sunny, perfect for our buzzing friends to be out and about. I did observe a nearby farmer applying some fertilizer, but there were no specific pesticide concerns during my visit, which is a relief. That being said, I chatted with him a bit\u2014can\u2019t hurt to build those relationships! \n\nAs for follow-up actions, I recommend we set a Varroa treatment plan in motion soon since we\u2019re teetering right at the line. Plus, let\u2019s keep monitoring for any signs of TROPILAELAPS, just in case. \n\nOverall, a productive inspection with a mix of caution and optimism.",
+    "tags": [
+      "varroa_over_threshold",
+      "tropilaelaps_alert",
+      "queen_health",
+      "almond_culture"
+    ],
+    "_scenario": "tropilaelaps_suspect_federal_alert"
+  },
+  {
+    "customer_name": "Martinez & Sons Orchards",
+    "site_name": "Hilltop 4",
+    "author_email": "luz.garcia@meridian-apiaries.test",
+    "visit_date": "2026-01-12",
+    "hives_placed": 105,
+    "varroa_count": 1.25,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": "Drift suspected from neighboring stone fruit pesticide application; collected sample bees for lab analysis",
+    "narrative": "During my inspection on January 12, 2026, at Hilltop 4 for our client, Martinez & Sons Orchards, I noted several critical concerns regarding the well-being of the 105 hives situated there, particularly in relation to a suspected pesticide drift incident. Given the recent pesticide application from neighboring stone fruit operations, we need to remain vigilant about the potential impacts on the blueberries. The varroa count was measured at 1.25 mites per 100 bees, well below the treatment threshold of 3.0, which is a positive indicator for current pest management; however, it doesn't mitigate the urgent need to address the pesticide concerns. I collected samples of the bees for lab analysis to ascertain any adverse effects.\n\nThe weather during the visit was mild, which is typically favorable for bee activity; however, evidence of contamination could disrupt foraging behavior significantly. The queen status appears stable with adequate brood present, and the brood pattern was solid with no signs of disease observed. Honey stores are in good condition, providing sufficient resources as we move further into the season. However, the nearby pesticide application raises alarms; this type of drift could lead to stress or health complications that might not present immediate symptoms.\n\nI recommend immediate follow-up with the neighbors regarding their pesticide application practices and a close watch on the hives for any behavioral changes in the coming weeks. Additionally, we should prepare for potential interventions depending on lab results. It is crucial to address this issue proactively to mitigate any long-term damage to the colonies.",
+    "tags": [
+      "pesticide_drift",
+      "lab_analysis",
+      "varroa_monitoring",
+      "queen_health"
+    ],
+    "_scenario": "regulatory_pesticide_drift"
+  },
+  {
+    "customer_name": "Old Mission Growers",
+    "site_name": "Hilltop 1",
+    "author_email": "sam.oreilly@meridian-apiaries.test",
+    "visit_date": "2026-03-03",
+    "hives_placed": 421,
+    "varroa_count": 1.96,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "Site visit to Old Mission Growers at Hilltop 1, 421 hives inspected on 03/03/2026. Weather was unstable; storm forecasted. Cloud cover, slight drizzle, temps around 50\u00b0F. Bees were active, though some hives showed signs of restlessness. Varroa count sitting at 1.96 mites per 100 bees\u2014well below the treatment threshold of 3.0. No diseases observed, colonies appear healthy.\n\nChecked queen status\u2014most queens present and laying well. Brood patterns consistent across hives, though a few demonstrated spotty brood. Stores are adequate for now; enough food reserves observed considering the upcoming storm. Noted neighbor activity\u2014no pesticide applications reported but nearby fields are preparing for spraying in a week. Will need to monitor and communicate with neighbors about the timing to mitigate any potential drift issues.\n\nFollow-up actions include a second inspection in 10 days to reassess varroa levels and queen performance post-storm. Maintain contact with neighbors, confirm spraying schedule. Overall, conditions are stable despite the weather, but vigilance is key as the bees head into the critical blueberry bloom period.",
+    "tags": [
+      "low_varroa",
+      "queen_status",
+      "storm_watch",
+      "blueberry_crop"
+    ],
+    "_scenario": "weather_impact_storm"
+  },
+  {
+    "customer_name": "Mesa Orchard Co.",
+    "site_name": "North Block 4",
+    "author_email": "jun-ho.park@meridian-apiaries.test",
+    "visit_date": "2025-07-04",
+    "hives_placed": 393,
+    "varroa_count": 1.61,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On July 4th, 2025, I visited the North Block 4 site of our customer, Mesa Orchard Co., where a total of 393 hives have been strategically placed to support apple crop production. My drive to the site was pleasant, with the sun shining brightly in a clear blue sky, which usually indicates strong bee activity. Upon arriving, I observed a noticeable buzz\u2014both from the hives and the various flora around the orchard, which is important as it can influence bee behavior and health.\n\nAs I began my inspection, the first thing I noted was the queen status across several hives. Unfortunately, I identified signs indicating that several queens had failed, as evidenced by a lack of brood in those hives and a few workers exhibiting signs of distress. It\u2019s concerning, given the current season and the critical role queens play in hive productivity. I did observe healthy brood patterns in other hives, which indicates that the queens in those units are functioning well. I will need to initiate the replacement process for the failed queens to ensure the hives remain robust and healthy.\n\nAdditionally, I measured the varroa count at 1.61 mites per 100 bees, which is below the treatment threshold of 3.0. This is a positive sign, as there are no diseases observed in the hives, indicating that the bees are generally in good health, despite the queen issues. The bees had adequate stores of honey, crucial for their energy, especially during the hotter summer months. No pesticide concerns were noted during my inspection, which is always a relief in bee management.\n\nObserving the surrounding area, I noted some activity from neighboring farms, but there were no apparent threats from pesticide applications that could impact the bees at this time. I recommend planning a follow-up to introduce new queens to the affected hives as soon as possible to avoid any decrease in productivity.",
+    "tags": [
+      "queen_failure",
+      "hive_inspection",
+      "varroa_management",
+      "apple_crops"
+    ],
+    "_scenario": "queen_failure_replacement"
+  },
+  {
+    "customer_name": "Drakestone Mead",
+    "site_name": "Main Warehouse",
+    "author_email": "jun-ho.park@meridian-apiaries.test",
+    "visit_date": "2025-09-28",
+    "hives_placed": 161,
+    "varroa_count": 2.92,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On September 28, 2025, I conducted a thorough inspection of the bee yard at Drakestone Mead's Main Warehouse. This site has a total of 161 hives, primarily dedicated to almond crop pollination. During my observation, the weather was mildly warm with an ambient temperature of 75\u00b0F, which was conducive for hive activity, yet there were indications of increased robbing pressure. I noted several hives exhibiting aggressive behavior towards each other, likely driven by the scarcity of forage as almond blooming is yet to commence. \n\nUpon evaluating the varroa mite count, I recorded a rate of 2.92 mites per 100 bees, which remains below the treatment threshold of 3.0 as outlined in SOP 5.2. As a result, no immediate intervention is required; however, continued monitoring will be essential to maintain mite populations within acceptable limits. Thankfully, I observed no diseases present in the hives during the inspection. The brood pattern appears healthy, with capped and open brood present, indicating a solid queen performance. I checked the queen status and found all marked queens active and laying eggs efficiently.\n\nHoney stores were adequate, although some hives showed signs of depletion due to the ongoing robbing, which requires addressing. Neighboring apiaries appeared stable, with no visible issues that might contribute to increased stress in our colonies. It would be prudent to implement measures to minimize robbing behavior, such as strategically placing entrance reducers or reinforcing hive entrances. Follow-up actions will include monitoring hive entrances more closely and assessing the effectiveness of barriers against robbing. I will continue to observe the varroa levels and overall hive health as we approach the bloom period.",
+    "tags": [
+      "robbing_pressure",
+      "varroa_monitoring",
+      "queen_health",
+      "almond_harvest_preparation"
+    ],
+    "_scenario": "robbing_pressure"
+  },
+  {
+    "customer_name": "Cobblestone Hives",
+    "site_name": "Main Warehouse",
+    "author_email": "ari.solomon@meridian-apiaries.test",
+    "visit_date": "2025-09-16",
+    "hives_placed": 406,
+    "varroa_count": 1.46,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On September 16, 2025, I visited Cobblestone Hives at the Main Warehouse site to assess the health and readiness of our apiary in preparation for the upcoming almond pollination season. The weather was unseasonably warm for this time of year, a clear sign that the bees are gearing up for a strong season. With a total of 406 hives at this location, I found the varroa count to be 1.46 mites per 100 bees, well below the treatment threshold of 3.0. This is indicative of a healthy mite management strategy, especially considering the concerns we had during last year\u2019s inspection when counts were closer to the threshold.\n\nI observed that the hives are in robust condition, with queens actively laying eggs and a solid brood pattern evident in most colonies. Stores appear adequate, though I did note some hives that could benefit from supplementary feeding, especially as we approach the lean months post-pollination. Encouragingly, there were no signs of disease or distress in the colonies, which bodes well for our almond crop pollination efforts. \n\nI did not encounter any specific pesticide concerns during my inspection, although I remain vigilant, as neighboring agricultural practices can sometimes introduce risks. I recommend maintaining close communication with nearby farmers to monitor chemical applications during the critical pollination period.\n\nOverall, the bees seem well-prepared for the pollination season. My primary follow-up action would be to keep an eye on the stores, especially for those hives that seem less robust, and potentially consider supplemental feeding strategies as we get closer to the almond bloom. As always, I\u2019ll be evaluating their health regularly in the lead-up to pollination to ensure we maximize our contribution.",
+    "tags": [
+      "low_varroa",
+      "healthy_colonies",
+      "almond_pollination",
+      "hive_inspection"
+    ],
+    "_scenario": "pre_pollination_setup"
+  },
+  {
+    "customer_name": "Haley Family Orchards",
+    "site_name": "Highway Block 2",
+    "author_email": "jun-ho.park@meridian-apiaries.test",
+    "visit_date": "2025-08-29",
+    "hives_placed": 305,
+    "varroa_count": 2.4,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "I stopped by Haley Family Orchards on August 29, 2025, to check in on the bees at Highway Block 2, where we have a solid 305 hives parked. With the almond bloom wrap-up, it's always an exciting time to see how the girls are faring after such a busy season. The weather was warm but comfortable, a perfect day for bees to be out and about. \n\nI took a close look at the varroa count and found it sitting at 2.4 mites per 100 bees, which is just under the treatment threshold of 3.0. We're in a good spot with that. I didn\u2019t see any signs of disease while I was inspecting, which is always a relief. The brood patterns look solid, with healthy larvae and capped brood present, so the queen is likely doing her job well. Speaking of queens, I spotted her in a couple of hives, and she appeared vibrant and active\u2014no signs of failure or any need for requeening.\n\nStores are looking decent, too, though I\u2019d keep an eye on them as we transition further into the season. With no specific pesticide concerns reported from the neighbors, we\u2019re all clear on that front as well. A little buzz from the neighboring fields indicated they had some activity going on, but nothing alarming. \n\nFor follow-up, I\u2019d recommend monitoring the varroa levels as we move into fall, and consider a bit of feeding if stores drop. It\u2019s always a good idea to keep the girls well-fed heading into cooler months.",
+    "tags": [
+      "post_bloom_monitoring",
+      "varroa_management",
+      "queen_health",
+      "almond_yard_checks"
+    ],
+    "_scenario": "post_bloom_pull"
+  },
+  {
+    "customer_name": "St. Agnes Pollination",
+    "site_name": "West Block 3",
+    "author_email": "nora.adeyemi@meridian-apiaries.test",
+    "visit_date": "2025-12-09",
+    "hives_placed": 243,
+    "varroa_count": 1.4,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On December 9, 2025, I conducted an inspection at West Block 3 for our customer, St. Agnes Pollination, where 243 hives are situated in preparation for the almond bloom. The weather was clear, but unusually chilly for early December, potentially impacting bee activity. It\u2019s critical to monitor how this might affect foraging and overall hive health as we approach the pollination period.\n\nUpon examining the hives, I noted that the varroa count was at 1.4 mites per 100 bees, significantly below the treatment threshold of 3.0; however, this moderate level warrants vigilance. While no diseases were observed, any increase in mite levels could pose a risk, especially with upcoming stressors from pollination activities. The brood pattern across most hives appears healthy, with solid signs of a strong queen presence\u2014eggs and larvae were found in good numbers in the majority of the hives. However, I recommend a closer observation in the coming weeks as the temperature fluctuates and bee activity changes with the season.\n\nI also noticed some neighboring operations applying treatments, which could introduce risks of exposure to our bees. Although there were no immediate pesticide concerns during my visit, I suggest reaching out to neighbors for a heads-up on any potential chemical applications they may schedule as we near the almond bloom.\n\nIn summary, while the hives are performing adequately, it's crucial to maintain close monitoring of varroa levels and brood health. I advise scheduling a follow-up inspection within two weeks to reassess varroa counts and overall hive readiness for almond pollination. Immediate communication with neighboring sites regarding pesticide plans should also be prioritized.",
+    "tags": [
+      "moderate_varroa",
+      "queen_health",
+      "neighboring_activity",
+      "almond_pollination_preparation"
+    ],
+    "_scenario": "owner_business_change"
+  },
+  {
+    "customer_name": "Blue Ridge Farms",
+    "site_name": "East Block 2",
+    "author_email": "kai.okonkwo@meridian-apiaries.test",
+    "visit_date": "2026-02-23",
+    "hives_placed": 435,
+    "varroa_count": 1.18,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "Visited Blue Ridge Farms at East Block 2 on 2026-02-23. Total of 435 hives in the blueberry crop area. Weather was mild, clear skies, around 60\u00b0F. No diseases found in any colonies. Varroa count low at 1.18 mites per 100 bees; well below treatment threshold of 3.0. Healthy brood pattern noted, all queens present and active. \n\nSaw some neighbor activity\u2014spraying occurred in nearby orchard. No pesticide concerns reported, but monitoring recommended. Confirmed healthy stores across most hives, some needing attention as nectar flow is limited early season. \n\nNext actions: continue monitoring Varroa, check on brood viability, and follow up with neighbors regarding spraying schedule. Good overall status, but keep an eye on nearby activities that might impact our hives.",
+    "tags": [
+      "low_varroa",
+      "queen_status_good",
+      "neighboring_spraying",
+      "healthy_stores"
+    ],
+    "_scenario": "neighbor_orchard_concern"
+  },
+  {
+    "customer_name": "Haley Orchard Co.",
+    "site_name": "South Block 2",
+    "author_email": "nora.adeyemi@meridian-apiaries.test",
+    "visit_date": "2026-01-15",
+    "hives_placed": 249,
+    "varroa_count": 0.56,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On January 15, 2026, I had the opportunity to visit the South Block 2 site of Haley Orchard Co. for a routine inspection of the bee hives placed there. The drive to the site was fairly uneventful, with clear skies and a gentle breeze that felt promising for the bees. Upon arrival, I was greeted by the sight of 249 hives nestled amongst the almond trees. These hives are crucial for pollination, especially with almond season fast approaching.\n\nI began my assessment by checking the varroa mite levels. I found a count of 0.56 mites per 100 bees, which is well below the treatment threshold of 3.0. This indicates that our management practices are effectively keeping the mite population in check. It's a relief, as unchecked mite levels can lead to significant health issues for the colonies. Further, I was pleased to report that there were no signs of diseases observed during the inspection, which is always good news for hive health.\n\nWhile inspecting the hives, I looked closely at the brood patterns and stores. The queens appeared to be active and healthy, with capped brood indicating that they are laying eggs efficiently. The pattern was solid, with a good mix of eggs, larvae, and capped brood. Stores were also satisfactory, with ample honey and pollen available for the colonies to thrive as they prepare for the upcoming almond bloom. I observed some bees foraging, which is a positive sign as it indicates activity and vitality in the colonies.\n\nIn addition to the hive assessments, I noted the surrounding environment. There were no specific pesticide concerns, which is crucial for maintaining bee health, particularly with the proximity to flowering almonds. However, it\u2019s worth keeping an eye on any neighbor activity, as changes in land use can impact our bees significantly. \n\nAs I wrapped up the inspection, I made a note of follow-up actions: to continue monitoring varroa levels closely, to assess the queens' performance as the almond season progresses, and to maintain communication with neighboring farms regarding any potential pesticide applications that could affect our hives. Overall, the visit was unremarkable in a positive way, indicating the bees are currently in good shape.",
+    "tags": [
+      "low_varroa",
+      "queen_health",
+      "no_diseases",
+      "almond_pollination"
+    ],
+    "_scenario": "monitoring_unremarkable"
+  },
+  {
+    "customer_name": "Blue Ridge Farms",
+    "site_name": "East Block 2",
+    "author_email": "ari.solomon@meridian-apiaries.test",
+    "visit_date": "2025-10-04",
+    "hives_placed": 279,
+    "varroa_count": 0.55,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On October 4, 2025, I conducted a routine inspection at Blue Ridge Farms, specifically at the East Block 2 site, where a total of 279 hives are stationed. The weather during the visit was clear and mild, allowing for optimal bee activity, which I noted while performing the inspection. The varroa count stood at 0.55 mites per 100 bees, well below the treatment threshold of 3.0 as specified in SOP 2.1. This indicates a healthy hive environment with no immediate treatment needed for varroa mites. Throughout the inspection, no diseases were observed, maintaining the health standards outlined in SOP 3.4.\n\nThe hives exhibited strong brood patterns with healthy capped brood and ample supplies of stores. Queens were present in all hives and appeared to be actively laying eggs, which is a positive sign for the upcoming blueberry pollination period. Additionally, I noted that the bees were foraging diligently, indicating a strong population ready for the crop's demands. There were no pesticide concerns during this visit, aligning with our integrated pest management practices as outlined in SOP 4.2.\n\nAs lateral observations, I did observe some neighbor activity, with nearby fields being prepared for harvest, which may impact foraging bees in the coming weeks. I recommend monitoring these activities and adjusting foraging patterns accordingly. Follow-up actions include continued monitoring of the varroa levels and ensuring that bees remain undisturbed by neighboring agricultural practices. I will also schedule a follow-up inspection before blueberry bloom to ensure optimal hive readiness for pollination.",
+    "tags": [
+      "low_varroa",
+      "healthy_hives",
+      "blueberry_pollination",
+      "routine_inspection"
+    ],
+    "_scenario": "routine_low_varroa"
+  },
+  {
+    "customer_name": "Old Mission Growers",
+    "site_name": "South Block 4",
+    "author_email": "nora.adeyemi@meridian-apiaries.test",
+    "visit_date": "2026-04-24",
+    "hives_placed": 83,
+    "varroa_count": 4.57,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On April 24, 2026, I visited the South Block 4 site for Old Mission Growers, where we currently have 83 hives placed to support the blueberry crop. The weather conditions were favorable, with a mild temperature around 65\u00b0F and a light breeze, which likely contributed to good foraging activity. Observing the hives, I noted that the queens in general appeared active, with most colonies exhibiting a solid brood pattern. However, I must express concern regarding the varroa mite levels; the current count stands at 4.57 mites per 100 bees, which surpasses the treatment threshold of 3.0. This indicates a climbing varroa situation that could jeopardize the overall health of these colonies if left unchecked.\n\nThe brood patterns were generally robust, with healthy frames of capped and uncapped brood, suggesting that the queens are still performing well. Stores were adequate, though some hives showed signs of slightly lower honey reserves than I would expect at this time of year, likely due to the unseasonably cool temperatures we experienced earlier in April. Thankfully, I did not observe any diseases during my inspection, which is a positive sign. \n\nNeighboring agricultural activities appeared to be minimal today, with no immediate pesticide concerns reported. However, it is crucial to keep monitoring for any future treatments in the surrounding area, as that can impact foraging behavior and overall hive health. Based on my findings, I recommend planning a varroa treatment soon to bring levels back down below threshold and ensure the colonies are set for peak pollination periods in the coming weeks. Further observations will be necessary to confirm the effectiveness of any treatments we implement. \n\nNora Adeyemi  \nnora.adeyemi@meridian-apiaries.test",
+    "tags": [
+      "varroa_alert_climbing",
+      "blueberry_pollination",
+      "queen_status",
+      "hive_health_monitoring"
+    ],
+    "_scenario": "varroa_alert_climbing"
+  },
+  {
+    "customer_name": "Seven Acres Farms LP",
+    "site_name": "North Block 2",
+    "author_email": "priya.ramaswamy@meridian-apiaries.test",
+    "visit_date": "2025-10-17",
+    "hives_placed": 355,
+    "varroa_count": 2.98,
+    "diseases_observed": [
+      "EFB"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "I had a chance to swing by Seven Acres Farms LP on October 17, 2025, to check out the hives at North Block 2. They\u2019ve got a solid setup here with 355 hives, which is quite the sight, especially with the apple crop coming into its prime. Weather was quite pleasant today, with a mild breeze and clear skies \u2014 perfect for the bees to be buzzing around. \n\nAs I dove into the inspection, I noted the varroa count sitting at 2.98 mites per 100 bees, just under that treatment threshold of 3.0. That\u2019s a good sign, but we can\u2019t let our guard down with these pests. I also spotted some signs of European foulbrood (EFB) in a few hives. It\u2019s not the worst thing to encounter, but we definitely need to monitor it closely and maybe consider some treatment options soon to keep it from spreading. \n\nThe brood pattern across most hives is looking decent; however, a few queens seem to have some inconsistent laying. I didn\u2019t notice any significant stores, so those girls will need some supplementation soon, especially as we head into cooler weather. \n\nOn a side note, the neighbors were out spraying something today. Fortunately, there were no specific pesticide concerns noted on the site, but I\u2019ll keep my ear to the ground just in case. Always good to be vigilant about what\u2019s happening nearby. As for follow-up actions, I\u2019d recommend scheduling another visit soon to assess the EFB situation and check in on the queen statuses. It might also be wise to prepare a treatment plan for the varroa if we inch closer to that danger zone. \n\nLooking forward to seeing how these hives fare in the coming weeks!",
+    "tags": [
+      "eflb_detection",
+      "varroa_monitoring",
+      "apple_pollination",
+      "queen_assessment"
+    ],
+    "_scenario": "disease_observation_efb"
+  },
+  {
+    "customer_name": "Cobblestone Hives",
+    "site_name": "Main Warehouse",
+    "author_email": "nora.adeyemi@meridian-apiaries.test",
+    "visit_date": "2025-07-29",
+    "hives_placed": 192,
+    "varroa_count": 2.84,
+    "diseases_observed": [
+      "AFB"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "During my visit to Cobblestone Hives at the Main Warehouse on July 29, 2025, I conducted a thorough inspection of the 192 hives situated in an almond crop context. The weather was surprisingly mild and cooperative, which allowed for an effective assessment of the colonies. However, I observed signs of American Foulbrood (AFB) in several hives, raising significant concern. Immediate action is warranted to quarantine affected colonies to prevent the spread of this destructive disease.\n\nThe varroa count was recorded at 2.84 mites per 100 bees, just below the treatment threshold of 3.0. While this is encouraging, the presence of AFB may affect the overall health of the colonies, and continued monitoring for varroa levels is crucial. The brood pattern varied across the hives; some displayed healthy, uniform brood patterns, while others exhibited signs of poor development, likely influenced by the AFB. \n\nI also took note of the honey stores, which appeared adequate for the time of year, but the stress from AFB could impact future foraging behavior. Notably, neighboring operations were active, with reports of potential pesticide application in the area. Although there were no immediate pesticide concerns observed during my inspection, this might warrant further monitoring going forward, especially since it\u2019s critical to ensure the bees are not exposed to harmful chemicals during this sensitive time.\n\nI recommend that the affected hives be isolated and appropriate treatment protocols be followed to manage AFB effectively. Additionally, I suggest increasing surveillance on varroa levels in the coming weeks to ensure they do not escalate beyond the treatment threshold. The health of these colonies and the productivity of the almond crop are at stake.",
+    "tags": [
+      "afb_quarantine",
+      "varroa_monitoring",
+      "almond_honeybee_health",
+      "hive_inspection_2025"
+    ],
+    "_scenario": "disease_observation_afb_quarantine"
+  },
+  {
+    "customer_name": "Goldenridge Fruit Co.",
+    "site_name": "North Block 3",
+    "author_email": "sam.oreilly@meridian-apiaries.test",
+    "visit_date": "2025-12-16",
+    "hives_placed": 94,
+    "varroa_count": 1.91,
+    "diseases_observed": [
+      "TROPILAELAPS"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "Inspected Goldenridge Fruit Co. at North Block 3 on 2025-12-16. Total of 94 hives. Weather was cool and overcast, slight wind\u2014perfect for inspection without disturbing bees too much. Noted a varroa count at 1.91 mites per 100 bees\u2014well below treatment threshold, so no immediate action required on that front. However, TROPILAELAPS disease suspected; must monitor closely in coming visits. Brood patterns consistent, sealed brood present in most hives. Queen status appears stable; good laying patterns noted in multiple hives. \n\nStores adequate in most hives, with several colonies nearing 50% honey stores. Some light foraging activity observed despite the chill; bees bringing in pollen\u2014likely from early seasonal blooms. Neighboring fields quiet; no recent pesticide applications reported, so no specific concerns on drift or contamination at this time. \n\nFollow-up: Recommend scheduling another inspection in 3 weeks to reassess TROPILAELAPS status and varroa levels. Ensure all hive records are updated with findings for tracking. Maintain communication with neighboring beekeepers regarding any unusual bee activity or health issues.",
+    "tags": [
+      "tropilaelaps_alert",
+      "varroa_management",
+      "brood_health",
+      "apple_pollination"
+    ],
+    "_scenario": "tropilaelaps_suspect_federal_alert"
+  },
+  {
+    "customer_name": "Juniper Hill Orchard Partners",
+    "site_name": "North Block 1",
+    "author_email": "devon.hale@meridian-apiaries.test",
+    "visit_date": "2025-05-27",
+    "hives_placed": 319,
+    "varroa_count": 2.53,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": "Grower confirmed no spray during bloom per county NOI filing on record",
+    "narrative": "On May 27, 2025, I visited Juniper Hill Orchard Partners at their North Block 1 site to conduct a thorough inspection of the apiary, which hosts a total of 319 hives. The drive to the site was quite pleasant, with the sun peeking through a mix of fluffy clouds on this late spring day, providing ideal conditions for both the bees and the inspection process. Upon arrival, I noticed the apple trees were lush with promising blossoms, indicating that the bees were likely busy foraging.\n\nAs I approached the hives, I observed a gentle buzz in the air, and the activity level around the entrances was vibrant, suggesting that the colonies were thriving. I began my inspection by checking the varroa count, which was recorded at 2.53 mites per 100 bees. This is below the treatment threshold of 3.0, indicating that the colonies are managing the varroa population adequately for now. I did not encounter any signs of diseases during the inspection, which is excellent news for the overall health of the bees.\n\nI also took a moment to check the queen status across the hives. Most queens appeared to be laying well, with solid brood patterns developing in the frames. However, I will continue to monitor any signs of potential issues in future visits. The brood areas were complemented by good stores of honey and pollen, which should sustain the colonies through the upcoming week.\n\nAn important aspect to mention is that I confirmed with the grower that there was no spray applied during the bloom period, as documented in the county Notice of Intent (NOI) filings. This is a crucial factor to consider, as pesticide drift can significantly affect bee populations, and it appears that the neighboring orchard activities align with best practices for pollinator health.\n\nIn summary, the inspection yielded positive results, and I will keep a close eye on varroa levels as the season progresses. If the counts approach the threshold, I may recommend an intervention. For now, the operation looks solid and seems poised to contribute positively to the apple crop.",
+    "tags": [
+      "apple_pollination",
+      "varroa_monitoring",
+      "no_pesticide",
+      "queen_health"
+    ],
+    "_scenario": "regulatory_pesticide_drift"
+  },
+  {
+    "customer_name": "Riverbend Family Orchards",
+    "site_name": "Orchard Rd 3",
+    "author_email": "maya.whitfield@meridian-apiaries.test",
+    "visit_date": "2025-08-04",
+    "hives_placed": 368,
+    "varroa_count": 0.86,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On August 4, 2025, I conducted an inspection at Riverbend Family Orchards, located at Orchard Rd 3, where 368 hives are actively placed for almond pollination. The weather during the inspection was notably impacted by recent storms, creating a cooler and slightly damp environment, which may affect bee activity and foraging. The storm had caused some branches to fall nearby, but overall, the hives appeared stable.\n\nI performed a thorough assessment of all hives in accordance with SOP 3.2 for monitoring pest levels and hive health. The varroa count was recorded at 0.86 mites per 100 bees, well below the treatment threshold of 3.0, indicating the hives are currently managing varroa populations effectively. No diseases were observed during the inspection, which aligns with our standards for healthy bee colonies. In accordance with SOP 4.1, I noted that there were no pesticide concerns reported at this site.\n\nDuring the inspection, I checked the queens and found them to be active and laying well, with solid brood patterns observed in most hives. Honey stores were adequate, but given the cooler weather, I noted that foraging activity was diminished, which could impact future brood development. Neighboring orchards were reported to be spraying minor treatments; however, these do not appear to affect our hives at this time. No follow-up actions are presently required, but I recommend keeping a close eye on the upcoming weather patterns to anticipate any impact on foraging.\n\nIn summary, the hive conditions at Riverbend Family Orchards are favorable, and the bees are performing well under the circumstances. Continued monitoring will ensure we maintain optimal health as we move closer to the peak pollination period.",
+    "tags": [
+      "storm_impact",
+      "varroa_low",
+      "queen_status",
+      "almond_pollination"
+    ],
+    "_scenario": "weather_impact_storm"
+  },
+  {
+    "customer_name": "Heartland Apiary Trading Co.",
+    "site_name": "Main Warehouse",
+    "author_email": "isa.martinez@meridian-apiaries.test",
+    "visit_date": "2026-03-23",
+    "hives_placed": 173,
+    "varroa_count": 2.44,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": "Drift suspected from neighboring stone fruit pesticide application; collected sample bees for lab analysis",
+    "narrative": "During my visit to the Heartland Apiary Trading Co. on March 23, 2026, I inspected the hives at the Main Warehouse where we currently have 173 hives positioned, primarily to support the almond bloom. The weather was favorable, with clear skies and temperatures reaching the upper 60s, which should encourage foraging activity. However, I noticed some concerning signs regarding the queens in a couple of hives. Specifically, there were indications of queen failure; some hives displayed a lack of adequate brood production, and the brood patterns were patchy, indicating potential queen issues that could affect overall productivity as we move closer to the almond pollination period.\n\nThe varroa count was recorded at 2.44 mites per 100 bees, which remains below the treatment threshold of 3.0, but we should remain vigilant as we approach the busy pollination season. Notably, I found no signs of any diseases affecting the colonies, which is a relief. However, there was a significant pesticide drift observed that appeared to be coming from a neighboring stone fruit operation. I collected sample bees for lab analysis to confirm any pesticide exposure, as this could impact the overall health of the colonies if levels are concerning.\n\nIn terms of stores, I observed that most hives had sufficient food reserves, but those with weak queens may struggle if their foraging capabilities are compromised. This is particularly pertinent given the busy foraging season ahead. I recommend monitoring the affected hives closely and consider re-queening if the brood situation does not improve soon. Overall, it seems like we have some challenges ahead, but with careful management, we can navigate the upcoming bloom effectively.",
+    "tags": [
+      "queen_failure",
+      "varroa_monitoring",
+      "pesticide_drift",
+      "almond_pollination"
+    ],
+    "_scenario": "queen_failure_replacement"
+  },
+  {
+    "customer_name": "Five Rivers Apiaries",
+    "site_name": "Warehouse 2",
+    "author_email": "priya.ramaswamy@meridian-apiaries.test",
+    "visit_date": "2025-10-22",
+    "hives_placed": 247,
+    "varroa_count": 1.63,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "I swung by Five Rivers Apiaries at Warehouse 2 on October 22nd, and what a day it was! The almond trees are starting to show their fall colors, but the bees are still buzzing with pre-harvest energy. With 247 hives packed into this site, the atmosphere was alive with the gentle hum of the bees going about their business \u2014 though there was a touch of robbing pressure I noticed. Always a tricky situation this time of year. You know the drill, the bees get a little too curious, and before you know it, you've got the workers from one hive invading another. I kept an eye on the entrances, and thankfully, no major skirmishes broke out.\n\nIn terms of health, the hive conditions looked pretty solid. The varroa count was sitting at a comfortable 1.63 mites per 100 bees \u2014 well below the treatment threshold of 3.0, so no immediate action needed there. I didn\u2019t spot any diseases either, which is always a relief! Brood patterns varied from hive to hive; some looked like they had a solid laying pattern from their queens, while others had a bit of spotty brood. I made a note to keep an eye on those queens \u2014 might be time to requeen if they don't pick up.\n\nSpeaking of stores, the bees had decent provisions in most hives, but I suggest checking in on that soon, especially if the robbing pressure keeps up. You know how it goes \u2014 when food seems scarce, the bees get a little more desperate. Luckily, I didn\u2019t notice any concerning pesticide issues, so that\u2019s a win. All in all, it\u2019s shaping up to be a good season for the hives here. I\u2019ll touch base with the customer next week to discuss those spotty brood patterns and see if he wants to take any follow-up actions.",
+    "tags": [
+      "robbing_pressure",
+      "varroa_monitoring",
+      "brood_pattern",
+      "almond_harvest"
+    ],
+    "_scenario": "robbing_pressure"
+  },
+  {
+    "customer_name": "Haley Farms LP",
+    "site_name": "Hilltop 4",
+    "author_email": "luz.garcia@meridian-apiaries.test",
+    "visit_date": "2025-12-13",
+    "hives_placed": 121,
+    "varroa_count": 2.72,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On December 13, 2025, I conducted an inspection at Haley Farms LP's Hilltop 4 site, where there are currently 121 hives being prepared for the almond pollination setup. The weather was cool with mild winds, which seemed to keep the bees somewhat subdued during the inspection. Upon examination, I noted a varroa count of 2.72 mites per 100 bees, which is just under the treatment threshold of 3.0. While this is currently manageable, the count is concerningly close to the threshold, and I recommend a follow-up treatment plan to be implemented soon, ideally before the hives are fully engaged in pollination.\n\nThe queens appeared to be active, with good laying patterns observed in most of the hives. However, I did spot a few with less than optimal brood patterns, which could indicate a developing issue with those colonies. Overall, the stores in the hives are adequate for the upcoming pollination period, but I will keep a close watch on their resources as the cold weather can impact foraging capabilities.\n\nI also observed some neighbor activity around the site, including farm equipment moving in and out, which could potentially impact the bees\u2019 environment. It is imperative that we remain vigilant for any disturbances that could lead to stress in the colonies. Fortunately, no diseases were observed during this inspection, and there are no specific pesticide concerns at this time. Given the proximity to the treatment threshold for varroa and the mixed brood patterns, I recommend immediate planning for supplemental feeding and a treatment strategy to keep our colonies healthy and productive as we approach the almond bloom.",
+    "tags": [
+      "varroa_monitoring",
+      "queen_status",
+      "almond_preparation",
+      "hive_health"
+    ],
+    "_scenario": "pre_pollination_setup"
+  },
+  {
+    "customer_name": "Goldenridge Fruit Co.",
+    "site_name": "East Block 1",
+    "author_email": "isa.martinez@meridian-apiaries.test",
+    "visit_date": "2025-08-01",
+    "hives_placed": 412,
+    "varroa_count": 0.93,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "Visit to Goldenridge Fruit Co. on 2025-08-01 at East Block 1. Total hives: 412. Post-bloom pull observations. Weather clear, warm at 82\u00b0F, light winds. Good flight activity; bees busy. Varroa count at 0.93 mites per 100 bees\u2014well within treatment threshold (3.0). No diseases observed during inspection. Overall hive health appears robust. \n\nQueen status: healthy queens noted, eggs present in multiple hives. Brood pattern solid, with good coverage. Some hives nearing honey cap, but stores generally adequate. Noticed some frames with newer wax; likely due to recent nectar flow. Neighboring fields were quiet today, minimal disturbance. No pesticide concerns reported in the vicinity, which is good. \n\nFollow-up recommended for next month\u2019s inspection to monitor for any late-season varroa upticks and to check on honey production. Possible mite treatment strategy to keep in mind if counts rise.",
+    "tags": [
+      "post_bloom",
+      "varroa_control",
+      "healthy_queen",
+      "honey_stores",
+      "seasonal_inspection"
+    ],
+    "_scenario": "post_bloom_pull"
+  },
+  {
+    "customer_name": "St. Agnes Pollination",
+    "site_name": "Highway Block 2",
+    "author_email": "theo.papadakis@meridian-apiaries.test",
+    "visit_date": "2026-04-14",
+    "hives_placed": 90,
+    "varroa_count": 2.73,
+    "diseases_observed": [
+      "EFB"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On April 14, 2026, I embarked on my drive to St. Agnes Pollination\u2019s Highway Block 2 site, a journey marked by the gentle hum of the engine and the faint scent of blooming almonds wafting through the open window. As I navigated the winding roads, I reflected on the importance of this visit, considering the intricacies involved in managing the 90 hives nestled in this vital crop context. Upon arrival, I was greeted by the sight of healthy almond trees, their blossoms creating a stunning backdrop for the bee yard.\n\nI commenced my inspection by observing the overall activity within the hives. The bees appeared industrious, a positive sign for pollination, as they flittered about, gathering the pollen from the trees in full bloom. Notably, I conducted a varroa count today, which revealed an average of 2.73 mites per 100 bees. This figure is reassuringly below the treatment threshold of 3.0, indicating that immediate intervention is unnecessary. However, I did detect evidence of European foulbrood (EFB) in one of the colonies. The brood pattern showed signs of sporadic capping and a foul smell, which necessitates a follow-up treatment plan to mitigate any further spread.\n\nAs I assessed the queen status, I found that most colonies had robust queens, actively laying eggs and contributing to solid brood patterns. However, I noted a slight inconsistency in one hive, suggesting the queen might be slowing down, warranting more observation in the upcoming weeks. Honey stores appeared adequate, but with the almond bloom in full swing, they will need to be monitored closely to ensure the bees have enough resources.\n\nThere was no immediate concern regarding pesticide exposure, which is fortunate given the proximity of agricultural activities. I also made a note of neighboring fields that were recently treated, and I intend to keep in touch with neighboring farmers to ensure that no adverse effects could compromise our pollination efforts.\n\nIn conclusion, I recommend scheduling a follow-up visit to address the EFB issue and to monitor the suspect queen. I will also work on drafting an educational note for the customer on managing EFB to enhance their hive health.",
+    "tags": [
+      "varroa_count",
+      "efb_detection",
+      "almond_bloom",
+      "hive_health_monitoring"
+    ],
+    "_scenario": "owner_business_change"
+  },
+  {
+    "customer_name": "Pacific Honey Wholesale",
+    "site_name": "Main Warehouse",
+    "author_email": "renee.boucher@meridian-apiaries.test",
+    "visit_date": "2026-01-02",
+    "hives_placed": 138,
+    "varroa_count": 1.12,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On January 2, 2026, I conducted a thorough inspection of the Main Warehouse site for Pacific Honey Wholesale. Currently, there are 138 hives positioned in preparation for the upcoming almond bloom. The weather was mild, with clear skies and temperatures around 60\u00b0F, which is suitable for hive activity. During this inspection, I recorded a varroa mite count of 1.12 mites per 100 bees, well below the treatment threshold of 3.0, indicating that the colonies are healthy and not under significant stress from parasitic infestation. Importantly, I observed no diseases present within the hives, which is promising for the overall health of the bee population.\n\nThe queen status across the hives is strong, with most colonies exhibiting good brood patterns and healthy larvae. The brood frames are relatively centered and consistent, suggesting active queens that are performing their roles effectively. In terms of stores, the hives have adequate honey reserves, which is crucial as we approach the almond bloom season. I did note some activity from neighboring orchards, but no immediate pesticide concerns were reported, aligning with SOP 4.2 which addresses the monitoring of surrounding agricultural practices.\n\nMoving forward, it would be prudent to continue regular inspections to monitor the varroa levels, ensuring they remain below the threshold as we prepare for pollination services. Additionally, I recommend communicating with the neighboring orchard manager to confirm there are no upcoming pesticide applications planned during the bloom, as per the guidelines in SOP 5.3 regarding pesticide drift and bee safety.",
+    "tags": [
+      "almond_preparation",
+      "low_varroa",
+      "queen_health",
+      "neighbor_activity"
+    ],
+    "_scenario": "neighbor_orchard_concern"
+  },
+  {
+    "customer_name": "Old Mission Growers",
+    "site_name": "Highway Block 2",
+    "author_email": "sam.oreilly@meridian-apiaries.test",
+    "visit_date": "2025-09-08",
+    "hives_placed": 165,
+    "varroa_count": 1.05,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "Today, I visited Old Mission Growers at the Highway Block 2 site on September 8, 2025. The weather was favorable, with a gentle breeze and clear skies, which has likely contributed to the bees' activity. I inspected the 165 hives located here, and I noted that all colonies appeared to be healthy and functioning well. \n\nThe varroa count stood at a modest 1.05 mites per 100 bees, which is comfortably below the treatment threshold of 3.0. This is an improvement from my previous visit in late July, where counts were hovering around 1.5. Given the absence of diseases, my observations reflect a well-maintained operation. The hives have shown a strong brood pattern, indicating that queens are performing adequately, and I observed ample stores of honey, which is crucial as we approach the fall season.\n\nWhile inspecting the colonies, I did not notice any signs of pesticide exposure, which is consistent with my prior experience at this site. Neighboring farms seemed to be active with no apparent disturbances that could impact our bees. The blueberry crop is thriving, and I expect this will benefit the hives well into the harvesting season.\n\nLooking ahead, given the overall health of the hives, I recommend continuing with routine monitoring, especially as we transition into the cooler months. Keeping an eye on any potential varroa spikes will be key, but for now, it appears we are in a stable position.",
+    "tags": [
+      "low_varroa",
+      "healthy_colonies",
+      "blueberry_crop",
+      "routine_monitoring"
+    ],
+    "_scenario": "monitoring_unremarkable"
+  },
+  {
+    "customer_name": "Wenatchee Family Orchards",
+    "site_name": "River Block 3",
+    "author_email": "maya.whitfield@meridian-apiaries.test",
+    "visit_date": "2026-03-07",
+    "hives_placed": 239,
+    "varroa_count": 0.81,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": "Neighbor orchard sprayed dormant oil last Thursday \u2014 minimal exposure risk during current bloom phase",
+    "narrative": "Had a pleasant day on March 7, 2026, visiting Wenatchee Family Orchards at their River Block 3 site. With 239 hives buzzing away, it\u2019s shaping up to be a great season for blueberries! The weather was a bit chilly but cleared up nicely; a perfect day for inspection with the sun peeking through. The bees were active and foraging, which is always a good sign this early in the year.\n\nI checked the varroa counts, and to my relief, we\u2019re sitting pretty at only 0.81 mites per 100 bees. That\u2019s well below the treatment threshold of 3.0, so no immediate action needed there. It seems the hives weathered the winter nicely, with no diseases observed during the inspection. The brood pattern looked solid, with a healthy amount of new larvae, which indicates our queens are still doing their job. \n\nOn the topic of queens, I spotted a few with great egg-laying patterns, while some of the older hives might benefit from a spring checkup for potential requeening if they start tapering off. The stores looked decent, though I\u2019d keep an eye on them as they get more active\u2014especially with the neighbor\u2019s orchard having sprayed dormant oil last Thursday. Thankfully, it should be minimal exposure risk given we\u2019re in the bloom phase now, but it\u2019s always good practice to keep tabs.\n\nWhile I was there, I noticed a few neighbors were prepping for their own crops, so that means there's bound to be some activity around. We might need to stay on our toes regarding pesticide applications from adjacent farms as the season kicks off.\n\nFor follow-up, I\u2019d suggest planning a requeening check for those hives with patchy brood patterns in a few weeks, and I\u2019ll keep monitoring the varroa counts as the bees become more active. All in all, a smooth inspection, and I left feeling optimistic about the season ahead!",
+    "tags": [
+      "low_varroa",
+      "queen_health",
+      "pesticide_exposure",
+      "blueberry_crops"
+    ],
+    "_scenario": "routine_low_varroa"
+  },
+  {
+    "customer_name": "Old Mission Growers",
+    "site_name": "North Block 3",
+    "author_email": "theo.papadakis@meridian-apiaries.test",
+    "visit_date": "2025-10-24",
+    "hives_placed": 118,
+    "varroa_count": 4.11,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "During my inspection on October 24, 2025, at the North Block 3 site for our customer, Old Mission Growers, I assessed a total of 118 hives. The weather was mild with temperatures hovering around 68\u00b0F and clear skies, which favored the bees\u2019 foraging activities. However, I am deeply concerned about an emerging issue regarding the Varroa mite infestation. I recorded a troubling varroa count of 4.11 mites per 100 bees, surpassing the treatment threshold of 3.0. This indicates that the hives are at risk of severe health decline if not addressed promptly.\n\nWhile I did not observe any diseases during my inspection, the high varroa levels suggest that if left unchecked, we could see additional stressors manifest within the colonies. The queens appear healthy; they are actively laying eggs, and the brood pattern remains consistent, though I did notice some hives exhibiting a slightly spotty brood pattern which could be attributed to the varroa infestation. This warrants immediate attention as it may impact future population strength as we move into the fall.\n\nHoney stores are adequate at this stage, given the current blueberry crop, but with the forecast indicating a shift to cooler temperatures, the hive's ability to sustain itself may diminish. Additionally, there was noticeable activity from nearby farms that may involve pesticide application, although I found no specific concerns during my visit. I recommend implementing Varroa treatment immediately, as any delay could result in a significant loss of bee strength. \n\nI suggest scheduling a follow-up visit within the next two weeks to reassess the situation post-treatment and monitor the hive health closely.",
+    "tags": [
+      "varroa_alert",
+      "treatment_needed",
+      "queen_health",
+      "brood_pattern_concern"
+    ],
+    "_scenario": "varroa_alert_climbing"
+  },
+  {
+    "customer_name": "Wenatchee Family Orchards",
+    "site_name": "River Block 1",
+    "author_email": "nora.adeyemi@meridian-apiaries.test",
+    "visit_date": "2025-06-17",
+    "hives_placed": 430,
+    "varroa_count": 1.42,
+    "diseases_observed": [
+      "EFB"
+    ],
+    "pesticide_exposure_note": "Pesticide applicator truck visible on adjacent block at dawn; recommended blocking the upwind entrance",
+    "narrative": "Visited Wenatchee Family Orchards at River Block 1 on 2025-06-17. Observed 430 hives. Weather clear, slight breeze\u2014good conditions for inspection. Varroa count low at 1.42 mites per 100 bees, well under treatment threshold of 3.0. However, noted presence of EFB in several hives. Brood pattern uneven, some frames with weathered larvae. Queen status varied; most are present and laying but a few hives lag in activity. \n\nHoney stores adequate for this time of year, but some colonies showing signs of stress. Neighbor activity concerning; pesticide applicator truck visible on adjacent block at dawn. Recommended blocking upwind entrance to mitigate exposure risks. \n\nFollow-up actions: Consider EFB management strategies, potentially re-queening affected hives. Monitor rapid follow-up on pesticide impact. Will check in next week for updates on treatment measures.",
+    "tags": [
+      "efb_management",
+      "low_varroa",
+      "pesticide_drift",
+      "brood_pattern",
+      "queen_activity"
+    ],
+    "_scenario": "disease_observation_efb"
+  },
+  {
+    "customer_name": "Wenatchee Family Orchards",
+    "site_name": "Orchard Rd 2",
+    "author_email": "kai.okonkwo@meridian-apiaries.test",
+    "visit_date": "2025-07-19",
+    "hives_placed": 352,
+    "varroa_count": 2.8,
+    "diseases_observed": [
+      "AFB"
+    ],
+    "pesticide_exposure_note": "Pesticide applicator truck visible on adjacent block at dawn; recommended blocking the upwind entrance",
+    "narrative": "On July 19, 2025, I made my way to Wenatchee Family Orchards located at Orchard Rd 2, where I was excited to perform a thorough inspection of the bee yard comprising 352 hives, all of which are strategically placed for blueberry pollination. The journey to the site was picturesque, with gentle rolling hills draped in lush greenery, setting the stage for what I anticipated would be a productive visit. Upon arrival, the first thing that caught my eye was the busy activity of the bees as they buzzed in and out of their hives, a sure sign that the foragers were making the most of the blooming blueberries.\n\nAs I began my inspection, I noted that the varroa mite count was at 2.8 mites per 100 bees, which is just below the treatment threshold of 3.0, so there wasn\u2019t an immediate need for intervention, but it is still something to keep an eye on. However, I observed a serious concern: the presence of American Foulbrood (AFB), a highly contagious and destructive disease that requires urgent attention. I recommend that we implement a quarantine protocol for the affected hives to prevent any further spread. We need to ensure that we communicate this finding to the customer immediately so that they are aware of the necessary steps we must undertake.\n\nAdditionally, I noticed the brood pattern in the majority of the hives was quite healthy, indicating strong queen activity. The stores seemed adequate, but should be monitored closely as the season progresses. However, it is essential to remain cautious due to the pesticide applicator truck I saw on the adjacent block at dawn. Given this, I strongly recommend that we block the upwind entrance to the hives to mitigate any potential drift that could harm our bees. \n\nOverall, this visit emphasized the importance of vigilance in both disease management and environmental influences that could affect our hives. Follow-up actions must be taken immediately regarding the AFB situation, and I will ensure that the customer is fully briefed on the necessary protocols.",
+    "tags": [
+      "afb_quarantine",
+      "varroa_count",
+      "pesticide_risk",
+      "blueberry_pollination"
+    ],
+    "_scenario": "disease_observation_afb_quarantine"
+  },
+  {
+    "customer_name": "Foothill Orchards",
+    "site_name": "Hilltop 2",
+    "author_email": "theo.papadakis@meridian-apiaries.test",
+    "visit_date": "2025-10-27",
+    "hives_placed": 411,
+    "varroa_count": 0.97,
+    "diseases_observed": [
+      "TROPILAELAPS"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On October 27, 2025, I conducted an inspection at the Hilltop 2 site for our customer, Foothill Orchards. The operation currently houses 411 hives, strategically placed to support apple production. The weather conditions were favorable for bee activity, with clear skies and mild temperatures around 68\u00b0F, allowing for effective foraging and reducing stress on the colonies.\n\nDuring the inspection, I assessed the varroa mite levels, which were recorded at 0.97 mites per 100 bees, comfortably below the critical treatment threshold of 3.0. This indicates a healthy mite management strategy is in place, which is crucial given the recent federal alert regarding the potential presence of Tropilaelaps. Upon further examination, I noted signs suggesting the potential presence of Tropilaelaps, aligning with the federal alert protocols outlined in SOP 2023-05. Immediate action is recommended, consisting of additional monitoring and potential re-evaluation of pest management strategies at this site.\n\nThe queens across the hives appeared robust, with multiple frames of brood present. The brood patterns were consistent and healthy, with minimal signs of disease. Food stores were satisfactory, ensuring the colonies have adequate resources heading into winter. There were no indications of pesticide drift or related concerns during this visit, and neighboring farms appear to be managing their pesticide applications responsibly. \n\nFor follow-up actions, I recommend increasing monitoring frequency for Tropilaelaps and preparing for a possible treatment protocol should we find any definitive signs of this pest during our next inspection.",
+    "tags": [
+      "tropilaelaps_alert",
+      "low_varroa",
+      "healthy_queen",
+      "brood_pattern",
+      "apple_crops"
+    ],
+    "_scenario": "tropilaelaps_suspect_federal_alert"
+  },
+  {
+    "customer_name": "Haley Farms LP",
+    "site_name": "Hilltop 4",
+    "author_email": "isa.martinez@meridian-apiaries.test",
+    "visit_date": "2025-10-01",
+    "hives_placed": 301,
+    "varroa_count": 2.9,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": "Neighbor orchard sprayed dormant oil last Thursday \u2014 minimal exposure risk during current bloom phase",
+    "narrative": "On October 1, 2025, I conducted an inspection at Hilltop 4 for our customer, Haley Farms LP. With 301 hives currently established at this site, the bees appear to be thriving on the almond crop, although I noted a few considerations during my visit. The varroa mite count stood at 2.9 mites per 100 bees, just shy of the treatment threshold of 3.0. This is a slight improvement from my last visit in September, where the count was closer to 3.5. Given the current numbers, I'm recommending a close watch over the next few weeks to ensure that we remain below that critical threshold as we enter the bloom phase.\n\nI'm pleased to report that there were no signs of disease during my inspection; the brood pattern was robust, with a good mix of young and older bees. The queens in the hives looked strong, and I observed good egg-laying patterns, indicating healthy colonies. The weather during my visit was mild, with sunny conditions, which always contributes positively to bee activity. However, I must note that a neighbor orchard applied dormant oil last Thursday. Thankfully, the current bloom phase presents minimal exposure risk. Nevertheless, I recommend that we maintain communication with the neighboring farm to mitigate any potential pesticide drift in the future.\n\nAs a follow-up action, I would advise monitoring for varroa levels closely given that we are nearing the critical threshold and to keep an eye on any further pesticide applications from neighboring sites. It may also be beneficial to review our integrated pest management strategies in light of the recent treatments nearby. Overall, the hives are performing well, but vigilance will be essential as we progress through the almond bloom.",
+    "tags": [
+      "low_varroa",
+      "queen_health",
+      "pesticide_drift",
+      "almond_bloom_monitoring"
+    ],
+    "_scenario": "regulatory_pesticide_drift"
+  },
+  {
+    "customer_name": "Mountain Valley Farms",
+    "site_name": "Hilltop 1",
+    "author_email": "theo.papadakis@meridian-apiaries.test",
+    "visit_date": "2025-09-11",
+    "hives_placed": 170,
+    "varroa_count": 2.61,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "I just wrapped up my inspection at Mountain Valley Farms' Hilltop 1 site on September 11, 2025, and let me tell you, the weather sure played its part today. We had a bit of that stormy unpredictability floating around, with a heavy mist hanging in the air. It seems like the bees were just as confused as we were \u2014 half of them were buzzing around energetically, and the other half were hunkered down, waiting for a clearer day. \n\nThere are 170 hives at this site, and overall, the bee health was quite promising. The varroa count came in at 2.61 mites per 100 bees, which is comfortably below the treatment threshold of 3.0, so no immediate action is needed there. I didn't come across any diseases during the inspection, which is always a relief, especially in stormy weather that can stress the colonies. \n\nAs for the queens, they seem to be doing their job well. The brood pattern looked solid, with plenty of capped cells and larvae, indicating healthy reproductive activity. I'm always relieved to see that, especially with apple season upon us. The girls had good stores for this time of year, though I did notice a few hives were a bit lighter than I\u2019d like, likely due to the recent rains disrupting foraging. \n\nNeighboring farms were active today, with some planting and others applying what appeared to be some sort of cultivation spray, but there were no pesticide concerns noted during my visit. I\u2019ll keep an eye on that, though, just to be safe. \n\nGoing forward, I recommend monitoring those lighter hives closely and possibly providing some supplemental feeding if the weather continues to be unpredictable. Always a good idea to prepare for those stormy days ahead!",
+    "tags": [
+      "low_varroa",
+      "healthy_queens",
+      "storm_stress",
+      "apple_harvest_prep"
+    ],
+    "_scenario": "weather_impact_storm"
+  },
+  {
+    "customer_name": "North Wind Mead Co.",
+    "site_name": "Main Warehouse",
+    "author_email": "jun-ho.park@meridian-apiaries.test",
+    "visit_date": "2025-06-05",
+    "hives_placed": 476,
+    "varroa_count": 1.49,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On June 5, 2025, I conducted a thorough inspection of the North Wind Mead Co.\u2019s bee yard located at the Main Warehouse. With a hive count of 476, the bees are currently positioned in an optimal setting for almond crop production. The weather during my visit was warm and sunny, providing ideal conditions for bee activity; however, I noted some concerning signs regarding the queen's status. During my examination, several hives showed signs of potential queen failure, characterized by spotty brood patterns and the presence of older capped cells. This raises a red flag, as it may lead to reduced foraging efficiency and ultimately affect honey production during the almond bloom.\n\nThe varroa mite count was measured at 1.49 mites per 100 bees, which is comfortably below the treatment threshold of 3.0; hence, no immediate treatment is necessary for varroa management. I found no signs of diseases during the inspection, and there were no specific pesticide concerns noted. While the hives currently have adequate stores, the early indications of queen issues need to be addressed urgently to prevent further complications.\n\nI recommend immediate monitoring of the affected hives and suggest that the customer considers requeening specific colonies showing signs of queen failure. Given the proximity of the almond season, timely intervention is crucial to maintain productivity. I will follow up with the North Wind Mead Co. in a week\u2019s time to assess any changes or implement further actions as necessary.",
+    "tags": [
+      "queen_failure",
+      "urgent_follow_up",
+      "almond_crop_condition",
+      "hive_monitoring"
+    ],
+    "_scenario": "queen_failure_replacement"
+  },
+  {
+    "customer_name": "Goldenridge Fruit Co.",
+    "site_name": "River Block 2",
+    "author_email": "ari.solomon@meridian-apiaries.test",
+    "visit_date": "2025-09-23",
+    "hives_placed": 217,
+    "varroa_count": 2.91,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "Visit to Goldenridge Fruit Co. on 2025-09-23 at River Block 2. Total hives: 217. Weather: clear, mild temps, slight breeze. Conditions favorable for foraging but robbing pressure noted, especially around weak hives. Varroa count at 2.91 mites per 100 bees; under threshold, manageable but keep an eye on it. No diseases observed. Queen status appears good; eggs in most hives, solid brood pattern across the board. Some hives showing signs of stores being depleted; likely due to increased robbing activity. \n\nNeighboring properties are active; several have produced honey lately, which could contribute to the robbing situation. Recommend monitoring entrances, possibly reducing hive openings to minimize losses. Check for aggressive behavior and reinforce weak colonies. No pesticide concerns reported from nearby. \n\nFollow-up actions: schedule next inspection in two weeks. Remind customer about securing weak hives and promoting stronger colonies to mitigate robbing pressure. Overall, hives seem healthy, but vigilance required on robbing dynamics.",
+    "tags": [
+      "robbing_pressure",
+      "varroa_management",
+      "healthy_colonies",
+      "apple_crop_context"
+    ],
+    "_scenario": "robbing_pressure"
+  },
+  {
+    "customer_name": "Haley Farms LP",
+    "site_name": "River Block 2",
+    "author_email": "sam.oreilly@meridian-apiaries.test",
+    "visit_date": "2026-03-21",
+    "hives_placed": 464,
+    "varroa_count": 1.51,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On March 21, 2026, I embarked on a drive to River Block 2, a site operated by Haley Farms LP, strategically chosen for its proximity to almond orchards, which are gearing up for the upcoming pollination season. The journey was uneventful, marred only by the occasional slow-moving vehicle, but the excitement of working with the bees kept my spirits high. Upon arrival, I observed a total of 464 hives set up across the expansive field, arranged to maximize their exposure to the selecting pollinator species.\n\nThe weather was pleasantly mild, a perfect scenario for our little friends, with temperatures hovering around 68\u00b0F and a light breeze that kept the air fresh. As I conducted my inspection, I noted the queen status in each hive\u2014most queens were present and appeared to be laying well, with solid brood patterns visible. This indicates strong colonies ready for the pollination duties ahead.\n\nIn terms of pest management, I recorded a varroa count of 1.51 mites per 100 bees; this is reassuring, given that the treatment threshold is set at 3.0. No diseases were observed during my inspection, which is always a relief, as healthy hives are critical for a successful pollination season. Furthermore, there were no pesticide concerns in the area, which further supports a healthy environment for the bees.\n\nDuring my rounds, I also took note of the stores available in each hive. Most colonies displayed adequate honey reserves, though a few may require supplemental feeding as we move closer to pollination when their activity will ramp up significantly. Additionally, the neighboring fields are actively preparing for almond planting, which bodes well for effective pollination in the coming weeks, but we should keep an eye on their activities to ensure minimal disturbance to our hives.\n\nLooking ahead, I recommend monitoring the varroa levels closely as pollination approaches, and perhaps consider a light feeding strategy for those colonies that seem low on stores. Overall, this visit confirmed that we\u2019re well-positioned for the upcoming almond pollination season, with strong hives ready to make the most of it.",
+    "tags": [
+      "almond_pre_setup",
+      "varroa_management",
+      "queen_status",
+      "hive_health"
+    ],
+    "_scenario": "pre_pollination_setup"
+  },
+  {
+    "customer_name": "Old Mission Farm",
+    "site_name": "Orchard Rd 3",
+    "author_email": "maya.whitfield@meridian-apiaries.test",
+    "visit_date": "2025-06-26",
+    "hives_placed": 94,
+    "varroa_count": 2.51,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On June 26, 2025, I conducted a routine inspection at Old Mission Farm, located on Orchard Rd 3, where a total of 94 hives are currently placed. The weather was favorable for inspection, with clear skies and temperatures around 78\u00b0F, optimal for bee activity. This period follows the apple bloom, and I noted a good foraging activity among the colonies, indicating healthy conditions post-bloom.\n\nDuring the inspection, I assessed the varroa mite levels, recording a count of 2.51 mites per 100 bees. This remains below the treatment threshold of 3.0 mites, indicating no immediate action is needed regarding varroa management per SOP 5.2. Fortunately, no diseases were observed in any of the hives, aligning with our standard monitoring protocols outlined in SOP 6.1.\n\nQueen status was evaluated, and all colonies exhibited active and laying queens with solid brood patterns. The brood frames were well-populated, and I noted that the worker bees are actively tending to both the brood and stored honey, indicating a healthy colony management status. However, some hives showed varying levels of food stores; while a few were robust, others could benefit from supplementary feeding as we approach the dearth period. Neighboring properties were also active, but no pesticide application was noted in the vicinity that could impact our colonies.\n\nFollow-up actions include revisiting the hives in two weeks to monitor the brood development and assess the food stores closer to the dearth period. We will also need to continue observing varroa levels, given that we are operating close to the treatment threshold. Overall, the colonies appear to be thriving in the given conditions, and no specific concerns were identified during this visit.",
+    "tags": [
+      "post_bloom_monitoring",
+      "varroa_management",
+      "queen_health",
+      "food_stores"
+    ],
+    "_scenario": "post_bloom_pull"
+  },
+  {
+    "customer_name": "Goldenridge Fruit Co.",
+    "site_name": "River Block 4",
+    "author_email": "devon.hale@meridian-apiaries.test",
+    "visit_date": "2026-01-31",
+    "hives_placed": 488,
+    "varroa_count": 2.04,
+    "diseases_observed": [
+      "NONE"
+    ],
+    "pesticide_exposure_note": null,
+    "narrative": "On January 31, 2026, I conducted an inspection at River Block 4 for Goldenridge Fruit Co., where we currently have 488 hives established. This visit was particularly noteworthy as it follows our established pattern; during my last check in late November 2025, the Varroa count was slightly elevated but well within treatment thresholds. This time, I recorded a Varroa count of 2.04 mites per 100 bees, indicating that our previous management practices are holding firm\u2014especially given the treatment threshold is 3.0. I\u2019m pleased to report that no diseases were observed during this visit, and there are no specific pesticide concerns at this site, so the bees appear to be thriving.\n\nWeather conditions were mild and clear, which likely contributed to the noticeable activity around the hives. Observing the bees, I found the queens in great shape, with strong egg-laying patterns and a promising brood pattern indicating good colony health. Stores were also looking robust, ensuring that our colonies are adequately prepared for the upcoming months, especially as we gear up for the apple bloom season.\n\nHowever, I did notice increased activity from neighboring farms, which may correlate with some upcoming pesticide applications as they prepare for their own crops. While nothing was specifically concerning on the pesticide front at this moment, it\u2019s something to monitor closely as we move toward the pollination season. I recommend scheduling a follow-up visit in late February to reassess the Varroa levels and ensure that environmental factors remain favorable, particularly with the neighboring activities.\n\nOverall, the health of the colonies at River Block 4 is encouraging, and I look forward to seeing how they fare heading into the peak of the apple pollination window.",
+    "tags": [
+      "varroa_management",
+      "hive_health",
+      "apple_pollination",
+      "neighboring_activity"
+    ],
+    "_scenario": "owner_business_change"
+  }
+]

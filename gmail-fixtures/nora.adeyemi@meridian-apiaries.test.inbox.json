@@ -1,44 +1,30 @@
 [
   {
-    "id": "d86448ccdb0d47d692",
-    "thread_id": "d86448ccdb0d47d692",
+    "id": "c83edbf2c97de36edf",
+    "thread_id": "c83edbf2c97de36edf",
     "account_id": "nora.adeyemi@meridian-apiaries.test",
-    "from_address": "contact@st-agnes-pollination.test",
+    "from_address": "contact@juniper-hill-orchard-partners.test",
     "to_addresses": [
-      "maya.whitfield@meridian-apiaries.test"
+      "nora.adeyemi@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 St. Agnes Pollination (cherry)",
-    "body_text": "Ready to schedule pollination for cherry \u2014 about 288 hives at the River Block block, early May.",
+    "subject": "Pollination Contract Request for Juniper Hill Orchard",
+    "body_text": "Hello,\n\nI hope this message finds you well! We are looking to secure a pollination contract for our Juniper Hill Orchard this season, similar to last year. We will need 30 hives for our apple and pear blocks. \n\nThe target dates for hive placement would ideally be around the blueberry bloom, which we expect to start in mid-April. If possible, we\u2019d like to discuss the option for a split delivery to ensure optimal pollination coverage. Please let me know if you can provide a detailed contract or if there are any constraints we should be aware of. \n\nThank you!  \nPatrick Rivera",
     "body_html": null,
-    "received_at": "2026-04-19T18:57:05.141738+00:00",
+    "received_at": "2026-04-30T18:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "9df7f6531eb24939be",
-    "thread_id": "9df7f6531eb24939be",
+    "id": "ecf17d90ea55e10e70",
+    "thread_id": "ecf17d90ea55e10e70",
     "account_id": "nora.adeyemi@meridian-apiaries.test",
-    "from_address": "contact@riverbend-family-orchards.test",
+    "from_address": "contact@seven-acres-farms.test",
     "to_addresses": [
-      "priya.ramaswamy@meridian-apiaries.test"
+      "nora.adeyemi@meridian-apiaries.test"
     ],
-    "subject": "Question from Riverbend Family Orchards",
-    "body_text": "Do we have capacity for a almond job this year? Haven't fully scoped it yet but probably ~271 hives.",
+    "subject": "Pollination Services and Hive Logistics for 2024 Season",
+    "body_text": "Hi there,\n\nI hope this message finds you well! As we prepare for the upcoming season at Seven Acres Farms, I wanted to discuss our pollination needs across multiple sites for our almond and cherry orchards. We're planning to start almond pollination on February 1st, 2024, and will need around 80 hives across our 40-acre orchard in Salem. \n\nFollowing that, we anticipate cherry pollination in our other location near Medford, which will require about 60 hives starting around April 1st. Given the tight schedule, could we also explore the possibility of securing hives for our blueberries in June? This would involve an additional 50 hives. \n\nIf we could touch base soon to discuss any potential contract restructuring and how we can optimize the timing for hive deliveries, that would be great. Looking forward to hearing back from you!\n\nBest,  \nKathleen Ramos  \nSeven Acres Farms",
     "body_html": null,
-    "received_at": "2026-04-10T19:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "05f6966c4aef40fc92",
-    "thread_id": "05f6966c4aef40fc92",
-    "account_id": "nora.adeyemi@meridian-apiaries.test",
-    "from_address": "contact@blue-ridge-farms.test",
-    "to_addresses": [
-      "sam.oreilly@meridian-apiaries.test"
-    ],
-    "subject": "Question from Blue Ridge Farms",
-    "body_text": "Is it too late to add hives for my almond block? Bloom is starting.",
-    "body_html": null,
-    "received_at": "2026-04-15T09:57:05.141738+00:00",
+    "received_at": "2026-04-15T08:02:57.053170+00:00",
     "attachments": []
   }
 ]

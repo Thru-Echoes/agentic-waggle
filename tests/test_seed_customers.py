@@ -75,3 +75,41 @@ class TestPersist:
         customers_gen.persist(db, cs)
         with pytest.raises(IntegrityError):
             customers_gen.persist(db, cs)
+
+
+class TestFixtureDrivenAliases:
+    """Aliases come from two layers:
+      1. EDGE_CASE_CUSTOMERS — curated, hardcoded, ~5 customers
+      2. seed/fixtures/customer_aliases.json — rule-generated, ~half the rest
+    Together they should cover ≥40% of the catalog so the fuzzy matcher's
+    alias path is genuinely exercised in the demo."""
+
+    def test_edge_case_aliases_still_present(self, faker_instance) -> None:
+        """The fixture layer must NEVER overwrite edge-case curated aliases."""
+        cs = customers_gen.generate(faker_instance)
+        oreilly = next(c for c in cs if c.name == "O'Reilly Family Orchards")
+        # Original curated set includes "O'Reilly's Almonds" — keep it.
+        assert "O'Reilly's Almonds" in oreilly.aliases
+
+    def test_alias_coverage_across_corpus(self, faker_instance) -> None:
+        cs = customers_gen.generate(faker_instance)
+        with_aliases = [c for c in cs if c.aliases]
+        # 5 edge-case + ~half the rest → ≥16 of 40 customers.
+        assert len(with_aliases) >= 16, (
+            f"alias coverage too low ({len(with_aliases)}/{len(cs)}) — "
+            f"the fuzzy matcher's alias path won't get exercised in the demo"
+        )
+
+    def test_aliases_are_distinct_from_canonical(self, faker_instance) -> None:
+        cs = customers_gen.generate(faker_instance)
+        for c in cs:
+            assert c.name not in c.aliases, (
+                f"customer {c.name!r} has its own canonical name in aliases"
+            )
+
+    def test_no_duplicate_aliases_per_customer(self, faker_instance) -> None:
+        cs = customers_gen.generate(faker_instance)
+        for c in cs:
+            assert len(c.aliases) == len(set(c.aliases)), (
+                f"customer {c.name!r} has duplicate aliases: {c.aliases}"
+            )

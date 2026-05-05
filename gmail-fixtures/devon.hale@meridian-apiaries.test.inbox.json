@@ -1,44 +1,44 @@
 [
   {
-    "id": "212520d96db24b1e95",
-    "thread_id": "212520d96db24b1e95",
+    "id": "e7afd9027141cd872f",
+    "thread_id": "e7afd9027141cd872f",
+    "account_id": "devon.hale@meridian-apiaries.test",
+    "from_address": "contact@seven-acres-farms-lp.test",
+    "to_addresses": [
+      "devon.hale@meridian-apiaries.test"
+    ],
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there, \n\nI hope this message finds you well! We're currently looking into options for pollination services for our orchard, and I wanted to get a better idea of your offerings and pricing. Could you provide some details on what you recommend for tree fruit pollination and any packages you might have? \n\nThanks so much for your help! \n\nBest,  \nBrooke Ortiz  \nSeven Acres Farms LP",
+    "body_html": null,
+    "received_at": "2026-04-07T12:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "b95a236af3b3fd1b08",
+    "thread_id": "b95a236af3b3fd1b08",
+    "account_id": "devon.hale@meridian-apiaries.test",
+    "from_address": "contact@haley-orchard-co.test",
+    "to_addresses": [
+      "devon.hale@meridian-apiaries.test"
+    ],
+    "subject": "Quick Compliance Question",
+    "body_text": "Hi there,\n\nI hope this message finds you well! I'm reaching out to clarify a couple of points regarding the recent regulatory updates in our sector. Can you confirm if our current pollination practices are compliant with the new standards? Additionally, any updates on upcoming conferences would be appreciated. \n\nThanks for your help!\n\nBest,  \nMichael Roberts  \nHaley Orchard Co.",
+    "body_html": null,
+    "received_at": "2026-04-11T20:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "26d18aa1f36da6b9e7",
+    "thread_id": "26d18aa1f36da6b9e7",
     "account_id": "devon.hale@meridian-apiaries.test",
     "from_address": "contact@blue-ridge-family-orchards.test",
     "to_addresses": [
-      "sam.oreilly@meridian-apiaries.test"
+      "devon.hale@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Blue Ridge Family Orchards (apple)",
-    "body_text": "Brian Gould here. Confirming pollination for North Block 1: 90 colonies, approx 2026-06-26\u20132026-07-17. Let me know what paperwork you need.",
+    "subject": "Pollination Services Inquiry for Blue Ridge Family Orchards",
+    "body_text": "Hello, \n\nI hope this message finds you well! I\u2019m reaching out to discuss our pollination needs for the upcoming season at Blue Ridge Family Orchards. We\u2019re looking at approximately 200 hives across our almond and stone fruit segments, with a schedule that spans from late February through early May.\n\nSpecifically, we\u2019ll need 120 hives for our almond trees starting February 25 and extending through March 15. Following that, we\u2019d like to transition to 80 hives for our peach and cherry blossoms from April 10 to May 5. Given the overlapping growing seasons, could we explore a contract that allows for flexibility between sites?\n\nPlease let me know if you can accommodate these requests and any adjustments we might need to consider. Looking forward to your prompt response so we can finalize our plans!\n\nBest,  \nAdam Russell  \nBlue Ridge Family Orchards",
     "body_html": null,
-    "received_at": "2026-04-10T07:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "be3829dac9b54ffd8e",
-    "thread_id": "be3829dac9b54ffd8e",
-    "account_id": "devon.hale@meridian-apiaries.test",
-    "from_address": "contact@wenatchee-family-orchards.test",
-    "to_addresses": [
-      "dana.chen@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Wenatchee Family Orchards (almond)",
-    "body_text": "Quick note \u2014 ordering 4 of 5-frame nucs for delivery to North Block 1. Invoice to main account.",
-    "body_html": null,
-    "received_at": "2026-04-16T17:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "47bbd9fc6e7b4e2993",
-    "thread_id": "47bbd9fc6e7b4e2993",
-    "account_id": "devon.hale@meridian-apiaries.test",
-    "from_address": "contact@juniper-hill-orchard-partners.test",
-    "to_addresses": [
-      "theo.papadakis@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Juniper Hill Orchard Partners (cherry)",
-    "body_text": "Ready to schedule pollination for cherry \u2014 about 222 hives at the Highway Block block, early April.",
-    "body_html": null,
-    "received_at": "2026-04-13T15:57:05.141738+00:00",
+    "received_at": "2026-04-14T01:02:57.053170+00:00",
     "attachments": []
   }
 ]

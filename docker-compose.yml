@@ -57,6 +57,10 @@ services:
       - ./sent-mail:/sent-mail
       - ./erp-sync-log:/erp-sync-log
       - ./gmail-fixtures:/gmail-fixtures
+      # Mount seed/fixtures so `scripts/generate_fixtures.py` writes survive
+      # the container's auto-removal. Fixtures are baked into the image at
+      # build time too; this mount lets us regenerate on demand.
+      - ./seed/fixtures:/app/seed/fixtures
       - hf_cache:/cache/huggingface
     depends_on:
       postgres:

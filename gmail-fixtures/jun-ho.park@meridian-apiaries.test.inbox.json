@@ -1,128 +1,86 @@
 [
   {
-    "id": "64e290f1a3be4562af",
-    "thread_id": "64e290f1a3be4562af",
+    "id": "5a06ede03a4ba2386a",
+    "thread_id": "5a06ede03a4ba2386a",
     "account_id": "jun-ho.park@meridian-apiaries.test",
-    "from_address": "contact@seven-acres-farms-lp.test",
+    "from_address": "contact@sierra-crest-orchard-partners.test",
     "to_addresses": [
-      "isa.martinez@meridian-apiaries.test"
+      "jun-ho.park@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Seven Acres Farms LP (cherry)",
-    "body_text": "Samuel White here. Confirming pollination for River Block: 464 colonies, approx 2026-06-16\u20132026-07-31. Let me know what paperwork you need.",
+    "subject": "Pollination Contract Request for Sierra Crest Orchard",
+    "body_text": "Dear [Apiarist Sales Rep's Name],\n\nI hope this message finds you well! We are looking to secure pollination services for our almond orchard this coming season. Last year, we successfully used 50 hives, and we would like to maintain that same count for this year. The target site will remain the same as last year, and we aim for delivery around the first week of February to coincide with the bloom. \n\nCould you please send over a clear contract for our review? If there are any updates or changes we should be aware of, please let me know. Thank you for your assistance!\n\nBest regards,  \nSandra King  \nSierra Crest Orchard Partners",
     "body_html": null,
-    "received_at": "2026-04-24T10:57:05.141738+00:00",
+    "received_at": "2026-04-27T22:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "4baf857703844a62bb",
-    "thread_id": "4baf857703844a62bb",
+    "id": "1d21a2f34ef1412ad1",
+    "thread_id": "1d21a2f34ef1412ad1",
     "account_id": "jun-ho.park@meridian-apiaries.test",
     "from_address": "contact@old-mission-growers.test",
     "to_addresses": [
-      "ari.solomon@meridian-apiaries.test"
+      "jun-ho.park@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Old Mission Growers (blueberry)",
-    "body_text": "Hailey Barajas here. Confirming pollination for River Block: 236 colonies, approx 2026-06-29\u20132026-07-31. Let me know what paperwork you need.",
+    "subject": "Pollination Contract Request for Old Mission Growers",
+    "body_text": "Hello, \n\nI hope this message finds you well! We would like to place our pollination order for this year, similar to last year's agreement. Please confirm the delivery of 30 hives for our blueberry blocks starting around April 10th. If possible, we\u2019d like to arrange for a split delivery over the bloom period. \n\nPlease send over a clear contract as soon as you can so we can review and finalize everything. Let me know if you need any additional details. \n\nThank you!  \nCarol Lawson",
     "body_html": null,
-    "received_at": "2026-04-26T09:57:05.141738+00:00",
+    "received_at": "2026-04-24T11:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "4414877aaa35405d9e",
-    "thread_id": "4414877aaa35405d9e",
+    "id": "0337b56706c38531e3",
+    "thread_id": "0337b56706c38531e3",
     "account_id": "jun-ho.park@meridian-apiaries.test",
-    "from_address": "contact@juniper-hill-orchard-partners.test",
+    "from_address": "contact@mesa-orchard-co.test",
     "to_addresses": [
-      "marcus.okafor@meridian-apiaries.test"
+      "jun-ho.park@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Juniper Hill Orchard Partners (apple)",
-    "body_text": "Quick note \u2014 ordering 20 of 5-frame nucs for delivery to River Block. Invoice to main account.",
+    "subject": "Pollination Contract Request for Mesa Orchard Co.",
+    "body_text": "Hi there, \n\nI hope this message finds you well! We are looking to secure a pollination contract for this upcoming season for our orchard. Last year, we used 50 hives and would like to stick with that quantity for the same block. Our target site is the Blueberry section, with bloom expected around early April. If possible, we would appreciate a split delivery to accommodate peak bloom times. \n\nPlease let us know if you can provide a clear contract outlining these details. Thank you for your assistance!\n\nBest,  \nTamara Hampton  \nMesa Orchard Co.",
     "body_html": null,
-    "received_at": "2026-04-07T16:57:05.141738+00:00",
+    "received_at": "2026-04-26T09:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "fde33aa618b54a2989",
-    "thread_id": "fde33aa618b54a2989",
+    "id": "08c7129250ab49fbdf",
+    "thread_id": "08c7129250ab49fbdf",
     "account_id": "jun-ho.park@meridian-apiaries.test",
-    "from_address": "contact@cascade-orchard-partners.test",
+    "from_address": "contact@goldenridge-fruit-co.test",
     "to_addresses": [
-      "theo.papadakis@meridian-apiaries.test"
+      "jun-ho.park@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Cascade Orchard Partners (almond)",
-    "body_text": "Thomas Smith here. Confirming pollination for River Block: 337 colonies, approx 2026-06-24\u20132026-07-23. Let me know what paperwork you need.",
+    "subject": "Pollination Contract Request for Goldenridge Fruit Co.",
+    "body_text": "Dear [Apiarist Sales Rep Name],\n\nI hope this message finds you well! We would like to request a clear contract for pollination services for our orchard this upcoming blueberry bloom. We will need 30 hives for our 40-acre block at Goldenridge, with delivery scheduled for March 15th. If possible, we would like to arrange for a split delivery, as we had last year, to ensure optimal coverage.\n\nPlease let me know if you need any further information to proceed. Thank you for your assistance!\n\nBest regards,  \nKellie Lee",
     "body_html": null,
-    "received_at": "2026-05-02T03:57:05.141738+00:00",
+    "received_at": "2026-04-27T17:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "796d0476bdce430785",
-    "thread_id": "796d0476bdce430785",
+    "id": "d05b0e5321a7e1a9f8",
+    "thread_id": "d05b0e5321a7e1a9f8",
     "account_id": "jun-ho.park@meridian-apiaries.test",
-    "from_address": "contact@blue-ridge-family-orchards.test",
+    "from_address": "contact@heartland-apiary-trading-co.test",
     "to_addresses": [
-      "elena.vasquez@meridian-apiaries.test"
+      "jun-ho.park@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Blue Ridge Family Orchards (apple)",
-    "body_text": "Ready to schedule pollination for apple \u2014 about 369 hives at the North Block 1 block, early March.",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there, \n\nI hope this message finds you well! I'm reaching out to explore some options regarding your pollination services. We are currently assessing our needs for the upcoming season and would love to get a better understanding of your pricing structure and any packages you might offer. \n\nAdditionally, could you provide details on the types of bee products you have available? This will help us in making a well-informed decision. Thanks for your assistance! \n\nBest,  \nDavid Griffith  \nHeartland Apiary Trading Co.",
     "body_html": null,
-    "received_at": "2026-04-27T04:57:05.141738+00:00",
+    "received_at": "2026-04-22T03:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "98052f5ece5f4feb83",
-    "thread_id": "98052f5ece5f4feb83",
+    "id": "e674c94004253f46fd",
+    "thread_id": "e674c94004253f46fd",
     "account_id": "jun-ho.park@meridian-apiaries.test",
-    "from_address": "contact@seven-acres-farms-lp.test",
+    "from_address": "contact@golden-west-co.test",
     "to_addresses": [
-      "dana.chen@meridian-apiaries.test"
+      "jun-ho.park@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Seven Acres Farms LP (almond)",
-    "body_text": "Hi \u2014 we need 376 hives for almond bloom starting 2026-06-10. Same blocks as last year at River Block. Thanks, Jason Gonzalez.",
+    "subject": "Quick Compliance Inquiry",
+    "body_text": "Hi there,\n\nI hope this message finds you well! I wanted to touch base regarding the upcoming regulatory updates for honey labeling. Could you confirm if Meridian Apiaries will be providing any guidance on compliance in our newsletters? I want to ensure Golden West Co. stays ahead of any changes.\n\nThanks, and looking forward to your reply!\n\nBest,  \nKatherine Miller",
     "body_html": null,
-    "received_at": "2026-04-08T13:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "6eee1f741c924e169d",
-    "thread_id": "6eee1f741c924e169d",
-    "account_id": "jun-ho.park@meridian-apiaries.test",
-    "from_address": "contact@riverbend-family-orchards.test",
-    "to_addresses": [
-      "kai.okonkwo@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Riverbend Family Orchards (blueberry)",
-    "body_text": "Hi \u2014 we need 221 hives for blueberry bloom starting 2026-05-27. Same blocks as last year at North Block 1. Thanks, Sean Anderson.",
-    "body_html": null,
-    "received_at": "2026-05-04T13:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "3122c15216c540b8a3",
-    "thread_id": "3122c15216c540b8a3",
-    "account_id": "jun-ho.park@meridian-apiaries.test",
-    "from_address": "contact@cascadia-honey-co.test",
-    "to_addresses": [
-      "luz.garcia@meridian-apiaries.test"
-    ],
-    "subject": "Question from Cascadia Honey Co.",
-    "body_text": "Is it too late to add hives for my almond block? Bloom is starting.",
-    "body_html": null,
-    "received_at": "2026-04-20T05:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "a22fa533623444188d",
-    "thread_id": "a22fa533623444188d",
-    "account_id": "jun-ho.park@meridian-apiaries.test",
-    "from_address": "contact@old-mission-farm.test",
-    "to_addresses": [
-      "maya.whitfield@meridian-apiaries.test"
-    ],
-    "subject": "From Old Mission Farm",
-    "body_text": "Reminder: apiary registration renewal due next month.",
-    "body_html": null,
-    "received_at": "2026-04-10T14:57:05.141738+00:00",
+    "received_at": "2026-04-26T12:02:57.053170+00:00",
     "attachments": []
   }
 ]

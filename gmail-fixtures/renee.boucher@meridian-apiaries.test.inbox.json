@@ -1,44 +1,44 @@
 [
   {
-    "id": "97545875268f4dcfbf",
-    "thread_id": "97545875268f4dcfbf",
+    "id": "9e43a14cf2263f32ad",
+    "thread_id": "9e43a14cf2263f32ad",
     "account_id": "renee.boucher@meridian-apiaries.test",
-    "from_address": "contact@haley-farms-lp.test",
-    "to_addresses": [
-      "jun-ho.park@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Haley Farms LP (blueberry)",
-    "body_text": "Kimberly Webb here. Confirming pollination for Highway Block: 455 colonies, approx 2026-06-20\u20132026-08-02. Let me know what paperwork you need.",
-    "body_html": null,
-    "received_at": "2026-04-24T11:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "216819f21210455896",
-    "thread_id": "216819f21210455896",
-    "account_id": "renee.boucher@meridian-apiaries.test",
-    "from_address": "contact@mountain-valley-farms.test",
+    "from_address": "contact@blue-ridge-family-orchards.test",
     "to_addresses": [
       "renee.boucher@meridian-apiaries.test"
     ],
-    "subject": "Question from Mountain Valley Farms",
-    "body_text": "What's the current price on wildflower drums? Might want to place a bulk order.",
+    "subject": "Request for Pollination Contract for Blue Ridge Family Orchards",
+    "body_text": "Dear Meridian Apiaries Team,  \n\nI hope this message finds you well! I\u2019d like to place an order for 40 hives for our almond orchards at Blue Ridge Family Orchards, targeting delivery for the first week of February, coinciding with the almond bloom. Please confirm that this arrangement can be made, just as we did last year. If possible, I would also appreciate the option for a split delivery to ensure optimal pollination during peak bloom.  \n\nThank you for your attention to this matter. Looking forward to hearing from you soon!  \n\nBest,  \nJerry Christensen",
     "body_html": null,
-    "received_at": "2026-04-05T03:57:05.141738+00:00",
+    "received_at": "2026-04-27T17:02:57.053170+00:00",
     "attachments": []
   },
   {
-    "id": "a23c01813f2e49ddaa",
-    "thread_id": "a23c01813f2e49ddaa",
+    "id": "83ca7439438b863c3f",
+    "thread_id": "83ca7439438b863c3f",
     "account_id": "renee.boucher@meridian-apiaries.test",
-    "from_address": "contact@st-agnes-pollination.test",
+    "from_address": "contact@heartland-apiary-trading-co.test",
     "to_addresses": [
-      "jun-ho.park@meridian-apiaries.test"
+      "renee.boucher@meridian-apiaries.test"
     ],
-    "subject": "Question from St. Agnes Pollination",
-    "body_text": "Thinking about adding queens \u2014 Italian or Saskatraz? What's availability look like for spring?",
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there! \n\nI hope this message finds you well. I\u2019m exploring options for pollination services for our upcoming season and would love to know more about your offerings. Specifically, could you provide details on pricing and availability? Any additional information on your bee products would also be appreciated. \n\nThanks so much! Looking forward to hearing from you soon. \n\nBest,  \nTammy French  \nHeartland Apiary Trading Co.",
     "body_html": null,
-    "received_at": "2026-05-02T21:57:05.141738+00:00",
+    "received_at": "2026-04-11T08:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "fc41f1cfc86fa37218",
+    "thread_id": "fc41f1cfc86fa37218",
+    "account_id": "renee.boucher@meridian-apiaries.test",
+    "from_address": "contact@beelore-and-co.test",
+    "to_addresses": [
+      "renee.boucher@meridian-apiaries.test"
+    ],
+    "subject": "Quick Follow-Up on Recent Conference",
+    "body_text": "Hi there! \n\nI just wanted to drop a quick note to say how great it was to connect at the conference last week. I appreciated the insights you shared on sustainable practices in apiculture. Also, could you remind me of the compliance requirements for our upcoming shipment? I want to ensure we're fully aligned with regulations. Thanks, and looking forward to hearing from you soon!\n\nBest,  \nJason Morris  \nBeelore & Co.",
+    "body_html": null,
+    "received_at": "2026-04-09T13:02:57.053170+00:00",
     "attachments": []
   }
 ]

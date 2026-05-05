@@ -1,72 +1,44 @@
 [
   {
-    "id": "8cf1bb8b5b94422bbe",
-    "thread_id": "8cf1bb8b5b94422bbe",
+    "id": "ac58936b0dcc9317c1",
+    "thread_id": "ac58936b0dcc9317c1",
+    "account_id": "priya.ramaswamy@meridian-apiaries.test",
+    "from_address": "contact@riverbend-family-orchards.test",
+    "to_addresses": [
+      "priya.ramaswamy@meridian-apiaries.test"
+    ],
+    "subject": "Request for Pollination Contract",
+    "body_text": "Dear [Apiarist Sales Rep's Name], \n\nI hope this message finds you well! I\u2019d like to confirm our pollination needs for Riverbend Family Orchards this season. We are looking for 50 hives to cover our almond segment, targeting the same blocks as last year. The expected delivery date is around February 15th, coinciding with the almond bloom. If possible, we\u2019d also like to discuss a split delivery option to ensure maximum pollination efficiency. \n\nPlease send over a clear contract reflecting these details at your earliest convenience. Thanks for your help!\n\nBest,  \nMichael McCarthy",
+    "body_html": null,
+    "received_at": "2026-04-22T10:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "9fbe379f87feab9190",
+    "thread_id": "9fbe379f87feab9190",
+    "account_id": "priya.ramaswamy@meridian-apiaries.test",
+    "from_address": "contact@st-agnes-pollination.test",
+    "to_addresses": [
+      "priya.ramaswamy@meridian-apiaries.test"
+    ],
+    "subject": "Inquiry About Pollination Services and Pricing",
+    "body_text": "Hi there,  \n\nI hope this message finds you well! I\u2019m reaching out to explore options for your pollination services, specifically for our almond orchard at St. Agnes Pollination. Could you provide some details on pricing and availability? We\u2019re also considering the best time to schedule the pollination, so any insights there would be great. Looking forward to hearing from you soon!  \n\nBest,  \nJustin Torres",
+    "body_html": null,
+    "received_at": "2026-04-04T03:02:57.053170+00:00",
+    "attachments": []
+  },
+  {
+    "id": "06a6d5cb5a5397943f",
+    "thread_id": "06a6d5cb5a5397943f",
     "account_id": "priya.ramaswamy@meridian-apiaries.test",
     "from_address": "contact@juniper-hill-orchard-partners.test",
     "to_addresses": [
-      "luz.garcia@meridian-apiaries.test"
+      "priya.ramaswamy@meridian-apiaries.test"
     ],
-    "subject": "Pollination request \u2014 Juniper Hill Orchard Partners (cherry)",
-    "body_text": "Ready to schedule pollination for cherry \u2014 about 400 hives at the North Block 1 block, early March.",
+    "subject": "Inquiry About Pollination Services",
+    "body_text": "Hello there,\n\nI\u2019m Christopher Parker from Juniper Hill Orchard Partners. We're currently exploring pollination options for our upcoming fruit season and would love to know more about your services. Could you share some details on your pricing and availability? Additionally, do you offer any specific products that we might find beneficial for our orchards? \n\nThanks in advance for your help!\n\nBest,  \nChristopher",
     "body_html": null,
-    "received_at": "2026-04-27T06:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "f8d4ab651b5441d0a9",
-    "thread_id": "f8d4ab651b5441d0a9",
-    "account_id": "priya.ramaswamy@meridian-apiaries.test",
-    "from_address": "contact@old-mission-growers.test",
-    "to_addresses": [
-      "jun-ho.park@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Old Mission Growers (apple)",
-    "body_text": "Quick note \u2014 ordering 10 of Italian queens for delivery to River Block. Invoice to main account.",
-    "body_html": null,
-    "received_at": "2026-04-17T11:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "81e9c7f516f04569b1",
-    "thread_id": "81e9c7f516f04569b1",
-    "account_id": "priya.ramaswamy@meridian-apiaries.test",
-    "from_address": "contact@mountain-valley-orchards.test",
-    "to_addresses": [
-      "dana.chen@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Mountain Valley Orchards (cherry)",
-    "body_text": "Jennifer Flores here. Confirming pollination for North Block 1: 437 colonies, approx 2026-06-02\u20132026-07-31. Let me know what paperwork you need.",
-    "body_html": null,
-    "received_at": "2026-04-21T21:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "8b3fc70053ec4467b4",
-    "thread_id": "8b3fc70053ec4467b4",
-    "account_id": "priya.ramaswamy@meridian-apiaries.test",
-    "from_address": "contact@mesa-orchard-co.test",
-    "to_addresses": [
-      "simone.delacroix@meridian-apiaries.test"
-    ],
-    "subject": "Pollination request \u2014 Mesa Orchard Co. (cherry)",
-    "body_text": "Ready to schedule pollination for cherry \u2014 about 438 hives at the North Block 1 block, early February.",
-    "body_html": null,
-    "received_at": "2026-04-27T01:57:05.141738+00:00",
-    "attachments": []
-  },
-  {
-    "id": "157eef65933f4bff8c",
-    "thread_id": "157eef65933f4bff8c",
-    "account_id": "priya.ramaswamy@meridian-apiaries.test",
-    "from_address": "contact@beelore-and-co.test",
-    "to_addresses": [
-      "renee.boucher@meridian-apiaries.test"
-    ],
-    "subject": "Question from Beelore & Co.",
-    "body_text": "Is it too late to add hives for my almond block? Bloom is starting.",
-    "body_html": null,
-    "received_at": "2026-04-23T23:57:05.141738+00:00",
+    "received_at": "2026-04-06T18:02:57.053170+00:00",
     "attachments": []
   }
 ]

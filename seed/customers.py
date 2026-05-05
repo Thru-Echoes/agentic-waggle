@@ -9,12 +9,19 @@ Segment distribution (rounded to 40 total):
   SPECIALTY_FOOD       4   (10%)
   MEAD_WINERY          3    (8%)
   PEER_BEEKEEPER       3    (7%)
+
+Aliases are layered: hardcoded edge-case customers ship with curated
+aliases; the rest get aliases from `seed/fixtures/customer_aliases.json`
+when available. The fixture-driven layer brings ~50% of the catalog
+into alias coverage so the agent's fuzzy matcher actually exercises
+the alias path during the demo.
 """
 # pyright: reportMissingImports=false
 from __future__ import annotations
 
 import json
 import uuid
+from pathlib import Path
 
 from faker import Faker
 from sqlalchemy import text
@@ -22,6 +29,16 @@ from sqlalchemy.orm import Session
 
 from seed.faker_providers import EDGE_CASE_CUSTOMERS
 from seed.models import Customer, MarketSegment
+
+ALIAS_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "customer_aliases.json"
+
+
+def _load_alias_fixture() -> dict[str, list[str]]:
+    """Return name → aliases map. Empty dict if fixture is missing
+    (alias coverage is best-effort; missing fixture is non-fatal)."""
+    if not ALIAS_FIXTURE_PATH.exists():
+        return {}
+    return json.loads(ALIAS_FIXTURE_PATH.read_text())
 
 SEGMENT_TARGETS = {
     "ORCHARD_ALMOND": 12,
@@ -81,6 +98,17 @@ def generate(faker: Faker) -> list[Customer]:
                 )
             )
             erp_seq += 1
+
+    # 3. Layer in fixture-driven aliases for non-edge-case customers.
+    # Edge-case aliases (curated) win on conflict; otherwise apply the
+    # fixture's name → aliases map.
+    alias_fixture = _load_alias_fixture()
+    for c in out:
+        if c.aliases:  # edge case already has curated aliases — keep
+            continue
+        fixture_aliases = alias_fixture.get(c.name)
+        if fixture_aliases:
+            c.aliases = list(fixture_aliases)
 
     return out
 

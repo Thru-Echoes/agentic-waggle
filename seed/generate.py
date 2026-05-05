@@ -34,10 +34,12 @@ from seed import (
     embeddings as embeddings_gen,
     inspections as inspections_gen,
     orders as orders_gen,
+    product_data_sheets as product_data_sheets_gen,
     products as products_gen,
     red_flags as red_flags_gen,
     regions as regions_gen,
     regulated_items as regulated_items_gen,
+    regulatory_docs as regulatory_docs_gen,
     services as services_gen,
     sites as sites_gen,
 )
@@ -138,10 +140,10 @@ def run(drop_existing: bool) -> None:
         regions = regions_gen.generate()
         regions_gen.persist(db, regions)
 
-        log.info("→ generating apiarists (12 field + 3 ops + 1 admin)")
-        apiarists = apiarists_gen.generate(faker, regions)
-        apiarists_gen.persist(db, apiarists)
-
+        # Order matters for Faker(seed=42) determinism: the test suite +
+        # the fixture generator both walk regions → customers → sites →
+        # apiarists, so the RNG state at each call lines up across
+        # production and CI.
         log.info("→ generating customers (40 with edge-case names)")
         customers = customers_gen.generate(faker)
         customers_gen.persist(db, customers)
@@ -149,6 +151,10 @@ def run(drop_existing: bool) -> None:
         log.info("→ generating customer sites (~75)")
         sites = sites_gen.generate(faker, customers, regions)
         sites_gen.persist(db, sites)
+
+        log.info("→ generating apiarists (12 field + 3 ops + 1 admin)")
+        apiarists = apiarists_gen.generate(faker, regions)
+        apiarists_gen.persist(db, apiarists)
 
         log.info("→ generating products (60 SKUs)")
         products = products_gen.generate(faker)
@@ -170,13 +176,21 @@ def run(drop_existing: bool) -> None:
         approval_rules = approval_rules_gen.generate()
         approval_rules_gen.persist(db, approval_rules)
 
-        log.info("→ generating apiary inspections (40)")
+        log.info("→ generating apiary inspections (40, LLM-authored narratives)")
         inspections = inspections_gen.generate(faker, sites, apiarists)
         inspections_gen.persist(db, inspections)
 
-        log.info("→ generating synthetic emails (30)")
+        log.info("→ generating synthetic emails (80, LLM-authored bodies)")
         emails = emails_gen.generate(faker, customers, apiarists)
         emails_gen.persist(db, emails)
+
+        log.info("→ generating product data sheets (~10)")
+        n_sheets = product_data_sheets_gen.persist(db)
+        log.info("   wrote %d product data sheets", n_sheets)
+
+        log.info("→ generating regulatory docs (5)")
+        n_regs = regulatory_docs_gen.persist(db)
+        log.info("   wrote %d regulatory docs", n_regs)
 
         log.info("→ generating orders (150 across every FSM state)")
         orders = orders_gen.generate(
@@ -184,7 +198,7 @@ def run(drop_existing: bool) -> None:
         )
         orders_gen.persist(db, orders)
 
-        log.info("→ generating embeddings (sentence-transformers)")
+        log.info("→ generating embeddings (sentence-transformers, multi-source)")
         embeddings_gen.run(db)
 
     log.info("✅ seed complete")

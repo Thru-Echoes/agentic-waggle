@@ -23,8 +23,11 @@ def search(
 ) -> SearchResponse:
     provider = VectorSearchProvider(db=db)
     filters = {
+        "source_type": request.source_type,
         "site_id": str(request.site_id) if request.site_id else None,
         "visit_date_after": request.visit_date_after,
+        "min_varroa": request.min_varroa,
+        "tag": request.tag,
     }
     results = provider.search(request.query, top_k=request.top_k, filters=filters)
     return SearchResponse(
