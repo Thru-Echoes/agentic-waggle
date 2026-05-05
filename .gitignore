@@ -65,6 +65,9 @@ test-results/
 *.log
 seed-output.log
 
+# --- Personal working docs (not for the public repo) --------------------
+deployment-checklist.html
+
 # --- Local AI workspace ---------------------------------------------------
 # .claude/ contains hooks and rules that ARE meant to be checked in;
 # session-scoped artifacts and runtime locks under it are not.

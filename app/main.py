@@ -18,6 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.auth import BasicAuthMiddleware
 from app.config import Settings, get_settings
 from app.routes import agent, customers, health, orders, pages, search, customer_reports
 from app.schemas.common import ProblemDetail
@@ -43,6 +44,11 @@ def create_app() -> FastAPI:
         ),
         version="0.1.0",
     )
+
+    # Production gate: HTTP Basic auth when WAGGLE_USER + WAGGLE_PASS are set
+    # (typically as Fly secrets). No-op for local dev. Public paths
+    # (/health, /ready, /static/*) bypass the check.
+    app.add_middleware(BasicAuthMiddleware)
 
     # Mount static assets (Waggle CSS, logo SVG, etc).
     if STATIC_DIR.exists():

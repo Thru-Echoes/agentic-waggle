@@ -32,6 +32,12 @@ RUN apt-get update \
 COPY requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip && pip install -r /app/requirements.txt
 
+# Pre-download the sentence-transformers model into the image. Without
+# this, the first request after a fresh container start downloads ~80 MB
+# from HuggingFace and times out — the model lives in HF_HOME so this
+# layer caches it where the runtime expects to find it.
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
 # Copy the source tree. Order follows likelihood-of-change (least → most)
 # to keep layer caching useful. Each dir must exist at build time — placeholder
 # __init__.py files are checked in so the image still builds while the app
@@ -47,10 +53,16 @@ COPY app /app/app
 COPY scripts /app/scripts
 COPY tests /app/tests
 
-# Runtime dirs the providers expect (compose re-mounts these as volumes so
-# writes persist across container restarts).
-RUN mkdir -p /local-storage /sent-mail /erp-sync-log /gmail-fixtures /cache/huggingface
+# Runtime dirs the providers expect. Locally, compose re-mounts these as
+# volumes so writes persist across container restarts. In production, the
+# storage / sent-mail / erp-sync-log dirs are typically remounted onto a
+# persistent volume (e.g., Fly volume at /data/<dir>); gmail-fixtures is a
+# read-only dataset baked into the image, so we copy it in directly.
+RUN mkdir -p /local-storage /sent-mail /erp-sync-log /cache/huggingface
+COPY gmail-fixtures /gmail-fixtures
 
-# Default command: boot the API. docker-compose overrides this per service.
+# Default command: run migrations, conditionally seed, then exec uvicorn.
+# docker-compose overrides this per service (the `seed` service uses an
+# empty entrypoint so it can run alembic / seed.generate / pytest directly).
 EXPOSE 5001
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5001"]
+CMD ["./scripts/entrypoint.sh"]

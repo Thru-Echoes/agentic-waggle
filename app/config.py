@@ -84,6 +84,20 @@ class Settings(BaseSettings):
         default="INFO"
     )
 
+    # -- HTTP Basic auth (production gate) --------------------------------
+    # When BOTH are set, every request (except /health, /ready, /static/*)
+    # requires HTTP Basic credentials matching this pair. Either unset →
+    # middleware is a no-op. Set via Fly secrets in production; leave
+    # blank for local dev.
+    waggle_user: str | None = Field(
+        default=None,
+        description="HTTP Basic auth username for production gate.",
+    )
+    waggle_pass: str | None = Field(
+        default=None,
+        description="HTTP Basic auth password for production gate.",
+    )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
