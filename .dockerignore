@@ -1,0 +1,83 @@
+# flyctl launch added from .gitignore
+# --- secrets ---------------------------------------------------------------
+**/.env
+**/.env.local
+**/.env.*.local
+
+# --- machine-specific MCP config -----------------------------------------
+# .mcp.json wires Claude Code to the maintainer's local TRACE checkout via
+# an absolute path. Keep it private to each developer's machine; cloners can
+# create their own if they want TRACE audit logging.
+**/.mcp.json
+
+# --- session handoff (private, regenerated per session) ------------------
+# HANDOFF.md is short-lived continuity notes between Claude Code sessions —
+# not a public artifact. STATUS.md is the authoritative project state.
+**/HANDOFF.md
+
+# --- runtime artifacts (keep dirs via .gitkeep) ---------------------------
+**/local-storage/*
+!**/local-storage/.gitkeep
+**/sent-mail/*
+!**/sent-mail/.gitkeep
+**/erp-sync-log/*
+!**/erp-sync-log/.gitkeep
+**/gmail-fixtures/*.generated.*
+
+# --- Python build / tools -------------------------------------------------
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+**/.coverage.*
+**/htmlcov
+**/.tox
+**/.nox
+**/dist
+**/build
+**/*.egg-info
+**/*.egg
+**/.venv
+**/venv
+**/env
+
+# --- OS / editor ----------------------------------------------------------
+**/.DS_Store
+**/Thumbs.db
+**/*.swp
+**/*.swo
+**/.idea
+**/.vscode
+**/*.iml
+
+# --- Playwright / screenshots --------------------------------------------
+**/.playwright-mcp
+**/playwright-report
+**/test-results
+**/*.png
+!**/app/static/*.png
+!**/app/static/**/*.png
+
+# --- Logs ----------------------------------------------------------------
+**/*.log
+**/seed-output.log
+
+# --- Personal working docs (not for the public repo) --------------------
+**/deployment-checklist.html
+
+# --- Local AI workspace ---------------------------------------------------
+# .claude/ contains hooks and rules that ARE meant to be checked in;
+# session-scoped artifacts and runtime locks under it are not.
+**/.claude/SCRATCHPAD.md
+**/.claude/compact-context.md
+**/.claude/sessions
+**/.claude/*.lock
+**/.claude/scheduled_tasks.lock
+
+# --- HuggingFace cache (just in case it leaks out of the docker volume) --
+**/.cache/huggingface
+fly.toml
