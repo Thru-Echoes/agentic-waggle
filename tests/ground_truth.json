@@ -1,0 +1,75 @@
+{
+  "_doc": "Curated ground truth for the model benchmark. Each case is a real fixture email from gmail-fixtures/ with hand-verified expected outputs. Used by scripts/benchmark_models.py.",
+  "cases": [
+    {
+      "account_id": "ari.solomon@meridian-apiaries.test",
+      "message_id": "6ce17c59bc4f219328",
+      "expected_intent": "order_request",
+      "expected_customer_substring": "St. Agnes",
+      "expected_line_item_count_min": 1
+    },
+    {
+      "account_id": "dana.chen@meridian-apiaries.test",
+      "message_id": "3c33fefacf5e1c1b36",
+      "expected_intent": "order_request",
+      "expected_customer_substring": "Wenatchee",
+      "expected_line_item_count_min": 1
+    },
+    {
+      "account_id": "elena.vasquez@meridian-apiaries.test",
+      "message_id": "3acab59f45030c467f",
+      "expected_intent": "order_request",
+      "expected_customer_substring": null,
+      "expected_line_item_count_min": 1
+    },
+    {
+      "account_id": "isa.martinez@meridian-apiaries.test",
+      "message_id": "d7800545b84f727792",
+      "expected_intent": "order_request",
+      "expected_customer_substring": null,
+      "expected_line_item_count_min": 1
+    },
+    {
+      "account_id": "jun-ho.park@meridian-apiaries.test",
+      "message_id": "5a06ede03a4ba2386a",
+      "expected_intent": "order_request",
+      "expected_customer_substring": "Sierra Crest",
+      "expected_line_item_count_min": 1
+    },
+    {
+      "account_id": "marcus.okafor@meridian-apiaries.test",
+      "message_id": "d6dee6c260972dd491",
+      "expected_intent": "order_request",
+      "expected_customer_substring": "Martinez",
+      "expected_line_item_count_min": 1
+    },
+    {
+      "account_id": "kai.okonkwo@meridian-apiaries.test",
+      "message_id": "98450c59347d820a3d",
+      "expected_intent": "order_request",
+      "expected_customer_substring": null,
+      "expected_line_item_count_min": 1
+    },
+    {
+      "account_id": "luz.garcia@meridian-apiaries.test",
+      "message_id": "80fd1ef4a1b261b7c1",
+      "expected_intent": "order_request",
+      "expected_customer_substring": null,
+      "expected_line_item_count_min": 1
+    },
+    {
+      "account_id": "devon.hale@meridian-apiaries.test",
+      "message_id": "e7afd9027141cd872f",
+      "expected_intent": "inquiry",
+      "expected_customer_substring": "Seven Acres",
+      "expected_line_item_count_min": 0
+    },
+    {
+      "account_id": "maya.whitfield@meridian-apiaries.test",
+      "message_id": "548c885554c24bc6c9",
+      "expected_intent": "inquiry",
+      "expected_customer_substring": null,
+      "expected_line_item_count_min": 0
+    }
+  ]
+}

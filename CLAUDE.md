@@ -50,6 +50,12 @@ Every command is idempotent. Every failure is loud.
 - **`e2e-testing.md`** — real pgvector, real sentence-transformers, real
   filesystem, real LLM when a key is set (explicit skip otherwise). No mocks
   of primary deps.
+- **`ui-verification.md`** — for any user-facing change, two layers required
+  before "done": (1) per-clickable subagent walk using Playwright MCP — one
+  subagent per link / button / form / HTMX trigger on each affected page,
+  (2) Playwright + pytest E2E coverage of happy path + edge cases + unusual
+  event sequences, type-checked with pyright. Both green, both reported in
+  the PR description or session summary.
 
 ## Architecture quick reference
 

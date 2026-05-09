@@ -60,6 +60,8 @@ test-results/
 *.png
 !app/static/*.png
 !app/static/**/*.png
+!docs/specs/*.png
+!docs/benchmarks/*.png
 
 # --- Logs ----------------------------------------------------------------
 *.log

@@ -1,17 +1,67 @@
-<h3>Extraction failed <span class="badge alarm">{{ failure.stage }}</span></h3>
+{#
+  Two visual states:
 
-<p class="muted">
-  Source email: <strong>{{ email.subject }}</strong> from {{ email.from_address }}.
-</p>
+  1. INFORMATIONAL — when the email was correctly classified as a non-order
+     intent (inquiry, complaint, etc). Not an error. Calm card explaining
+     that there's nothing to extract.
 
-<p><strong>Reason:</strong> {{ failure.reason }}</p>
+  2. RESTRAINED ERROR — when extraction genuinely failed at a later stage.
+     Plain-language reason, no JSON dump, no internal references.
+#}
+{% if failure.not_order_intent %}
+  <h3>This message isn't an order request</h3>
 
-{% if failure.partial_state %}
-  <h4>Partial state at failure</h4>
-  <pre class="code-block">{{ failure.partial_state | tojson(indent=2) }}</pre>
+  <p class="muted">
+    {{ email.subject }} · from {{ email.from_address }}
+  </p>
+
+  <p>
+    {% if failure.not_order_intent == "inquiry" %}
+      This message looks like a customer inquiry — they're asking about
+      products, pricing, or availability rather than placing an order.
+      The order agent only drafts orders from explicit purchase requests.
+    {% elif failure.not_order_intent == "complaint" %}
+      This message looks like a complaint or concern. It's better routed
+      to customer service than turned into an order.
+    {% else %}
+      This message doesn't appear to request a specific purchase, so
+      there's nothing for the order agent to draft.
+    {% endif %}
+  </p>
+
+  <p class="muted">
+    If you believe this is in fact an order request, you can draft one
+    manually from the customer's page.
+  </p>
+
+{% else %}
+  <h3>We couldn't draft an order from this email</h3>
+
+  <p class="muted">
+    {{ email.subject }} · from {{ email.from_address }}
+  </p>
+
+  <p>
+    {% if failure.stage == "extract_customer" %}
+      We couldn't identify which customer this email is about.
+    {% elif failure.stage == "match_customer" %}
+      The customer named in this email doesn't match any of your records.
+      {% if failure.partial_state and failure.partial_state.customer_match and failure.partial_state.customer_match.candidates_considered %}
+        Closest matches: {{ failure.partial_state.customer_match.candidates_considered[:3] | join(", ") }}.
+      {% endif %}
+    {% elif failure.stage == "extract_line_items" %}
+      We couldn't pick out specific items being requested in the message body.
+    {% elif failure.stage == "resolve_skus" %}
+      The items mentioned didn't match anything in your catalog.
+    {% elif failure.stage == "compute_total" %}
+      The order total worked out to zero — please double-check the line items.
+    {% else %}
+      Something went wrong while processing this email.
+    {% endif %}
+  </p>
+
+  <p class="muted">
+    You can draft this order manually from the customer's page once you've
+    confirmed the details.
+  </p>
 {% endif %}
-
-<p class="muted">
-  Fail-loud is the policy — see <code>.claude/rules/fail-loud.md</code>. The
-  agent did not silently produce a half-order.
-</p>

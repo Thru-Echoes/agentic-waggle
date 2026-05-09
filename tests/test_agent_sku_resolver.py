@@ -27,6 +27,8 @@ class TestResolveLineItem:
             description="whatever",
             quantity=5,
             mentioned_sku=target_sku,
+            evidence=[],
+            confidence=1.0,
         )
         resolved = resolve_line_item(db, req)
         assert resolved is not None
@@ -39,10 +41,17 @@ class TestResolveLineItem:
         req = RequestedLineItem(
             description="Italian queen bees",
             quantity=10,
+            evidence=["Italian queen bees"],
+            confidence=0.9,
         )
         resolved = resolve_line_item(db, req)
         if resolved is not None:
             assert resolved.match_method == "fuzzy_name"
+            # Evidence combines the source quote(s) from req.evidence with
+            # the matched catalog name — at least one of each, ≥ 1 entries.
+            assert len(resolved.evidence) >= 1
+            # And produces a confidence in [0,1]
+            assert 0.0 <= resolved.confidence <= 1.0
 
     def test_quantity_preserved_on_match(self, db, faker_instance) -> None:
         _seed(db, faker_instance)
@@ -52,6 +61,8 @@ class TestResolveLineItem:
             description=products[0].name,
             quantity=42,
             mentioned_sku=products[0].sku,
+            evidence=[],
+            confidence=1.0,
         )
         resolved = resolve_line_item(db, req)
         assert resolved is not None
@@ -67,6 +78,8 @@ class TestResolveLineItem:
             quantity=1,
             mentioned_sku=products[0].sku,
             mentioned_unit_price_usd=override_price,
+            evidence=[],
+            confidence=1.0,
         )
         resolved = resolve_line_item(db, req)
         assert resolved is not None
@@ -77,6 +90,8 @@ class TestResolveLineItem:
         req = RequestedLineItem(
             description="space laser for moonlighting",
             quantity=1,
+            evidence=["space laser for moonlighting"],
+            confidence=0.5,
         )
         # The specific outcome depends on the catalog but the threshold
         # floor is what makes this safe. Guard against someone tuning it
@@ -94,10 +109,12 @@ class TestResolveLineItem:
         svc_sku = services_gen.generate()[0].sku
 
         prod_req = RequestedLineItem(
-            description="any", quantity=1, mentioned_sku=prod_sku
+            description="any", quantity=1, mentioned_sku=prod_sku,
+            evidence=[], confidence=1.0,
         )
         svc_req = RequestedLineItem(
-            description="any", quantity=1, mentioned_sku=svc_sku
+            description="any", quantity=1, mentioned_sku=svc_sku,
+            evidence=[], confidence=1.0,
         )
         prod_res = resolve_line_item(db, prod_req)
         svc_res = resolve_line_item(db, svc_req)

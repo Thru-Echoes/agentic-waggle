@@ -55,7 +55,7 @@ from agents.schemas import (
     RequestedLineItem,
     ResolvedLineItem,
 )
-from agents.sku_resolver import _load_catalog, resolve_line_item
+from agents.sku_resolver import _load_catalog, resolve_line_item, resolve_via_llm
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class _State(TypedDict):
 
     email: EmailInput
     db: Session  # stashed here so nodes can query without dependency injection
-    model: BaseChatModel
+    models: dict[str, BaseChatModel]  # stage_name -> per-stage chat model
     notes: list[str]
     intent: NotRequired[IntentClassification]
     customer_ref: NotRequired[CustomerReference]
@@ -83,17 +83,15 @@ class _State(TypedDict):
 # ---------------------------------------------------------------------------
 
 
-def _build_chat_model() -> BaseChatModel:
-    """Return a configured LangChain chat model chosen by `Settings.llm_provider`.
+def _build_chat_model(model_name: str | None = None) -> BaseChatModel:
+    """Return a configured LangChain chat model.
 
-    Reuses `providers.llm.resolve_provider()` so the "which provider?"
-    decision is single-sourced. Raises `LLMConfigurationError` if no key is
-    set, matching `providers.llm`'s fail-loud contract.
+    When ``model_name`` is provided it overrides the configured default —
+    used by the order extractor to assign different models to each stage
+    (see Settings.extract_*_model fields).
 
-    Why kwargs built dynamically: pyright stubs for langchain-openai and
-    langchain-anthropic lag behind the 1.x runtime API (which prefers
-    `model=`). Passing a **kwargs dict sidesteps that stub check without
-    silencing genuine type errors.
+    Reuses ``providers.llm.resolve_provider()`` so the provider decision
+    is single-sourced. Raises ``LLMConfigurationError`` if no key is set.
     """
     from app.config import get_settings
     from providers.llm import resolve_provider
@@ -103,14 +101,14 @@ def _build_chat_model() -> BaseChatModel:
 
     if provider == "openai":
         openai_kwargs: dict[str, Any] = {
-            "model": settings.openai_model,
+            "model": model_name or settings.openai_model,
             "temperature": 0.0,
             "timeout": 60,
             "max_retries": 2,
         }
         return ChatOpenAI(**openai_kwargs)
     anthropic_kwargs: dict[str, Any] = {
-        "model": settings.anthropic_model,
+        "model": model_name or settings.anthropic_model,
         "temperature": 0.0,
         "timeout": 60,
         "max_retries": 2,
@@ -118,20 +116,49 @@ def _build_chat_model() -> BaseChatModel:
     return ChatAnthropic(**anthropic_kwargs)
 
 
+def _build_stage_models() -> dict[str, BaseChatModel]:
+    """Build one model per extraction stage, keyed by stage name.
+
+    Stages: ``intent``, ``customer``, ``items``, ``resolver_fallback``.
+    Each pulls its model name from Settings so per-stage tuning happens
+    in one place.
+    """
+    from app.config import get_settings
+
+    s = get_settings()
+    return {
+        "intent": _build_chat_model(s.extract_intent_model),
+        "customer": _build_chat_model(s.extract_customer_model),
+        "items": _build_chat_model(s.extract_items_model),
+        "resolver_fallback": _build_chat_model(s.extract_resolver_fallback_model),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Nodes
 # ---------------------------------------------------------------------------
 
 
-def _fail(stage: str, reason: str, state: _State) -> dict[str, Any]:
+def _fail(
+    stage: str,
+    reason: str,
+    state: _State,
+    *,
+    not_order_intent: str | None = None,
+) -> dict[str, Any]:
     """Populate an ExtractionFailure and short-circuit to END.
 
     Returns a partial state update (LangGraph node convention).
+
+    `not_order_intent` is set when classify_intent rejects the email as a
+    valid non-order intent (inquiry/complaint/other). Drives the UI's
+    informational-vs-error split.
     """
     snapshot = {k: _jsonable(v) for k, v in state.items() if k not in {"db", "model"}}
     failure = ExtractionFailure(
         stage=stage,  # type: ignore[arg-type]
         reason=reason,
+        not_order_intent=not_order_intent,  # type: ignore[arg-type]
         partial_state=snapshot,
     )
     return {"failure": failure, "result": failure}
@@ -149,14 +176,17 @@ def _jsonable(v: Any) -> Any:
 def classify_intent_node(state: _State) -> dict[str, Any]:
     """Decide if the email is an order request at all."""
     email = state["email"]
-    structured = state["model"].with_structured_output(IntentClassification)
+    structured = state["models"]["intent"].with_structured_output(IntentClassification)
     prompt = (
-        "Classify the intent of this email from a beekeeping CRM customer.\n\n"
+        "Classify this email's intent.\n\n"
+        f"Subject: {email.subject}\n"
         f"From: {email.from_address}\n"
-        f"Subject: {email.subject}\n\n"
         f"Body:\n{email.body_text}\n\n"
-        "Return one of: order_request | inquiry | complaint | other. "
-        "Include a short reasoning."
+        "Fields to fill:\n"
+        "- intent: one of order_request | inquiry | complaint | other\n"
+        "- reasoning: one short sentence\n"
+        "- evidence: 1-2 verbatim quotes from the body that justify your choice (raw text, no surrounding quotation marks)\n"
+        "- confidence: 0.0-1.0 self-rated"
     )
     result: IntentClassification = structured.invoke(prompt)  # type: ignore[assignment]
     update: dict[str, Any] = {"intent": result}
@@ -167,6 +197,7 @@ def classify_intent_node(state: _State) -> dict[str, Any]:
                 "classify_intent",
                 f"Email classified as {result.intent!r}, not an order.",
                 {**state, **update},  # type: ignore[misc]
+                not_order_intent=result.intent,
             ),
         }
     return update
@@ -175,16 +206,17 @@ def classify_intent_node(state: _State) -> dict[str, Any]:
 def extract_customer_reference_node(state: _State) -> dict[str, Any]:
     """Pull the customer-identifier string out of the email body."""
     email = state["email"]
-    structured = state["model"].with_structured_output(CustomerReference)
+    structured = state["models"]["customer"].with_structured_output(CustomerReference)
     prompt = (
-        "Find the customer / company name this email is about.\n\n"
+        "Find the customer or company this email is about.\n\n"
+        f"Subject: {email.subject}\n"
         f"From: {email.from_address}\n"
-        f"Subject: {email.subject}\n\n"
         f"Body:\n{email.body_text}\n\n"
-        "Extract `mentioned_name` verbatim — do not correct spelling or "
-        "expand abbreviations. Set `requester_is_customer=True` unless the "
-        "email is clearly from a broker or third party asking on behalf of "
-        "a different customer."
+        "Fields to fill:\n"
+        "- mentioned_name: verbatim — do NOT correct spelling or expand abbreviations\n"
+        "- requester_is_customer: true unless the sender is a broker or third party\n"
+        "- evidence: 1-2 verbatim quotes from the body containing the company name (raw text, no surrounding quotation marks)\n"
+        "- confidence: 0.0-1.0 self-rated"
     )
     result: CustomerReference = structured.invoke(prompt)  # type: ignore[assignment]
     if not result.mentioned_name.strip():
@@ -232,16 +264,24 @@ class _LineItemsEnvelope(BaseModel):
 def extract_line_items_node(state: _State) -> dict[str, Any]:
     """Ask the LLM to pull structured line items from the email body."""
     email = state["email"]
-    structured = state["model"].with_structured_output(_LineItemsEnvelope)
+    structured = state["models"]["items"].with_structured_output(_LineItemsEnvelope)
     prompt = (
-        "Extract every line item requested in this email. Return an empty "
-        "items list if nothing specific is asked for.\n\n"
+        "Extract every line item the email requests for purchase.\n\n"
         f"Body:\n{email.body_text}\n\n"
-        "For each item: `description` (verbatim noun phrase), `quantity` "
-        "(integer ≥ 1 — infer from wording like 'a few' = 3, 'dozen' = 12), "
-        "`mentioned_sku` (only if a specific SKU code is cited — e.g. "
-        "POL_ALMOND_PREMIUM), `mentioned_unit_price_usd` (only if the email "
-        "cites a price)."
+        "For each item, fill these fields:\n"
+        "- description: the noun phrase ONLY. DO NOT include the quantity.\n"
+        "    correct:   {description: \"hives\",         quantity: 40}\n"
+        "    incorrect: {description: \"40 hives\",      quantity: 40}\n"
+        "    incorrect: {description: \"a dozen queens\", quantity: 12}\n"
+        "- quantity: integer >= 1; infer 'a few' = 3, 'dozen' = 12, etc.\n"
+        "- mentioned_sku: SKU code ONLY if literally cited in the email\n"
+        "  (e.g. POL_ALMOND_PREMIUM). Otherwise null.\n"
+        "- mentioned_unit_price_usd: only if the email states a price for\n"
+        "  this specific item. Otherwise null.\n"
+        "- evidence: 1-2 verbatim quotes from the body justifying THIS item\n"
+        "    (raw text, no surrounding quotation marks).\n"
+        "- confidence: 0.0-1.0 self-rated.\n\n"
+        "Return an empty items list if no specific items are requested."
     )
     envelope: _LineItemsEnvelope = structured.invoke(prompt)  # type: ignore[assignment]
     if not envelope.items:
@@ -254,13 +294,24 @@ def extract_line_items_node(state: _State) -> dict[str, Any]:
 
 
 def resolve_skus_node(state: _State) -> dict[str, Any]:
-    """Resolve every RequestedLineItem to a real Product or Service SKU."""
+    """Resolve every RequestedLineItem to a real Product or Service SKU.
+
+    Pipeline per item:
+        1. Deterministic exact + fuzzy match (``resolve_line_item``).
+        2. If miss: LLM fallback (``resolve_via_llm``). Accepted only when
+           the LLM's self-confidence clears LLM_CONFIDENCE_FLOOR.
+        3. Still no match: drop the item and add a plain-language note to
+           extraction_concerns so the salesperson sees what was skipped.
+    """
     db = state["db"]
     catalog = _load_catalog(db)
     resolved: list[ResolvedLineItem] = []
     unresolved: list[str] = []
     for req in state["requested_items"]:
         r = resolve_line_item(db, req, catalog=catalog)
+        if r is None:
+            # LLM fallback — last chance before declaring this item unresolved.
+            r = resolve_via_llm(req, catalog, state["models"]["resolver_fallback"])
         if r is None:
             unresolved.append(req.description)
             continue
@@ -270,8 +321,8 @@ def resolve_skus_node(state: _State) -> dict[str, Any]:
         return _fail(
             "resolve_skus",
             (
-                f"Could not resolve any of the requested items: {unresolved}. "
-                f"Catalog has {len(catalog)} SKUs."
+                f"Could not match any of the requested items to the "
+                f"catalog: {unresolved}."
             ),
             {**state, "resolved_items": []},  # type: ignore[misc]
         )
@@ -279,13 +330,14 @@ def resolve_skus_node(state: _State) -> dict[str, Any]:
     notes = list(state.get("notes", []))
     if unresolved:
         notes.append(
-            f"Dropped {len(unresolved)} unresolved line item(s): {unresolved}."
+            f"Dropped {len(unresolved)} unresolved item(s) — please verify: "
+            f"{', '.join(unresolved)}."
         )
     return {"resolved_items": resolved, "notes": notes}
 
 
 def assemble_draft_node(state: _State) -> dict[str, Any]:
-    """Compute totals, build the final OrderDraft."""
+    """Compute totals + aggregate per-step confidences, build the final OrderDraft."""
     items = state["resolved_items"]
     total = sum(
         (li.unit_price_usd * li.quantity for li in items),
@@ -297,12 +349,22 @@ def assemble_draft_node(state: _State) -> dict[str, Any]:
             f"Computed non-positive total {total}.",
             state,
         )
+    # Aggregate overall confidence: min across intent + customer + line items.
+    # Any weak step drags the overall down — conservative by design so the
+    # backend can flag low-confidence drafts for human review.
+    intent_conf = state["intent"].confidence
+    customer_conf = state["customer_match"].confidence
+    item_confs = [li.confidence for li in items]
+    overall_confidence = min([intent_conf, customer_conf] + item_confs)
+
     draft = OrderDraft(
         customer=state["customer_match"],
+        customer_evidence=list(state["customer_ref"].evidence),
         line_items=items,
         total_usd=total,
+        overall_confidence=overall_confidence,
+        extraction_concerns=list(state.get("notes", [])),
         source_email_external_id=state["email"].external_id,
-        extraction_notes=list(state.get("notes", [])),
     )
     return {"result": draft}
 
@@ -384,7 +446,7 @@ def run_order_extraction(email: EmailInput, db: Session) -> ExtractionResult:
     initial: _State = {
         "email": email,
         "db": db,
-        "model": _build_chat_model(),
+        "models": _build_stage_models(),
         "notes": [],
     }
     final_state: _State = graph.invoke(initial)  # type: ignore[assignment]

@@ -73,3 +73,21 @@ class TestFindMatch:
         # Guard against someone tuning these to zero accidentally.
         assert AMBIGUITY_MARGIN > 0
         assert SCORE_MIN > 0
+
+    def test_confidence_derived_from_score_band(self, db, faker_instance) -> None:
+        """CustomerMatch.confidence in [0,1] is derived from the fuzzy score band.
+
+        Backend-only field. Used by OrderDraft.overall_confidence aggregation.
+        """
+        self._seed(db, faker_instance)
+        # Exact match → high confidence
+        exact = find_customer_match(db, "O'Reilly Family Orchards")
+        assert exact.confidence >= 0.9
+
+        # No match → confidence 0.0 (sub-threshold score)
+        miss = find_customer_match(db, "Completely Unrelated Business")
+        assert miss.confidence == 0.0
+
+        # All matches stay within [0,1]
+        assert 0.0 <= exact.confidence <= 1.0
+        assert 0.0 <= miss.confidence <= 1.0

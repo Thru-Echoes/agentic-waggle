@@ -28,6 +28,30 @@ SCORE_MIN = 60.0
 AMBIGUITY_MARGIN = 6.0
 
 
+def _score_to_confidence(score: float) -> float:
+    """Map a rapidfuzz 0-100 score to a confidence in [0.0, 1.0].
+
+    Banded calibration:
+        - score >= 95  → 0.95   (effectively certain)
+        - score >= 85  → 0.85   (high)
+        - score >= 75  → 0.70   (medium)
+        - score >= SCORE_MIN (60) → 0.50  (low but acceptable)
+        - else → 0.0   (no match)
+
+    Pure function. Backend-only — feeds OrderDraft.overall_confidence
+    aggregation; never rendered.
+    """
+    if score >= 95:
+        return 0.95
+    if score >= 85:
+        return 0.85
+    if score >= 75:
+        return 0.70
+    if score >= SCORE_MIN:
+        return 0.50
+    return 0.0
+
+
 def normalize_name(name: str) -> str:
     """Canonicalize a customer name for fuzzy comparison.
 
@@ -112,11 +136,13 @@ def find_customer_match(db: Session, mentioned_name: str) -> CustomerMatch:
     top_names = [r[1]["name"] for r in ranked[:5]]
 
     if not ranked or ranked[0][0] < SCORE_MIN:
+        miss_score = ranked[0][0] if ranked else 0.0
         return CustomerMatch(
             customer_id=None,
             customer_name=None,
             erp_customer_no=None,
-            score=ranked[0][0] if ranked else 0.0,
+            score=miss_score,
+            confidence=_score_to_confidence(miss_score),
             ambiguous=False,
             candidates_considered=top_names,
         )
@@ -132,6 +158,7 @@ def find_customer_match(db: Session, mentioned_name: str) -> CustomerMatch:
         customer_name=best_row["name"],
         erp_customer_no=best_row["erp_customer_no"],
         score=best_score,
+        confidence=_score_to_confidence(best_score),
         ambiguous=ambiguous,
         candidates_considered=top_names,
     )

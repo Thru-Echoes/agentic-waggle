@@ -1,0 +1,33 @@
+# Waggle's Postgres-with-pgvector sidecar app.
+#
+# Reachable only from inside the Fly org's 6PN at waggle-pg.internal:5432
+# (no [http_service] / [[services]] block = no public ports).
+#
+# POSTGRES_HOST_AUTH_METHOD=trust skips password auth — safe here because
+# the only network path to this app is private 6PN. If you ever expose
+# Postgres publicly, switch to POSTGRES_PASSWORD as a Fly secret.
+#
+# pg15 matches docker-compose.yml so local and prod stay in lockstep.
+
+app            = 'waggle-pg'
+primary_region = 'iad'
+
+[build]
+  image = 'pgvector/pgvector:pg15'
+
+[env]
+  POSTGRES_USER             = 'waggle'
+  POSTGRES_DB               = 'waggle'
+  POSTGRES_HOST_AUTH_METHOD = 'trust'
+  # Subdirectory pattern: the volume mount root may contain lost+found
+  # (ext4), which makes initdb refuse to run. PGDATA in a subdir is
+  # always-empty on first boot.
+  PGDATA = '/var/lib/postgresql/data/pgdata'
+
+[[mounts]]
+  source      = 'pgdata'
+  destination = '/var/lib/postgresql/data'
+
+[[vm]]
+  size   = 'shared-cpu-1x'
+  memory = '1gb'

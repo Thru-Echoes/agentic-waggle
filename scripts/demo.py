@@ -195,9 +195,9 @@ def run_agent(db: Session, email: EmailInput) -> OrderDraft:
             f"      - {li.sku:30s}  qty={li.quantity:<5d}  "
             f"@${li.unit_price_usd:<10}  via {li.match_method}"
         )
-    if result.extraction_notes:
-        print("    notes:")
-        for n in result.extraction_notes:
+    if result.extraction_concerns:
+        print("    concerns:")
+        for n in result.extraction_concerns:
             print(f"      • {n}")
     return result
 

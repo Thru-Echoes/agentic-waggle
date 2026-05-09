@@ -163,6 +163,11 @@ def _openai_complete(
         call_kwargs["tools"] = tools
     call_kwargs.update(kwargs)
 
+    # gpt-5.x family rejects ``max_tokens`` and requires
+    # ``max_completion_tokens``. Translate transparently so callers can
+    # keep passing the older idiom.
+    if "max_tokens" in call_kwargs and "max_completion_tokens" not in call_kwargs:
+        call_kwargs["max_completion_tokens"] = call_kwargs.pop("max_tokens")
     resp = client.chat.completions.create(**call_kwargs)
     choice = resp.choices[0].message
     tool_calls: list[dict[str, Any]] = []

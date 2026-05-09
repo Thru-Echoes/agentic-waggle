@@ -1,27 +1,32 @@
+{# Order draft card. No developer language; no JSON dumps; evidence
+   affordances render inline as expandable details so the user can ask
+   "where did this come from?" without leaving the page. #}
+
 <h3>Order draft <span class="badge sap">{{ draft.state.value }}</span></h3>
 
 <p class="muted">
-  Source email: <strong>{{ email.subject }}</strong> from {{ email.from_address }}.
+  {{ email.subject }} · from {{ email.from_address }}
 </p>
 
-<h4>Customer match</h4>
+<h4>Customer</h4>
 <p>
   <strong>{{ draft.customer.customer_name or "(unmatched)" }}</strong>
   {% if draft.customer.erp_customer_no %}
     · <code>{{ draft.customer.erp_customer_no }}</code>
   {% endif %}
-  · score
-  <span class="badge {{ 'sap' if draft.customer.score >= 90 else ('alarm' if draft.customer.ambiguous else '') }}">
-    {{ "%.0f"|format(draft.customer.score) }}
-  </span>
   {% if draft.customer.ambiguous %}
-    <span class="badge alarm">ambiguous</span>
+    <span class="badge alarm">close-call match</span>
   {% endif %}
 </p>
-{% if draft.customer.candidates_considered %}
-  <p class="muted">
-    Candidates considered: {{ draft.customer.candidates_considered|join(", ") }}
-  </p>
+{% if draft.customer_evidence %}
+  <details class="evidence">
+    <summary class="muted">Why this customer?</summary>
+    <ul class="muted">
+      {% for q in draft.customer_evidence %}
+        <li>"{{ q }}"</li>
+      {% endfor %}
+    </ul>
+  </details>
 {% endif %}
 
 <h4>Line items</h4>
@@ -29,20 +34,30 @@
   <thead>
     <tr>
       <th>SKU</th>
-      <th>Description</th>
+      <th>Item</th>
       <th>Qty</th>
       <th>Unit price</th>
-      <th>Match method</th>
     </tr>
   </thead>
   <tbody>
     {% for li in draft.line_items %}
       <tr>
         <td><code>{{ li.sku }}</code></td>
-        <td>{{ li.source_description }}</td>
+        <td>
+          {{ li.source_description }}
+          {% if li.evidence %}
+            <details class="evidence">
+              <summary class="muted">Source</summary>
+              <ul class="muted">
+                {% for q in li.evidence %}
+                  <li>"{{ q }}"</li>
+                {% endfor %}
+              </ul>
+            </details>
+          {% endif %}
+        </td>
         <td>{{ li.quantity }}</td>
         <td>${{ "{:,.2f}".format(li.unit_price_usd) }}</td>
-        <td><span class="badge">{{ li.match_method }}</span></td>
       </tr>
     {% endfor %}
   </tbody>
@@ -54,15 +69,9 @@
   {% endif %}
 </p>
 
-{% if draft.extraction_notes %}
-  <h4>Notes</h4>
+{% if draft.extraction_concerns %}
+  <h4>Things to double-check</h4>
   <ul class="muted">
-    {% for n in draft.extraction_notes %}<li>{{ n }}</li>{% endfor %}
+    {% for n in draft.extraction_concerns %}<li>{{ n }}</li>{% endfor %}
   </ul>
 {% endif %}
-
-<p class="muted">
-  <em>Draft is not persisted</em> — confirm-and-persist is still open work. To
-  drive an order through the full FSM (DRAFT → … → SYNCED_TO_ERP) end-to-end,
-  run <code>docker compose run --rm seed python -m scripts.demo</code>.
-</p>

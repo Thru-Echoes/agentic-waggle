@@ -6,6 +6,11 @@ fail-loud-but-deliberate pattern from `tests/test_provider_llm.py`.
 
 Tests run the full 6-node pipeline with real LLM calls, real rapidfuzz,
 real pgvector. No mocks.
+
+Includes the evidence-grounding invariant test that exercises the
+Grounded mixin's promise: every customer-evidence quote must appear
+literally in the email body. Line-item evidence is partly catalog-
+sourced so we relax the assertion there.
 """
 # pyright: reportMissingImports=false
 from __future__ import annotations
@@ -115,3 +120,80 @@ class TestOrderExtractionFailurePaths:
         # the LLM infers a real company from partial info — assert either.
         if isinstance(result, ExtractionFailure):
             assert result.stage in {"match_customer", "resolve_skus"}
+
+
+def _normalize_quote(q: str) -> str:
+    """Strip wrapping quote marks the LLM sometimes adds around evidence quotes."""
+    s = q.strip()
+    for ch in ('"', "'", "“", "”", "‘", "’"):
+        s = s.removeprefix(ch).removesuffix(ch)
+    return s.strip()
+
+
+class TestEvidenceGrounding:
+    """The Grounded mixin's promise: evidence quotes are verbatim from source.
+
+    Customer-evidence comes from the LLM-only customer-extraction step and
+    must be a literal substring of the email body (modulo surrounding
+    quote-mark decoration the LLM sometimes adds). Line-item evidence is
+    partly catalog-sourced (for fuzzy/llm matches) so we check that at
+    least one piece is grounded.
+    """
+
+    def test_customer_evidence_grounded_in_source(
+        self,
+        db,
+        faker_instance,
+        require_llm_api_key,
+    ) -> None:
+        _seed_minimum(db, faker_instance)
+
+        email = EmailInput(
+            external_id="evidence-1",
+            from_address="orders@oreilly-orchards.test",
+            subject="Pollination order",
+            body_text=(
+                "Hi team,\n\n"
+                "We're O'Reilly Family Orchards and we need 400 hives for "
+                "premium almond pollination during the Feb 1 bloom window. "
+                "Please confirm pricing.\n\n"
+                "Thanks — Sean"
+            ),
+        )
+        result = run_order_extraction(email, db)
+        if isinstance(result, OrderDraft) and result.customer_evidence:
+            for q in result.customer_evidence:
+                assert _normalize_quote(q) in email.body_text, (
+                    f"customer evidence quote not in source body: {q!r}"
+                )
+
+    def test_at_least_one_line_item_evidence_grounded(
+        self,
+        db,
+        faker_instance,
+        require_llm_api_key,
+    ) -> None:
+        _seed_minimum(db, faker_instance)
+
+        email = EmailInput(
+            external_id="evidence-2",
+            from_address="orders@oreilly-orchards.test",
+            subject="Pollination order",
+            body_text=(
+                "Hi, O'Reilly Family Orchards here — we need 400 hives "
+                "for the almond bloom on Feb 1. Confirm soonest."
+            ),
+        )
+        result = run_order_extraction(email, db)
+        if isinstance(result, OrderDraft):
+            # Line-item evidence combines source + catalog. We require that
+            # at least one quote per line item appears in the email body
+            # (i.e. the LLM cited a real source quote, not only catalog text).
+            for li in result.line_items:
+                if li.evidence:
+                    assert any(
+                        _normalize_quote(q) in email.body_text for q in li.evidence
+                    ), (
+                        f"no line-item evidence grounded in source for "
+                        f"sku={li.sku!r}: evidence={li.evidence}"
+                    )

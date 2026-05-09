@@ -1,8 +1,19 @@
 """Pydantic I/O models for the LangGraph order-extraction agent.
 
-These are the types crossing agent ⇄ caller boundaries. The LangChain
-chat model uses `with_structured_output(Model)` on several of them to get
-validated Pydantic responses instead of raw JSON.
+These types cross agent ⇄ caller boundaries. The OpenAI chat model fills
+several of them via native structured outputs (`response_format`).
+
+`Grounded` is the mixin that enforces verbatim-quote evidence + a
+self-rated confidence on every LLM-filled schema. It exists because
+LLM extractions without grounding have no defense against hallucination;
+forcing the model to cite quotes from the source it just read makes
+hallucinations structurally visible — the runtime audits that each
+quoted string appears literally in the source, and rejects extractions
+that cite text the source doesn't contain.
+
+`confidence` is backend-only. Never rendered in user-facing templates.
+It feeds monitoring, low-confidence flagging, and the model-comparison
+benchmark.
 """
 from __future__ import annotations
 
@@ -16,11 +27,60 @@ from pydantic import BaseModel, ConfigDict, Field
 from db.enums import OrderState
 
 
+# ---------------------------------------------------------------------------
+# Grounded mixin — evidence + confidence on every LLM-filled schema
+# ---------------------------------------------------------------------------
+
+
+class Grounded(BaseModel):
+    """Mixin for any schema the LLM is asked to fill.
+
+    Subclasses inherit two required fields:
+
+    - ``evidence: list[str]`` — verbatim quotes from the source text that
+      justify the populated fields. The runtime audits that each quote
+      appears literally in the source string. Quotes that don't are
+      flagged and the extraction is rejected.
+    - ``confidence: float`` — the LLM's self-rated confidence in the
+      extraction (0.0–1.0). Backend-only.
+
+    Empty evidence is allowed structurally (some deterministic resolver
+    paths don't have a quote to cite), but the prompts make clear that
+    LLM-filled instances should populate it.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    evidence: list[str] = Field(
+        ...,
+        description=(
+            "Verbatim quotes from the source text that justify the "
+            "populated fields. Audited at runtime — quotes that don't "
+            "appear literally in the source mark the extraction as "
+            "hallucinated."
+        ),
+    )
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Self-rated confidence in this extraction (0.0-1.0). "
+            "Backend-only — never rendered in user templates."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Inputs
+# ---------------------------------------------------------------------------
+
+
 class EmailInput(BaseModel):
     """Shape the extractor expects for an inbound email.
 
-    `external_id` is preserved on `OrderDraft.source_email_external_id`
-    so downstream persistence can look up the `synced_emails` row.
+    ``external_id`` is preserved on ``OrderDraft.source_email_external_id``
+    so downstream persistence can look up the ``synced_emails`` row.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -34,20 +94,20 @@ class EmailInput(BaseModel):
     body_text: str = Field(..., min_length=1, max_length=64_000)
 
 
-class IntentClassification(BaseModel):
+# ---------------------------------------------------------------------------
+# Per-node LLM-filled schemas (all Grounded)
+# ---------------------------------------------------------------------------
+
+
+class IntentClassification(Grounded):
     """First-node output: is this email asking for an order?"""
 
-    model_config = ConfigDict(frozen=True)
-
     intent: Literal["order_request", "inquiry", "complaint", "other"]
-    confidence: float = Field(..., ge=0.0, le=1.0)
     reasoning: str = Field(..., max_length=500)
 
 
-class CustomerReference(BaseModel):
+class CustomerReference(Grounded):
     """The customer string the email references (pre-resolution)."""
-
-    model_config = ConfigDict(frozen=True)
 
     mentioned_name: str = Field(
         ...,
@@ -63,8 +123,31 @@ class CustomerReference(BaseModel):
     )
 
 
+class RequestedLineItem(Grounded):
+    """One line item extracted from the email body (SKU unresolved)."""
+
+    description: str = Field(..., min_length=1, max_length=300)
+    quantity: int = Field(..., ge=1)
+    mentioned_sku: str | None = Field(
+        default=None,
+        description="SKU if the email cited one literally. Otherwise None.",
+    )
+    mentioned_unit_price_usd: Decimal | None = None
+
+
+# ---------------------------------------------------------------------------
+# Deterministic match output (carries confidence for aggregation; no evidence)
+# ---------------------------------------------------------------------------
+
+
 class CustomerMatch(BaseModel):
-    """Result of matching `CustomerReference.mentioned_name` against the DB."""
+    """Result of matching ``CustomerReference.mentioned_name`` against the DB.
+
+    Deterministic — does not inherit Grounded (no verbatim source quote
+    is available from a fuzzy-score lookup). Carries ``confidence``
+    derived from the score band so OrderDraft.overall_confidence can
+    fold it in alongside LLM-filled steps' confidences.
+    """
 
     model_config = ConfigDict(frozen=True)
 
@@ -73,6 +156,15 @@ class CustomerMatch(BaseModel):
     erp_customer_no: str | None = None
     score: float = Field(
         ..., ge=0.0, le=100.0, description="rapidfuzz 0-100 similarity."
+    )
+    confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Confidence in [0,1] derived from the fuzzy score band. "
+            "Backend-only — used to aggregate OrderDraft.overall_confidence."
+        ),
     )
     ambiguous: bool = Field(
         default=False,
@@ -84,24 +176,19 @@ class CustomerMatch(BaseModel):
     )
 
 
-class RequestedLineItem(BaseModel):
-    """One line item extracted from the email body (SKU unresolved)."""
-
-    model_config = ConfigDict(frozen=True)
-
-    description: str = Field(..., min_length=1, max_length=300)
-    quantity: int = Field(..., ge=1)
-    mentioned_sku: str | None = Field(
-        default=None,
-        description="SKU if the email cited one literally. Otherwise None.",
-    )
-    mentioned_unit_price_usd: Decimal | None = None
+# ---------------------------------------------------------------------------
+# Resolved item — Grounded so the LLM-fallback path can cite catalog evidence
+# ---------------------------------------------------------------------------
 
 
-class ResolvedLineItem(BaseModel):
-    """A RequestedLineItem after SKU lookup + pricing."""
+class ResolvedLineItem(Grounded):
+    """A RequestedLineItem after SKU lookup + pricing.
 
-    model_config = ConfigDict(frozen=True)
+    Inherits Grounded because the LLM-fallback resolver (called when
+    deterministic fuzzy match misses) produces evidence + confidence.
+    Deterministic resolutions (``exact_sku``, ``fuzzy_name``) populate
+    evidence as ``[]`` and confidence near 1.0.
+    """
 
     sku: str = Field(...)
     product_id: uuid.UUID | None = None
@@ -114,12 +201,20 @@ class ResolvedLineItem(BaseModel):
     )
 
 
+# ---------------------------------------------------------------------------
+# OrderDraft — final output, aggregates per-step confidences
+# ---------------------------------------------------------------------------
+
+
 class OrderDraft(BaseModel):
     """Final output of the extraction pipeline.
 
-    Mirrors the fields needed to INSERT a row into `orders` + its
-    `order_line_items`. State is fixed to EXTRACTED — downstream workflow
-    promotes it to UNDER_REVIEW / APPROVED etc.
+    Mirrors the fields needed to INSERT a row into ``orders`` plus its
+    ``order_line_items``. State is fixed to EXTRACTED — downstream
+    workflow promotes it through UNDER_REVIEW / APPROVED / etc.
+
+    ``overall_confidence`` is aggregated from per-step confidences using
+    ``min()`` — any weak step drags the overall down. Backend-only.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -128,22 +223,51 @@ class OrderDraft(BaseModel):
     customer: CustomerMatch
     line_items: list[ResolvedLineItem] = Field(..., min_length=1)
     total_usd: Decimal = Field(..., gt=Decimal("0"))
-    pollination_date: date | None = None
-    source_email_external_id: str | None = None
-    extraction_notes: list[str] = Field(
-        default_factory=list,
+    overall_confidence: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
         description=(
-            "Notes the agent recorded during extraction — ambiguous matches, "
-            "price guesses, etc. Surfaced in the /orders review UI."
+            "Aggregated confidence across intent + customer + each line "
+            "item. Backend-only — never rendered."
         ),
     )
+    extraction_concerns: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Plain-language notes about ambiguities, low-confidence steps, "
+            "or judgment calls the agent made. Surfaced in the order review "
+            "UI as items the salesperson should double-check."
+        ),
+    )
+    customer_evidence: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Verbatim quotes from the source email that named the customer "
+            "(sourced from the LLM customer-extraction step). Renders as a "
+            "'why this customer' tooltip in the order review UI."
+        ),
+    )
+    pollination_date: date | None = None
+    source_email_external_id: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Failure type
+# ---------------------------------------------------------------------------
 
 
 class ExtractionFailure(BaseModel):
     """Returned when the pipeline cannot produce a valid OrderDraft.
 
-    Fail-loud: routes that get this should surface it to the user rather
-    than persisting a half-order. `stage` identifies which node blocked.
+    Distinguished from success at the type level — callers must branch on
+    ``isinstance(result, OrderDraft)`` vs ``isinstance(result, ExtractionFailure)``.
+
+    The ``not_order_intent`` field is populated when ``stage='classify_intent'``
+    AND the email was classified as a valid non-order intent (inquiry,
+    complaint, other). The UI uses this to render an informational card
+    rather than an error card — receiving a question email is not a
+    failure of the system.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -157,6 +281,13 @@ class ExtractionFailure(BaseModel):
         "compute_total",
     ]
     reason: str = Field(..., max_length=1000)
+    not_order_intent: Literal["inquiry", "complaint", "other"] | None = Field(
+        default=None,
+        description=(
+            "Set when stage='classify_intent' and the email was a valid "
+            "non-order intent. Drives the UI's informational-vs-error split."
+        ),
+    )
     partial_state: dict = Field(
         default_factory=dict,
         description="Snapshot of the graph state at failure time.",

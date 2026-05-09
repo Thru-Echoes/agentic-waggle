@@ -64,11 +64,54 @@ class Settings(BaseSettings):
     )
     openai_model: str = Field(
         default="gpt-5.4-mini",
-        description="OpenAI chat model used when llm_provider=openai.",
+        description=(
+            "Default OpenAI chat model when no per-stage override is set. "
+            "Acts as a fallback for code paths that don't yet read a "
+            "per-stage field (e.g. MCP tools, future copilot work)."
+        ),
     )
     anthropic_model: str = Field(
         default="claude-sonnet-4-6",
         description="Anthropic chat model used when llm_provider=anthropic.",
+    )
+
+    # -- Per-stage model assignments (driven by the benchmark) ------------
+    # See docs/benchmarks/2026-05-08-extract-models.md for the rationale.
+    # Each stage gets the cheapest model that hits 100% accuracy at its
+    # complexity level, with evidence-grounding as a tie-breaker for
+    # stages whose output is rendered to the user.
+    extract_intent_model: str = Field(
+        default="gpt-5.4-mini",
+        description=(
+            "Model for the intent-classification stage. Fast model — "
+            "task is binary-ish and 100% accurate across all benchmarked candidates."
+        ),
+    )
+    extract_customer_model: str = Field(
+        default="gpt-5.4-mini",
+        description=(
+            "Model for the customer-reference extraction stage. Fast model "
+            "— output feeds a deterministic fuzzy match, so paraphrasing "
+            "in evidence is acceptable."
+        ),
+    )
+    extract_items_model: str = Field(
+        default="gpt-5.4-nano",
+        description=(
+            "Model for the line-items extraction stage. Nano variant chosen "
+            "because line-item evidence is rendered as user-facing 'Source' "
+            "tooltips and nano hit 90% verbatim-grounding in benchmark "
+            "(vs 0% for gpt-5.4-mini)."
+        ),
+    )
+    extract_resolver_fallback_model: str = Field(
+        default="gpt-5.5",
+        description=(
+            "Model for the LLM-fallback SKU resolver. Rare path (only when "
+            "deterministic fuzzy match misses) so the latency cost is "
+            "acceptable; gpt-5.5 chosen for highest evidence-grounding "
+            "rate (100%) on stages this complex."
+        ),
     )
 
     # -- Provider filesystem roots ----------------------------------------
