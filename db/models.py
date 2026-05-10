@@ -434,6 +434,87 @@ class OrderStateTransition(SQLModel, table=True):
     order: Mapped[Optional["Order"]] = Relationship(back_populates="transitions")
 
 
+# ---------------------------------------------------------------------------
+# Sales copilot: conversations + chat_turns
+# ---------------------------------------------------------------------------
+
+
+class Conversation(SQLModel, table=True):
+    """One sales-copilot session.
+
+    `salesperson_id` is nullable so anonymous demo sessions persist too.
+    `active_account_id` tracks which customer the conversation is currently
+    "anchored" on (last referenced or explicitly switched). `model_used`
+    is the most recent turn's model for observability rollups; per-turn
+    breakdown lives on chat_turns.
+    """
+
+    __tablename__: ClassVar[str] = "conversations"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    salesperson_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="users.id", nullable=True
+    )
+    active_account_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="customers.id", nullable=True
+    )
+    title: Optional[str] = Field(default=None, nullable=True)
+    model_used: Optional[str] = Field(default=None, nullable=True)
+    created_at: datetime = Field(default_factory=utc_now, nullable=False)
+    updated_at: datetime = Field(default_factory=utc_now, nullable=False)
+
+    turns: Mapped[list["ChatTurn"]] = Relationship(back_populates="conversation")
+
+
+class ChatTurn(SQLModel, table=True):
+    """One turn in a copilot conversation.
+
+    Append-only — turns are never edited after write. ``role`` is one of
+    ``user``, ``assistant``, ``system``, ``tool`` (CHECK-constrained at
+    the DB).
+
+    Variable-shape payloads land in JSONB:
+      - ``tool_calls``    — list of {tool_name, arguments, result_excerpt,
+                            latency_ms, tokens} records.
+      - ``evidence_used`` — verbatim quotes the assistant cited as
+                            grounding for its response.
+
+    Per-turn metrics (``tokens_input``, ``tokens_output``, ``cost_usd``,
+    ``latency_ms``) feed the agent-metrics admin dashboard.
+    """
+
+    __tablename__: ClassVar[str] = "chat_turns"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('user', 'assistant', 'system', 'tool')",
+            name="chat_turns_role_check",
+        ),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    conversation_id: uuid.UUID = Field(
+        foreign_key="conversations.id", nullable=False
+    )
+    role: str = Field(..., nullable=False)
+    text: str = Field(..., nullable=False)
+    tool_calls: list[dict[str, Any]] = Field(
+        default_factory=list,
+        sa_column=Column("tool_calls", JSONB, nullable=False, server_default="[]"),
+    )
+    evidence_used: list[str] = Field(
+        default_factory=list,
+        sa_column=Column("evidence_used", JSONB, nullable=False, server_default="[]"),
+    )
+    model: Optional[str] = Field(default=None, nullable=True)
+    tokens_input: int = Field(default=0, nullable=False)
+    tokens_output: int = Field(default=0, nullable=False)
+    cost_usd: Decimal = Field(default=Decimal("0"), nullable=False)
+    latency_ms: int = Field(default=0, nullable=False)
+    created_at: datetime = Field(default_factory=utc_now, nullable=False)
+
+    conversation: Mapped[Optional["Conversation"]] = Relationship(back_populates="turns")
+
+
 __all__ = [
     "utc_now",
     "Territory",
@@ -453,4 +534,6 @@ __all__ = [
     "Order",
     "OrderLineItem",
     "OrderStateTransition",
+    "Conversation",
+    "ChatTurn",
 ]
