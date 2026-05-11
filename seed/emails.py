@@ -25,13 +25,18 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import os
+
 from faker import Faker
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from seed.models import Apiarist, Customer, Email
 
-GMAIL_FIXTURE_ROOT = Path("/gmail-fixtures")
+# Resolution order (matches providers/inbox.py):
+#   1. ``INBOX_FIXTURE_ROOT`` env var (used by tests + local dev)
+#   2. ``/gmail-fixtures`` (Docker bind-mount)
+GMAIL_FIXTURE_ROOT = Path(os.environ.get("INBOX_FIXTURE_ROOT", "/gmail-fixtures"))
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "emails.json"
 
 

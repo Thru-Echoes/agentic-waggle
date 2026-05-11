@@ -25,7 +25,9 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import quote
 
-LOCAL_STORAGE_ROOT = Path("/local-storage")
+# Resolution order: ``STORAGE_ROOT`` env var (tests + local dev), then the
+# Docker bind-mount default.
+LOCAL_STORAGE_ROOT = Path(os.environ.get("STORAGE_ROOT", "/local-storage"))
 
 
 class StorageKeyError(ValueError):

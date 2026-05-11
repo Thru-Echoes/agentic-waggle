@@ -105,14 +105,9 @@ Rendered via Playwright from Mermaid sources in `../diagrams/source/`.
 
 ## Open / next
 
-- [ ] Initial git commit + push to `Thru-Echoes/agentic-waggle` (remote
-  configured; no commits yet).
 - [ ] Record a 60-90s screen capture of the demo for the portfolio site.
 - [ ] Optional: hosted live demo (Fly.io or similar). Requires a budget cap
   on the LLM key and a magic-link / basic-auth gate.
-- [ ] Phase E++: a confirm-and-persist UI for the **inbox** agent draft
-  (the copilot flow at `/copilot` now persists; `/inbox` still doesn't
-  write to `orders`).
 
 ## Phase F — sales copilot frontend (done 2026-05-10)
 
@@ -176,6 +171,76 @@ layer + confirm-and-persist drafts + two-layer UI verification.
 | `make test` (full) | 276 | 1 | Real LLM + real pgvector + real fs |
 | `pytest tests/test_e2e_copilot_browser.py` | 11 | 0 | Real Chromium |
 | `pyright` on touched files | 0 errors, 2 warnings | — | Same baseline as `app/routes/pages.py` |
+
+## Phase G — completion sweep (done 2026-05-11)
+
+Closes the remaining loose ends so the project is end-to-end whole: the
+inbox surface now confirms-and-persists like the copilot does, the MCP
+servers are smoke-tested + documented for client wiring, the demo
+walks every surface, and the README reflects the three-surface
+architecture.
+
+- [x] **Shared order-persist helper** —
+  `app/routes/_order_persistence.py` extracts `persist_order_from_draft`
+  + `resolve_default_apiarist` from the copilot route. Both `/copilot`
+  confirm and `/inbox` confirm now go through it.
+- [x] **Inbox confirm-and-persist** — `partials/agent_draft.html` now
+  ships with a Confirm form (round-trips the OrderDraft JSON through a
+  hidden field). New route `POST /inbox/confirm` validates the draft
+  back, persists via the shared helper, returns a confirm-result
+  partial. The Confirm button is disabled when the customer didn't
+  match (renders an inline "No customer match — cannot persist"
+  message instead of letting a FK-violating insert through).
+- [x] **MCP server smoke tests** — `tests/test_mcp_smoke.py` boots both
+  servers via `python -m mcp_servers.X`, asserts the FastMCP banner
+  appears, and confirms no import-time traceback.
+- [x] **MCP search_customer_reports coverage** — added
+  `TestSearchCustomerReports` to `tests/test_mcp_sales_copilot.py`
+  (was the one untested tool on either server).
+- [x] **.mcp.json.example** — copy-paste-ready MCP client config for
+  both servers; supports Claude Desktop, Claude Code, Codex, Cursor.
+- [x] **README sweep** — three-surface architecture description,
+  `/copilot` added to the HTML pages table, new copilot routes added
+  to the JSON API table, "Connect an MCP client" section with the
+  per-host config paths, MCP tool table.
+- [x] **`scripts/demo.py` extended to 7 steps** — adds `[6/7] Chat
+  copilot — programmatic conversation turn` (creates a conversation,
+  posts a turn through the orchestrator, persists user + assistant
+  ChatTurns) and `[7/7] MCP tool call — find_customer via fastmcp
+  Client`. End state exercises every surface.
+- [x] **Provider env-var fallbacks** — `providers/{inbox,erp,storage,mailer}.py`
+  + `seed/emails.py` now read `INBOX_FIXTURE_ROOT` / `ERP_LOG_ROOT` /
+  `STORAGE_ROOT` / `SENT_MAIL_ROOT` from env, falling back to the
+  Docker bind-mount paths. Enables running the demo + tests outside
+  Docker without rewriting the providers.
+- [x] **Playwright graceful skip** — both browser test fixtures now
+  skip cleanly when Chromium isn't installed (typical in CI / Docker),
+  with an actionable "run `playwright install chromium`" message
+  instead of a hard error.
+
+### Layer 1 verification — per-clickable subagent walk on the inbox confirm flow
+
+12/12 PASS on /copilot in Phase F + 8/8 PASS on the new /inbox confirm
+flow in Phase G. The /inbox walk verified: page load + Inbox nav
+highlight, Extract → draft render, Confirm form + draft_json hidden
+field, button enabled-when-matched / disabled-when-not, Confirm →
+"Saved" card, persistence verified in `/api/orders`, a second
+extract+confirm on a different email, and a malformed-JSON edge case
+returning "Could not save". Two full end-to-end round trips persisted
+real orders (Cascade Orchard Partners $77,700 / 3 items, Martinez &
+Sons Orchards $8,400 / 1 item).
+
+### Test counts after Phase G
+
+| Suite | Pass | Skip | Notes |
+|---|---|---|---|
+| `make test` (full) | 304 | 14 | 305 tests; 1 LLM-flaky (`test_customer_evidence_grounded_in_source` — passes on re-run); 14 skipped are Playwright tests that need Chromium-in-Docker |
+| `pytest tests/test_e2e_copilot_browser.py` | 11 | 0 | Real Chromium |
+| `pytest tests/test_e2e_inbox_browser.py` | 2 | 0 | Real Chromium |
+| `pytest tests/test_routes_inbox_confirm.py` | 6 | 0 | TestClient (no browser needed) |
+| `pytest tests/test_mcp_smoke.py` | 2 | 0 | stdio subprocess smoke |
+| `python -m scripts.demo` (end-to-end) | 7 / 7 steps | — | Inbox → agent → FSM → ERP → RAG follow-up → chat copilot → MCP tool, all pass |
+| `pyright` on every touched file | 0 errors, 14 warnings | — | Same baseline pattern (UUID-vs-ColumnElement) as the rest of `app/routes/` |
 
 ## Decisions open
 

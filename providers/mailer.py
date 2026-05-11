@@ -12,12 +12,15 @@ Returns the message id. Side effect: writes one JSON file per send.
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SENT_MAIL_ROOT = Path("/sent-mail")
+# Resolution order: ``SENT_MAIL_ROOT`` env var (tests + local dev), then
+# the Docker bind-mount default.
+SENT_MAIL_ROOT = Path(os.environ.get("SENT_MAIL_ROOT", "/sent-mail"))
 SENT_MAIL_ROOT.mkdir(parents=True, exist_ok=True)
 
 

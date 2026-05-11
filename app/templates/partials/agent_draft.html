@@ -75,3 +75,28 @@
     {% for n in draft.extraction_concerns %}<li>{{ n }}</li>{% endfor %}
   </ul>
 {% endif %}
+
+{# Confirm form: the draft JSON is round-tripped through a hidden field
+   so the server can re-validate it back into an OrderDraft and persist
+   without re-running the agent. Disabled when the customer didn't
+   resolve — persisting with customer_id=None would violate the FK. #}
+<div class="draft-actions" id="inbox-confirm-{{ draft.source_email_external_id or 'draft' }}">
+  <form
+    hx-post="/inbox/confirm"
+    hx-target="closest .draft-actions"
+    hx-swap="innerHTML"
+    hx-disabled-elt="find button"
+  >
+    <input type="hidden" name="draft_json" value="{{ draft.model_dump_json() }}">
+    {% if draft.customer.customer_id %}
+      <button type="submit" class="action confirm-order">Confirm &amp; save order</button>
+      <span class="htmx-indicator muted"> · saving…</span>
+    {% else %}
+      <button type="button" class="action confirm-order" disabled
+              title="Cannot save: the agent could not match this to a real customer.">
+        Confirm &amp; save order
+      </button>
+      <span class="muted">No customer match — cannot persist.</span>
+    {% endif %}
+  </form>
+</div>

@@ -52,6 +52,10 @@ from agents.copilot.orchestrator import get_copilot_response
 from agents.order_extractor import _build_chat_model
 from agents.schemas import OrderDraft
 from app.config import Settings, get_settings
+from app.routes._order_persistence import (
+    persist_order_from_draft,
+    resolve_default_apiarist,
+)
 from app.schemas.copilot import (
     ChatTurnOut,
     CitationOut,
@@ -62,17 +66,12 @@ from app.schemas.copilot import (
     ConversationOut,
     ToolCallOut,
 )
-from db.enums import OrderState, UserRole
 from db.models import (
     ChatTurn,
     Conversation,
     Customer,
     CustomerReport,
     CustomerSite,
-    Order,
-    OrderLineItem,
-    OrderStateTransition,
-    User,
     utc_now,
 )
 from db.session import get_db_session
@@ -472,41 +471,6 @@ def _maybe_title_conversation(
     db.commit()
 
 
-def _resolve_default_user(db: Session) -> User:
-    """Pick a deterministic apiarist to attribute persisted rows to.
-
-    The demo doesn't have per-user auth, so confirmed orders / reports
-    need an author. We pick the first active apiarist alphabetically by
-    email — deterministic across runs.
-
-    Raises ``LookupError`` if no apiarist exists (per fail-loud policy —
-    seed must run before the copilot can persist anything).
-    """
-    row = db.execute(
-        text(
-            """
-            SELECT id FROM users
-            WHERE role = :role AND is_active = TRUE
-            ORDER BY email
-            LIMIT 1
-            """
-        ),
-        {"role": UserRole.APIARIST.value},
-    ).mappings().first()
-    if row is None:
-        raise LookupError(
-            "No active apiarist user available to attribute the persisted row. "
-            "Did seed.apiarists run? Set up at least one User with role=apiarist."
-        )
-    user = db.get(User, _coerce_uuid(row["id"]))
-    if user is None:
-        raise LookupError(
-            "Apiarist row vanished between SELECT and ORM load — "
-            "concurrent delete?"
-        )
-    return user
-
-
 def _resolve_active_customer_site(
     db: Session, customer_id: uuid.UUID
 ) -> CustomerSite:
@@ -786,42 +750,10 @@ def _persist_order_draft(*, turn_id: uuid.UUID, db: Session) -> ConfirmResultOut
             ),
         )
 
-    user = _resolve_default_user(db)
-
-    order = Order(
-        customer_id=draft.customer.customer_id,
-        user_id=user.id,
-        state=draft.state,
-        pollination_date=draft.pollination_date,
-        total_usd=draft.total_usd,
-        source_email_id=None,
+    order = persist_order_from_draft(
+        draft, db,
+        metadata={"source": "copilot_confirm", "turn_id": str(turn_id)},
     )
-    db.add(order)
-    db.commit()
-    db.refresh(order)
-
-    for li in draft.line_items:
-        item = OrderLineItem(
-            order_id=order.id,
-            product_id=li.product_id,
-            service_id=li.service_id,
-            sku=li.sku,
-            quantity=li.quantity,
-            unit_price_usd=li.unit_price_usd,
-        )
-        db.add(item)
-    db.commit()
-
-    transition = OrderStateTransition(
-        order_id=order.id,
-        from_state=None,
-        to_state=draft.state,
-        actor_id=user.id,
-        metadata_={"source": "copilot_confirm", "turn_id": str(turn_id)},
-    )
-    db.add(transition)
-    db.commit()
-
     return ConfirmResultOut(
         ok=True,
         persisted_id=order.id,
@@ -882,7 +814,7 @@ def _persist_report_draft(*, turn_id: uuid.UUID, db: Session) -> ConfirmResultOu
             ),
         )
 
-    user = _resolve_default_user(db)
+    user = resolve_default_apiarist(db)
     site = _resolve_active_customer_site(db, customer_id)
 
     visit_date: date

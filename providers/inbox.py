@@ -29,12 +29,19 @@ on mark_read.
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-FIXTURE_ROOT = Path("/gmail-fixtures")
+# Resolution order:
+#   1. ``INBOX_FIXTURE_ROOT`` env var (used by tests + local dev outside Docker)
+#   2. ``/gmail-fixtures`` (the bind-mount path inside the Docker container)
+#
+# Resolved at import time. Tests that want to override per-test can still
+# ``monkeypatch.setattr("providers.inbox.FIXTURE_ROOT", tmp_path)``.
+FIXTURE_ROOT = Path(os.environ.get("INBOX_FIXTURE_ROOT", "/gmail-fixtures"))
 
 
 @dataclass

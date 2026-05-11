@@ -133,6 +133,52 @@ class TestListRecentOrders:
             assert data[0].created_at >= data[1].created_at
 
 
+class TestSearchCustomerReports:
+    """The vector-search tool — exercises pgvector cosine via real embeddings."""
+
+    @pytest.mark.asyncio
+    async def test_returns_hits_with_meta(
+        self, db, faker_instance
+    ) -> None:
+        # Need the embeddings/chunks corpus to exist for search to work.
+        from seed import inspections as inspections_gen
+        from seed import embeddings as embeddings_gen
+        from db.models import CustomerSite, User
+        _seed_copilot_corpus(db, faker_instance)
+        sites_orm = list(db.query(CustomerSite).all())  # type: ignore[attr-defined]
+        users_orm = list(db.query(User).all())  # type: ignore[attr-defined]
+        inspections = inspections_gen.generate(faker_instance, sites_orm, users_orm)
+        inspections_gen.persist(db, inspections)
+        embeddings_gen.run(db)
+        db.commit()
+
+        async with Client(server) as client:
+            result = await client.call_tool(
+                "search_customer_reports",
+                {"query": "varroa mite count and treatment", "top_k": 3},
+            )
+        data = result.data
+        assert isinstance(data, list)
+        if data:
+            # Schema fields present on each hit.
+            assert data[0].chunk_id
+            assert data[0].content
+            assert 0.0 <= float(data[0].score) <= 1.0
+
+    @pytest.mark.asyncio
+    async def test_empty_corpus_returns_empty_list(
+        self, db, faker_instance
+    ) -> None:
+        # No customer-report seed → no chunks → empty results, not an error.
+        _seed_copilot_corpus(db, faker_instance)
+        async with Client(server) as client:
+            result = await client.call_tool(
+                "search_customer_reports",
+                {"query": "irrelevant text"},
+            )
+        assert result.data == []
+
+
 class TestDraftFollowupEmail:
     @pytest.mark.asyncio
     async def test_skips_if_no_llm_key(

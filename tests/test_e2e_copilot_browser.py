@@ -160,9 +160,20 @@ def _split_sql(sql: str) -> list[str]:
 
 @pytest.fixture(scope="session")
 def browser() -> Iterator[Browser]:
-    """One Chromium browser instance shared across the session."""
+    """One Chromium browser instance shared across the session.
+
+    Skips with an actionable message when the Chromium binary isn't
+    installed (typical in CI / Docker — run ``playwright install
+    chromium`` first). The Python package being installed is not enough.
+    """
     with sync_playwright() as pw:
-        b = pw.chromium.launch(headless=True)
+        try:
+            b = pw.chromium.launch(headless=True)
+        except Exception as exc:
+            pytest.skip(
+                "Chromium binary not available — run `playwright install "
+                f"chromium` first. Error: {exc.__class__.__name__}"
+            )
         try:
             yield b
         finally:

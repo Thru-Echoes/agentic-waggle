@@ -1,4 +1,4 @@
-"""Waggle — 5-minute end-to-end demo orchestrator.
+"""Waggle — end-to-end demo orchestrator. Walks every surface of the stack.
 
 Usage (from inside the seed/api container, or the local conda env with
 DATABASE_URL pointing at the Waggle DB):
@@ -9,22 +9,31 @@ DATABASE_URL pointing at the Waggle DB):
 
 Walks through (each step is labeled in the output):
 
-    [1/5] Preflight   — DB reachable, pgvector present, seed data loaded.
-    [2/5] Inbox pull  — fetch one unread inbound email via providers.inbox.
-    [3/5] Agent       — run the LangGraph extraction pipeline on the email.
-    [4/5] FSM + ERP   — persist the OrderDraft, drive it DRAFT→…→SYNCED_TO_ERP,
-                        log the ERP call via providers.erp.
-    [5/5] Copilot     — search customer reports + draft a follow-up email.
+    [1/7] Preflight       — DB reachable, pgvector present, seed data loaded.
+    [2/7] Inbox pull      — fetch one unread inbound email via providers.inbox.
+    [3/7] Agent           — run the LangGraph extraction pipeline on the email.
+    [4/7] FSM + ERP       — persist the OrderDraft, drive it DRAFT→…→SYNCED_TO_ERP,
+                            log the ERP call via providers.erp.
+    [5/7] RAG follow-up   — search customer reports + draft a follow-up email
+                            (legacy copilot path — still useful for portfolio).
+    [6/7] Chat copilot    — open a conversation, post a turn through the
+                            orchestrator, persist user + assistant ChatTurns,
+                            print the assistant reply.
+    [7/7] MCP tool call   — invoke a sales-copilot MCP tool via fastmcp's
+                            in-process Client so the demo reaches the
+                            Model Context Protocol surface too.
 
 Anything missing (no inbox fixture, no LLM API key, unseeded DB) is a
 hard failure with an actionable message. There is no silent-skip mode.
 
 Side effects:
     * DB writes: one `orders` row, one `order_line_items` row per resolved
-      line item, one `order_state_transitions` per FSM step.
+      line item, one `order_state_transitions` per FSM step, one
+      `conversations` row plus two `chat_turns` rows for the chat copilot step.
     * Filesystem: appends to `/erp-sync-log/YYYYMMDD.jsonl` and writes one
       JSON file to `/sent-mail/`.
-    * LLM: 3-5 Anthropic/OpenAI calls for the agent + 1 for the follow-up.
+    * LLM: 3-5 Anthropic/OpenAI calls for the agent + 1 for the RAG follow-up
+      + 1-3 for the chat copilot turn + (potentially) 1 for the MCP tool.
 """
 # pyright: reportMissingImports=false
 from __future__ import annotations
@@ -414,27 +423,176 @@ def copilot_qna(db: Session, draft: OrderDraft) -> None:
 
 def run(account_id: str, message_id: str | None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
-    _banner("Waggle — 5-minute end-to-end demo")
+    _banner("Waggle — end-to-end demo")
 
     with session_scope() as db:
-        _step("1/5", "Preflight")
+        _step("1/7", "Preflight")
         preflight(db)
 
-        _step("2/5", "Inbound email")
+        _step("2/7", "Inbound email")
         email = pull_email(account_id, message_id)
 
-        _step("3/5", "LangGraph order extraction")
+        _step("3/7", "LangGraph order extraction")
         draft = run_agent(db, email)
 
-        _step("4/5", "Persist + FSM + ERP sync")
+        _step("4/7", "Persist + FSM + ERP sync")
         order_id = persist_and_advance(db, draft)
         _ = order_id
 
-        _step("5/5", "Sales Copilot Q&A + follow-up")
+        _step("5/7", "RAG search + follow-up email")
         copilot_qna(db, draft)
 
-    _banner("Demo complete — order landed, ERP logged, follow-up drafted.")
+        _step("6/7", "Chat copilot — programmatic conversation turn")
+        chat_copilot_turn(db, draft)
+
+    # MCP step opens its own session_scope inside the tool implementation,
+    # so we run it outside the orchestrator's session block.
+    _step("7/7", "MCP tool call — find_customer via fastmcp Client")
+    import asyncio
+    asyncio.run(mcp_tool_demo(draft))
+
+    _banner("Demo complete — every surface exercised end-to-end.")
     return 0
+
+
+# ---------------------------------------------------------------------------
+# Step 6 — chat copilot programmatic turn
+# ---------------------------------------------------------------------------
+
+
+def chat_copilot_turn(db: Session, draft: OrderDraft) -> None:
+    """Open a conversation, post a turn through the orchestrator, persist.
+
+    Mirrors what ``POST /copilot/turns`` does at the route layer but
+    without standing up a webserver — we go straight through the
+    orchestrator and write ``chat_turns`` rows directly.
+
+    Side effects: 1 INSERT on ``conversations``, 2 INSERTs on
+    ``chat_turns`` (user + assistant), 1-3 LLM calls.
+    """
+    from datetime import datetime, timezone
+
+    from agents.copilot.account_resolver import build_account_index
+    from agents.copilot.orchestrator import get_copilot_response
+    from agents.order_extractor import _build_chat_model
+    from app.config import get_settings
+
+    settings = get_settings()
+    models = {
+        "router": _build_chat_model(settings.copilot_router_model),
+        "main": _build_chat_model(settings.copilot_main_model),
+        "report": _build_chat_model(settings.copilot_report_model),
+    }
+    account_index = build_account_index(db)
+
+    customer_name = draft.customer.customer_name or "this customer"
+    user_text = (
+        f"What can you tell me about {customer_name}? Summarize their most "
+        "recent visit notes and flag anything I should bring up next time."
+    )
+
+    # Conversation + user turn
+    conv_id = uuid.uuid4()
+    now = datetime.now(timezone.utc)
+    db.execute(
+        text(
+            "INSERT INTO conversations (id, active_account_id, created_at, updated_at) "
+            "VALUES (:id, :acct, :ts, :ts)"
+        ),
+        {
+            "id": str(conv_id),
+            "acct": str(draft.customer.customer_id) if draft.customer.customer_id else None,
+            "ts": now,
+        },
+    )
+    user_turn_id = uuid.uuid4()
+    db.execute(
+        text(
+            "INSERT INTO chat_turns (id, conversation_id, role, text, "
+            "tool_calls, evidence_used, created_at) "
+            "VALUES (:id, :cid, 'user', :t, "
+            "CAST('[]' AS jsonb), CAST('[]' AS jsonb), :ts)"
+        ),
+        {"id": str(user_turn_id), "cid": str(conv_id), "t": user_text, "ts": now},
+    )
+    print(f"    user turn: {user_text!r}")
+
+    # Orchestrator
+    response = get_copilot_response(
+        user_text=user_text,
+        db=db,
+        models=models,
+        account_index=account_index,
+        active_account_id=draft.customer.customer_id,
+    )
+
+    # Assistant turn — store the response text plus the recorded tool calls.
+    import json as _json
+    assistant_turn_id = uuid.uuid4()
+    tool_calls_json = _json.dumps(
+        [tc.model_dump(mode="json") for tc in response.tool_calls]
+    )
+    evidence_json = _json.dumps(list(response.evidence_used))
+    db.execute(
+        text(
+            "INSERT INTO chat_turns (id, conversation_id, role, text, "
+            "tool_calls, evidence_used, model, latency_ms, created_at) "
+            "VALUES (:id, :cid, 'assistant', :t, "
+            "CAST(:tc AS jsonb), CAST(:ev AS jsonb), :m, :lat, :ts)"
+        ),
+        {
+            "id": str(assistant_turn_id),
+            "cid": str(conv_id),
+            "t": response.text,
+            "tc": tool_calls_json,
+            "ev": evidence_json,
+            "m": response.model,
+            "lat": response.latency_ms,
+            "ts": datetime.now(timezone.utc),
+        },
+    )
+    print(f"    conversation: {conv_id}")
+    print(f"    model: {response.model}  · latency: {response.latency_ms} ms")
+    print(f"    tool calls: {', '.join(tc.tool_name for tc in response.tool_calls) or '(none)'}")
+    print(f"    assistant:")
+    print(_indent(response.text, "      "))
+
+
+# ---------------------------------------------------------------------------
+# Step 7 — MCP tool call (via fastmcp in-process Client)
+# ---------------------------------------------------------------------------
+
+
+async def mcp_tool_demo(draft: OrderDraft) -> None:
+    """Invoke a Sales-Copilot MCP tool against the running database.
+
+    Uses fastmcp's in-process ``Client`` — the same protocol an external
+    MCP client (Claude Desktop, Codex) would use, minus the stdio hop.
+    Picks ``find_customer`` for a deterministic, no-LLM tool call.
+
+    Side effects: SELECTs against the DB inside the tool. No writes.
+    """
+    from fastmcp import Client
+
+    from mcp_servers.sales_copilot_server import server
+
+    if not draft.customer.customer_name:
+        print("    (no customer name on the draft; skipping MCP tool demo)")
+        return
+
+    async with Client(server) as client:
+        result = await client.call_tool(
+            "find_customer",
+            {"name_or_alias": draft.customer.customer_name, "top_k": 3},
+        )
+    hits = result.data or []
+    print(f"    tool: find_customer  · query: {draft.customer.customer_name!r}")
+    print(f"    hits: {len(hits)}")
+    for h in hits[:3]:
+        print(
+            f"      - {h.name:35s}  erp_no={h.erp_customer_no}  "
+            f"segment={h.market_segment}"
+        )
 
 
 def main(argv: list[str] | None = None) -> int:

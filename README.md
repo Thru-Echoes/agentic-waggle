@@ -2,9 +2,15 @@
 
 > *The agentic CRM for the people who move the bees.*
 
-**Waggle** is an agentic CRM for a synthetic commercial-beekeeping domain — Meridian Apiaries & Pollination Services. 
+**Waggle** is an agentic CRM for a synthetic commercial-beekeeping domain — Meridian Apiaries & Pollination Services.
 
-It showcases a LangGraph order-extraction agent, two MCP servers (Copilot for Sales team + Customer Reports), and a local RAG stack (pgvector + sentence-transformers), wrapped in a FastAPI + Jinja/HTMX frontend.
+It surfaces the same data three ways, so every layer of the stack is visible end-to-end:
+
+1. **An inbox + agent flow** — open `/inbox`, click *Extract* on an inbound email, watch the LangGraph order-extraction pipeline draft a structured order with evidence quotes, then *Confirm* to persist it.
+2. **A chat copilot at `/copilot`** — a Jinja+HTMX chat UI that routes each turn to one of four tools (RAG-grounded query, order draft, customer-report draft, command), persists every conversation, and lets the salesperson confirm drafts inline.
+3. **Two MCP servers** — `mcp_servers/sales_copilot_server.py` and `mcp_servers/customer_reports_server.py` expose the same data over the Model Context Protocol so any MCP client (Claude Desktop, Codex, Cursor, …) can do customer lookup, vector search, fleet-health aggregation, and email drafting.
+
+All three share the same first-class providers (`vector_search`, `inbox`, `erp`, `mailer`, `storage`, `llm`), the same Postgres + pgvector store, and the same fail-loud policy (`.claude/rules/fail-loud.md`).
 
 The name comes from the **waggle dance** — how bees tell each other where the nectar is. In Waggle, it's how agents tell each other where the data is.
 
@@ -35,8 +41,12 @@ make seed                         # populate 40 customers, 150 orders, 40 inspec
 make demo                         # start the api at http://localhost:5001
 ```
 
-Open `http://localhost:5001` and click around: dashboard → inbox → "Extract"
-on any pollination request to drive the live LangGraph agent.
+Open `http://localhost:5001` and click around:
+
+- **Dashboard** — counts, FSM state breakdown, recent activity.
+- **Copilot** — chat with Waggle. Ask a question, draft an order, log a visit report. Each turn is persisted; drafts are confirm-and-save.
+- **Inbox** — synthetic inbound mail. Click *Extract* on a row to run the LangGraph agent, then *Confirm* to persist the drafted order.
+- **Customers / Orders / Customer reports / ERP log** — the underlying data.
 
 Full reset:
 ```bash
@@ -135,7 +145,8 @@ agentic-mcp-crm/
 | URL | What it is |
 |---|---|
 | `/` | Dashboard — customer / order / customer-report counts, FSM state breakdown, recent activity |
-| `/inbox` | Synthetic inbound mail; click *Extract* to run the LangGraph agent live and see the resulting order draft inline |
+| `/copilot` | Three-pane chat UI (rail + thread + composer) for the sales copilot. Each turn is persisted; drafts (orders / visit reports) render inline with a *Confirm & save* button |
+| `/inbox` | Synthetic inbound mail; click *Extract* to run the LangGraph agent live and see the resulting order draft inline, then *Confirm* to persist it to `orders` |
 | `/customers` | Customer directory, market segments, ERP numbers |
 | `/orders` | Filterable by FSM state |
 | `/customer-reports` | Apiary inspections; click a row to see the full narrative + varroa / disease detail |
@@ -150,6 +161,9 @@ agentic-mcp-crm/
 | `GET  /api/customer-reports`, `GET /api/customer-reports/{id}` | List + detail |
 | `POST /api/agent/extract` | Run LangGraph extraction on an `EmailInput`; returns `OrderDraft` or `ExtractionFailure` |
 | `POST /api/search` | Cosine search against `chunks` via pgvector + sentence-transformers |
+| `GET  /api/copilot/conversations`, `GET /api/copilot/conversations/{id}` | Sales-copilot conversations (read) |
+| `POST /api/copilot/conversations` | Create a conversation programmatically |
+| `POST /api/copilot/turns/{turn_id}/confirm-order`, `…/confirm-report` | Persist a copilot-drafted order or visit report |
 | `GET  /health`, `GET /ready` | Liveness / readiness probes (root, not under `/api`) |
 
 OpenAPI docs are at `/docs`; raw schema at `/openapi.json`.
@@ -180,6 +194,13 @@ Two servers live under `mcp_servers/`. They are stand-alone Python entry
 points, not part of the FastAPI process — they speak the
 [Model Context Protocol](https://modelcontextprotocol.io/) over stdio.
 
+| Server | Tools |
+|---|---|
+| `mcp_servers.sales_copilot_server` | `find_customer`, `list_customer_sites`, `list_recent_orders`, `search_customer_reports`, `draft_followup_email` |
+| `mcp_servers.customer_reports_server` | `extract_from_narrative`, `query_by_disease`, `query_by_varroa_threshold`, `aggregate_fleet_health` |
+
+### Run a server directly
+
 ```bash
 # Sales Copilot — customer/site lookup, customer-report search, email drafting
 docker compose run --rm seed python -m mcp_servers.sales_copilot_server
@@ -188,10 +209,31 @@ docker compose run --rm seed python -m mcp_servers.sales_copilot_server
 docker compose run --rm seed python -m mcp_servers.customer_reports_server
 ```
 
-Wire either of them into Claude Code / Desktop, MCP Inspector, or another MCP
-client by configuring it to launch the command above. The servers will
-hold a session open on stdio and respond to tool calls. They share the
-same `DATABASE_URL` and providers as the API.
+### Connect an MCP client
+
+A ready-to-edit config lives in [`.mcp.json.example`](.mcp.json.example).
+Copy it into your MCP client's config location:
+
+| Client | Config path |
+|---|---|
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) |
+| Claude Code (CLI) | project `.mcp.json` |
+| Codex | `~/.codex/mcp.json` |
+| Cursor | project `.cursor/mcp.json` |
+
+Then fill in:
+
+- `cwd` — absolute path to your local clone of this repo.
+- `DATABASE_URL` — point at the host-mapped Postgres
+  (`postgresql://agentic_mcp_crm:agentic_mcp_crm@localhost:5433/agentic_mcp_crm`
+  when running via `make up`).
+- `OPENAI_API_KEY` — for tools that call the LLM
+  (`draft_followup_email`, `extract_from_narrative`).
+
+The servers hold a session open on stdio and respond to tool calls. They
+share the same `DATABASE_URL` and providers as the FastAPI app, so an
+order persisted via `/copilot` or `/inbox` is immediately visible to an
+MCP `list_recent_orders` call.
 
 ## Guardrails
 

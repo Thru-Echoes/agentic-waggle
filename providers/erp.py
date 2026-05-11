@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import json
 import uuid
+import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,7 +46,10 @@ from typing import Any, Iterator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-ERP_LOG_ROOT = Path("/erp-sync-log")
+# Resolution order: ``ERP_LOG_ROOT`` env var (tests + local dev), then the
+# Docker bind-mount default. Module-load creates the dir so call sites
+# don't have to.
+ERP_LOG_ROOT = Path(os.environ.get("ERP_LOG_ROOT", "/erp-sync-log"))
 ERP_LOG_ROOT.mkdir(parents=True, exist_ok=True)
 
 

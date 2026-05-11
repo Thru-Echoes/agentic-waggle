@@ -22,6 +22,8 @@ from sqlmodel import Session
 from agents.order_extractor import run_order_extraction
 from agents.schemas import EmailInput, ExtractionFailure, OrderDraft
 from app.config import Settings, get_settings
+from app.routes._order_persistence import persist_order_from_draft
+from app.schemas.copilot import ConfirmResultOut
 from db.enums import OrderState
 from db.models import Customer, Order, CustomerReport
 from db.session import get_db_session
@@ -237,10 +239,12 @@ def inbox_extract(
 ) -> HTMLResponse:
     """HTMX action — fetch one fixture email and run the LangGraph agent.
 
-    Returns a Jinja partial: either `agent_draft.html` for an OrderDraft or
-    `agent_failure.html` for an ExtractionFailure. Side effects: one or more
-    LLM calls, no DB writes (the draft is not persisted; that's still
-    Phase E).
+    Returns a Jinja partial: either ``agent_draft.html`` (which now
+    includes a Confirm button) for an OrderDraft or ``agent_failure.html``
+    for an ExtractionFailure. The draft itself is not persisted until the
+    user clicks Confirm — see ``inbox_confirm`` below.
+
+    Side effects: one or more LLM calls, no DB writes.
     """
     inbox = InboxClient()
     msg = inbox.fetch(account_id, message_id)
@@ -262,6 +266,76 @@ def inbox_extract(
         request,
         "partials/agent_failure.html",
         {"failure": result, "email": msg},
+    )
+
+
+@router.post("/inbox/confirm", response_class=HTMLResponse)
+def inbox_confirm(
+    request: Request,
+    draft_json: str = Form(...),
+    db: Session = Depends(get_db_session),
+) -> HTMLResponse:
+    """HTMX action — persist a previously-extracted OrderDraft.
+
+    The draft JSON is round-tripped from the agent_draft partial's hidden
+    field (no server-side cache, no new table — the OrderDraft model is
+    re-validated and a row is inserted into ``orders`` plus its line
+    items + initial state transition).
+
+    Side effects: 1 INSERT on ``orders``, N on ``order_line_items``,
+    1 on ``order_state_transitions``.
+
+    Failure modes (rendered as a ``Could not save`` card):
+      * Malformed JSON
+      * Draft customer didn't resolve (``customer_id is None``)
+    """
+    try:
+        draft = OrderDraft.model_validate_json(draft_json)
+    except Exception as exc:
+        result = ConfirmResultOut(
+            ok=False,
+            persisted_id=None,
+            message=f"Could not save: invalid draft payload ({exc.__class__.__name__}).",
+        )
+        return templates.TemplateResponse(
+            request,
+            "partials/copilot_confirm_result.html",
+            {"result": result, "kind": "order"},
+        )
+
+    if draft.customer.customer_id is None:
+        result = ConfirmResultOut(
+            ok=False,
+            persisted_id=None,
+            message=(
+                "Could not save: the agent did not match this to a real "
+                "customer. Re-run extraction or pick the customer manually."
+            ),
+        )
+        return templates.TemplateResponse(
+            request,
+            "partials/copilot_confirm_result.html",
+            {"result": result, "kind": "order"},
+        )
+
+    order = persist_order_from_draft(
+        draft, db,
+        source_email_id=None,
+        metadata={"source": "inbox_confirm"},
+    )
+    result = ConfirmResultOut(
+        ok=True,
+        persisted_id=order.id,
+        message=(
+            f"Saved order for {draft.customer.customer_name} — "
+            f"{len(draft.line_items)} items, ${draft.total_usd:,.2f}, "
+            f"state {draft.state.value}."
+        ),
+    )
+    return templates.TemplateResponse(
+        request,
+        "partials/copilot_confirm_result.html",
+        {"result": result, "kind": "order"},
     )
 
 
