@@ -1,0 +1,45 @@
+{# Inline customer-report draft card with Confirm. Receives `draft` (CustomerReportDraft) + `turn_id`. #}
+<div class="draft-header">
+  <strong>Customer report draft</strong>
+  {% if draft.varroa_pct is not none %}
+    <span class="badge {% if draft.varroa_pct >= 3 %}alarm{% else %}sap{% endif %}">
+      varroa {{ "%.1f"|format(draft.varroa_pct) }}%
+    </span>
+  {% endif %}
+</div>
+
+<dl class="draft-fields">
+  {% if draft.customer_id_hint %}
+    <dt>Customer hint</dt>
+    <dd>{{ draft.customer_id_hint }}</dd>
+  {% endif %}
+  {% if draft.visit_date %}
+    <dt>Visit date</dt>
+    <dd>{{ draft.visit_date.date().isoformat() if draft.visit_date.__class__.__name__ == 'datetime' else draft.visit_date }}</dd>
+  {% endif %}
+</dl>
+
+{% if draft.observations %}
+  <h4>Observations</h4>
+  <ul class="bullet">
+    {% for o in draft.observations %}<li>{{ o }}</li>{% endfor %}
+  </ul>
+{% endif %}
+
+{% if draft.action_items %}
+  <h4>Follow-ups</h4>
+  <ul class="bullet">
+    {% for a in draft.action_items %}<li>{{ a }}</li>{% endfor %}
+  </ul>
+{% endif %}
+
+<form
+  hx-post="/copilot/turns/{{ turn_id }}/confirm-report"
+  hx-target="#draft-report-{{ turn_id }}"
+  hx-swap="innerHTML"
+  hx-disabled-elt="find button"
+  class="draft-actions"
+>
+  <button type="submit" class="action confirm-report">Confirm &amp; save report</button>
+  <span class="htmx-indicator muted"> · saving…</span>
+</form>

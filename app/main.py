@@ -20,7 +20,16 @@ from fastapi.staticfiles import StaticFiles
 
 from app.auth import BasicAuthMiddleware
 from app.config import Settings, get_settings
-from app.routes import agent, customers, health, orders, pages, search, customer_reports
+from app.routes import (
+    agent,
+    copilot,
+    customers,
+    customer_reports,
+    health,
+    orders,
+    pages,
+    search,
+)
 from app.schemas.common import ProblemDetail
 
 log = logging.getLogger(__name__)
@@ -65,9 +74,11 @@ def create_app() -> FastAPI:
     app.include_router(customer_reports.router, prefix="/api")
     app.include_router(search.router, prefix="/api")
     app.include_router(agent.router, prefix="/api")
+    app.include_router(copilot.api_router, prefix="/api")
 
     # Server-rendered HTML at root.
     app.include_router(pages.router)
+    app.include_router(copilot.html_router)
 
     @app.exception_handler(Exception)
     async def _problem_detail_handler(request: Request, exc: Exception) -> JSONResponse:

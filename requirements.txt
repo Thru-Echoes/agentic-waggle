@@ -59,3 +59,8 @@ redis>=5.0
 pytest>=8.0
 pytest-asyncio>=0.23
 anyio>=4.0
+# Playwright + pytest-playwright power the Layer-2 UI verification
+# (browser-driven E2E) per `.claude/rules/ui-verification.md`. The
+# Chromium binary is downloaded with `playwright install chromium`.
+playwright>=1.50
+pytest-playwright>=0.7

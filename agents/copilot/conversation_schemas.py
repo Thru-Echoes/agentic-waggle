@@ -21,7 +21,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from agents.schemas import Grounded
+from agents.schemas import Grounded, OrderDraft
 
 
 # ---------------------------------------------------------------------------
@@ -250,3 +250,31 @@ class CopilotResponse(BaseModel):
     tokens_output: int = Field(default=0, ge=0)
     cost_usd: Decimal = Field(default=Decimal("0"))
     latency_ms: int = Field(default=0, ge=0)
+    # Optional draft payloads — present when the orchestrator successfully
+    # extracted an order or visit-report draft for the user to confirm.
+    # The route layer stores these inside the assistant ChatTurn's
+    # ``tool_calls`` JSONB so the confirm endpoint can re-hydrate the draft
+    # by id without a separate drafts table.
+    pending_order_draft: OrderDraft | None = Field(
+        default=None,
+        description=(
+            "Order draft awaiting user confirmation. Persisted to the assistant "
+            "turn's tool_calls JSONB; confirm-order route re-hydrates and writes "
+            "the orders row."
+        ),
+    )
+    pending_report_draft: CustomerReportDraft | None = Field(
+        default=None,
+        description=(
+            "Customer-visit report draft awaiting confirmation. Persisted to "
+            "the assistant turn's tool_calls JSONB; confirm-report route "
+            "re-hydrates and writes the customer_reports row."
+        ),
+    )
+    resolved_customer_id: uuid.UUID | None = Field(
+        default=None,
+        description=(
+            "Customer the orchestrator anchored on for this turn. Drives the "
+            "active-account indicator + Conversation.active_account_id update."
+        ),
+    )

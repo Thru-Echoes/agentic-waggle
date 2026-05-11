@@ -1,0 +1,7 @@
+{# Returned by POST /copilot/turns — concatenated user + assistant bubbles for HTMX. #}
+{% with turn=user_turn %}
+  {% include "partials/copilot_turn_user.html" %}
+{% endwith %}
+{% with turn=assistant_turn %}
+  {% include "partials/copilot_turn_assistant.html" %}
+{% endwith %}

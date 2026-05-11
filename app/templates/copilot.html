@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ product }} — copilot{% endblock %}
+{% block content %}
+<div class="copilot" id="copilot-shell">
+
+  {# ───────────────── Left rail ───────────────── #}
+  <aside class="copilot-rail" id="rail-pane">
+    <div class="rail-header">
+      <h2>Conversations</h2>
+      <form
+        method="post"
+        action="/copilot/conversations"
+      >
+        <button type="submit" class="action ghost" id="new-conv-btn"
+                aria-label="Start a new conversation">+ New</button>
+      </form>
+    </div>
+    {% include "partials/copilot_rail.html" %}
+  </aside>
+
+  {# ───────────────── Center: thread + composer ───────────────── #}
+  <section class="copilot-main">
+
+    {# Header strip with active-account context #}
+    <div class="copilot-headerstrip">
+      <div class="title-row">
+        <h1 class="copilot-title">
+          {{ conversation.title or "New conversation" }}
+        </h1>
+        {% if active_account_name %}
+          <span class="account-chip" id="account-chip"
+                aria-label="Active customer">
+            <span class="dot"></span>{{ active_account_name }}
+          </span>
+        {% endif %}
+      </div>
+      <p class="copilot-sub muted">
+        Ask about a customer · draft an order · log a visit report.
+      </p>
+    </div>
+
+    {# Thread #}
+    <div class="thread-scroll">
+      <div class="thread" id="thread"
+           data-conversation-id="{{ conversation.id }}">
+        {% if not turns %}
+          <div class="thread-empty" id="thread-empty">
+            <h3>How can Waggle help?</h3>
+            <ul class="suggestions">
+              <li>"What's the varroa trend at our biggest customer?"</li>
+              <li>"Draft an order: 24 Italian queens for next week."</li>
+              <li>"Visited Cascade today — mites at 3.5%, queens healthy, follow up next week."</li>
+            </ul>
+          </div>
+        {% else %}
+          {% for turn in turns %}
+            {% if turn.role == "user" %}
+              {% include "partials/copilot_turn_user.html" %}
+            {% else %}
+              {% include "partials/copilot_turn_assistant.html" %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    {# Composer #}
+    <form
+      class="composer"
+      id="composer-form"
+      hx-post="/copilot/turns"
+      hx-target="#thread"
+      hx-swap="beforeend"
+      hx-disabled-elt="#send-btn, #composer-text"
+      hx-on::after-request="this.reset(); document.getElementById('thread-empty')?.remove(); document.querySelector('.thread-scroll').scrollTop = document.querySelector('.thread-scroll').scrollHeight; document.getElementById('composer-text').focus();"
+    >
+      <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
+      <textarea
+        id="composer-text"
+        name="text"
+        rows="2"
+        placeholder="Message Waggle…"
+        maxlength="8000"
+        required
+        aria-label="Message"
+        autofocus
+        onkeydown="if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.form.requestSubmit(); }"
+      ></textarea>
+      <button
+        type="submit"
+        class="action send"
+        id="send-btn"
+        aria-label="Send message"
+      >
+        Send
+        <span class="htmx-indicator">…</span>
+      </button>
+    </form>
+
+  </section>
+</div>
+
+<script>
+  // Auto-grow the composer textarea, capped at 200px so the thread
+  // scroll-area doesn't shrink to nothing.
+  (function () {
+    var ta = document.getElementById('composer-text');
+    if (!ta) return;
+    function grow() {
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+    }
+    ta.addEventListener('input', grow);
+    grow();
+  })();
+  // Auto-scroll thread to bottom on initial load.
+  (function () {
+    var pane = document.querySelector('.thread-scroll');
+    if (pane) pane.scrollTop = pane.scrollHeight;
+  })();
+</script>
+{% endblock %}

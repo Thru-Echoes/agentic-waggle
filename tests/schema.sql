@@ -11,6 +11,8 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Drop order (for reruns)
+DROP TABLE IF EXISTS chat_turns CASCADE;
+DROP TABLE IF EXISTS conversations CASCADE;
 DROP TABLE IF EXISTS order_state_transitions CASCADE;
 DROP TABLE IF EXISTS order_line_items CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
@@ -195,3 +197,35 @@ CREATE TABLE order_state_transitions (
     transitioned_at TIMESTAMPTZ NOT NULL,
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb
 );
+
+-- Sales copilot — conversations + chat turns. Mirrors alembic
+-- migration 003_add_copilot_conversations. Server defaults are kept
+-- so the tests can INSERT without specifying timestamps.
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    salesperson_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    active_account_id UUID REFERENCES customers(id) ON DELETE SET NULL,
+    title TEXT,
+    model_used TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_conversations_salesperson_id ON conversations (salesperson_id);
+CREATE INDEX ix_conversations_updated_at ON conversations (updated_at);
+
+CREATE TABLE chat_turns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    text TEXT NOT NULL,
+    tool_calls JSONB NOT NULL DEFAULT '[]'::jsonb,
+    evidence_used JSONB NOT NULL DEFAULT '[]'::jsonb,
+    model TEXT,
+    tokens_input INT NOT NULL DEFAULT 0,
+    tokens_output INT NOT NULL DEFAULT 0,
+    cost_usd NUMERIC(10, 6) NOT NULL DEFAULT 0,
+    latency_ms INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (role IN ('user', 'assistant', 'system', 'tool'))
+);
+CREATE INDEX ix_chat_turns_conversation_id ON chat_turns (conversation_id, created_at);

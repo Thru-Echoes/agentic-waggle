@@ -1,0 +1,25 @@
+{# Conversation rail — single-list partial, swapped via hx-get when refreshed. #}
+{% if not rail %}
+  <div class="rail-empty muted">No conversations yet. Start one with the composer.</div>
+{% else %}
+  <ul class="rail-list">
+    {% for c in rail %}
+      <li class="rail-item {% if conversation and c.id == conversation.id %}active{% endif %}">
+        <a href="/copilot/{{ c.id }}" class="rail-link">
+          <div class="rail-title">
+            {{ c.title or "Untitled conversation" }}
+          </div>
+          {% if c.last_message_excerpt %}
+            <div class="rail-excerpt muted">{{ c.last_message_excerpt }}</div>
+          {% endif %}
+          <div class="rail-meta muted">
+            {% if c.active_account_name %}
+              <span class="rail-account">{{ c.active_account_name }}</span> ·
+            {% endif %}
+            <span>{{ c.turn_count }} turn{{ "" if c.turn_count == 1 else "s" }}</span>
+          </div>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}

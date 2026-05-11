@@ -13,14 +13,32 @@ Convention:
 from __future__ import annotations
 
 from app.schemas.common import Pagination, ProblemDetail
+from app.schemas.copilot import (
+    ChatTurnIn,
+    ChatTurnOut,
+    ConfirmResultOut,
+    ConversationCreateIn,
+    ConversationListItem,
+    ConversationListOut,
+    ConversationOut,
+    DraftConfirmIn,
+)
 from app.schemas.customers import CustomerListOut, CustomerOut
 from app.schemas.orders import OrderLineItemOut, OrderListOut, OrderOut
 from app.schemas.search import SearchHit, SearchRequest, SearchResponse
 from app.schemas.customer_reports import CustomerReportListOut, CustomerReportOut
 
 __all__ = [
+    "ChatTurnIn",
+    "ChatTurnOut",
+    "ConfirmResultOut",
+    "ConversationCreateIn",
+    "ConversationListItem",
+    "ConversationListOut",
+    "ConversationOut",
     "CustomerListOut",
     "CustomerOut",
+    "DraftConfirmIn",
     "OrderLineItemOut",
     "OrderListOut",
     "OrderOut",

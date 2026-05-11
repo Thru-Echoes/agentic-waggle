@@ -110,9 +110,72 @@ Rendered via Playwright from Mermaid sources in `../diagrams/source/`.
 - [ ] Record a 60-90s screen capture of the demo for the portfolio site.
 - [ ] Optional: hosted live demo (Fly.io or similar). Requires a budget cap
   on the LLM key and a magic-link / basic-auth gate.
-- [ ] Phase E++: a confirm-and-persist UI for the agent draft (right now the
-  draft renders but is not written to `orders`; the FSM walk happens via
-  `scripts/demo.py`).
+- [ ] Phase E++: a confirm-and-persist UI for the **inbox** agent draft
+  (the copilot flow at `/copilot` now persists; `/inbox` still doesn't
+  write to `orders`).
+
+## Phase F — sales copilot frontend (done 2026-05-10)
+
+Sub-project B: the chat-style sales copilot end-to-end. Backend
+orchestrator + persistence (commit e8190df) → user-facing UI + route
+layer + confirm-and-persist drafts + two-layer UI verification.
+
+- [x] `agents/copilot/conversation_schemas.py` — extended
+  `CopilotResponse` with `pending_order_draft` / `pending_report_draft`
+  / `resolved_customer_id` so the route can stash drafts on the
+  assistant `ChatTurn` for later confirmation.
+- [x] `agents/copilot/orchestrator.py` — emits the new draft fields on
+  the `create_order` and `log_customer_report` branches.
+- [x] `app/config.py` — per-stage Settings fields:
+  `copilot_router_model`, `copilot_main_model`, `copilot_report_model`,
+  `copilot_title_model`.
+- [x] `app/schemas/copilot.py` — `ChatTurnIn`, `ConversationCreateIn`,
+  `DraftConfirmIn`, plus the read shapes (`ChatTurnOut`,
+  `ConversationOut`, `ConversationListItem`, `ConversationListOut`,
+  `ConfirmResultOut`).
+- [x] `app/routes/copilot.py` — HTML routes (GET `/copilot`, GET
+  `/copilot/{id}`), HTMX partials (POST `/copilot/turns`, POST
+  `/copilot/conversations`, POST `/copilot/turns/{id}/confirm-order`,
+  POST `/copilot/turns/{id}/confirm-report`, GET `/copilot/_rail`),
+  JSON API mirrors under `/api/copilot/*`. Drafts are stashed inside
+  the assistant turn's `tool_calls` JSONB as synthetic
+  `pending_order_draft` / `pending_report_draft` records — no separate
+  drafts table.
+- [x] `app/main.py` + `app/templates/base.html` — router mounted; nav
+  link added between Dashboard and Inbox.
+- [x] `app/templates/copilot.html` + 7 partials (rail, thread,
+  user/assistant bubbles, draft-order card, draft-report card,
+  confirm-result, turn-pair) — three-pane shell, sticky composer,
+  auto-grow textarea, Enter-to-send.
+- [x] `app/static/waggle.css` — chat styling (3-column layout, message
+  bubbles, tool-call chips, evidence expanders, draft cards, composer,
+  in-flight pulse, mobile collapse).
+- [x] `tests/schema.sql` — appended `conversations` + `chat_turns` DDL
+  (mirrors alembic migration 003) so the per-test fresh-schema fixture
+  drops + recreates them.
+- [x] `tests/test_routes_copilot.py` — **19 E2E tests** covering shell
+  rendering, all 4 intents, draft confirmation round-trips,
+  conversation rail, JSON API mirrors. Real Postgres + real LLM.
+- [x] `tests/test_e2e_copilot_browser.py` — **11 Playwright tests**
+  driving Chromium against a uvicorn subprocess: shell, composer,
+  conversation switch, confirm-order round-trip, error paths,
+  double-submit guard.
+- [x] **Layer 1 verification** (per `.claude/rules/ui-verification.md`):
+  per-element subagent walk via Playwright MCP — 12/12 PASS (page
+  load, Send button, tool-chip rendering, evidence expander, +new
+  conversation, rail switch, create-order draft + confirm,
+  log-report draft + confirm, Enter-key submit, send-button disabled
+  during request, cross-page nav highlight, 404 on unknown conv).
+- [x] **Layer 2 verification**: `pytest tests/test_e2e_copilot_browser.py`
+  → 11/11 pass. Full project suite: **276 passed, 1 skipped**.
+
+### Test counts after Phase F
+
+| Suite | Pass | Skip | Notes |
+|---|---|---|---|
+| `make test` (full) | 276 | 1 | Real LLM + real pgvector + real fs |
+| `pytest tests/test_e2e_copilot_browser.py` | 11 | 0 | Real Chromium |
+| `pyright` on touched files | 0 errors, 2 warnings | — | Same baseline as `app/routes/pages.py` |
 
 ## Decisions open
 

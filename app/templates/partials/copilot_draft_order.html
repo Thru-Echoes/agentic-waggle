@@ -1,0 +1,60 @@
+{# Inline draft-order card with Confirm. Receives `draft` (OrderDraft) + `turn_id`. #}
+<div class="draft-header">
+  <strong>Order draft</strong>
+  <span class="badge sap">{{ draft.state.value }}</span>
+</div>
+
+<dl class="draft-fields">
+  <dt>Customer</dt>
+  <dd>
+    {{ draft.customer.customer_name or "(unmatched)" }}
+    {% if draft.customer.erp_customer_no %}
+      · <code>{{ draft.customer.erp_customer_no }}</code>
+    {% endif %}
+    {% if draft.customer.ambiguous %}
+      <span class="badge alarm">close-call match</span>
+    {% endif %}
+  </dd>
+</dl>
+
+<table class="rows draft-items">
+  <thead>
+    <tr><th>SKU</th><th>Item</th><th>Qty</th><th>Unit</th></tr>
+  </thead>
+  <tbody>
+    {% for li in draft.line_items %}
+      <tr>
+        <td><code>{{ li.sku }}</code></td>
+        <td>{{ li.source_description }}</td>
+        <td>{{ li.quantity }}</td>
+        <td>${{ "{:,.2f}".format(li.unit_price_usd) }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="draft-total">
+  <strong>Total:</strong> ${{ "{:,.2f}".format(draft.total_usd) }}
+  {% if draft.pollination_date %}
+    · Pollination date: {{ draft.pollination_date.isoformat() }}
+  {% endif %}
+</p>
+
+{% if draft.extraction_concerns %}
+  <details class="evidence">
+    <summary class="muted">Things to double-check</summary>
+    <ul class="muted">
+      {% for n in draft.extraction_concerns %}<li>{{ n }}</li>{% endfor %}
+    </ul>
+  </details>
+{% endif %}
+
+<form
+  hx-post="/copilot/turns/{{ turn_id }}/confirm-order"
+  hx-target="#draft-order-{{ turn_id }}"
+  hx-swap="innerHTML"
+  hx-disabled-elt="find button"
+  class="draft-actions"
+>
+  <button type="submit" class="action confirm-order">Confirm &amp; save order</button>
+  <span class="htmx-indicator muted"> · saving…</span>
+</form>

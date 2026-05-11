@@ -114,6 +114,42 @@ class Settings(BaseSettings):
         ),
     )
 
+    # -- Per-stage model assignments for the sales copilot ----------------
+    # Each stage gets the cheapest model that hits the task's accuracy bar.
+    # Routes / titler use the fast intent classifier; main answer-generation
+    # reuses the items-extract model (highest verbatim-grounding rate at
+    # low cost); report extraction uses the customer-extract model.
+    copilot_router_model: str = Field(
+        default="gpt-5.4-mini",
+        description=(
+            "Intent classifier for one chat turn. Single fast call per turn; "
+            "binary-ish classification + 1-2 evidence quotes."
+        ),
+    )
+    copilot_main_model: str = Field(
+        default="gpt-5.4-nano",
+        description=(
+            "Main answer-generation model. Same nano variant as line-items — "
+            "answers are user-facing and need verbatim grounding from the "
+            "retrieved context. Cheap per call."
+        ),
+    )
+    copilot_report_model: str = Field(
+        default="gpt-5.4-mini",
+        description=(
+            "Report-extraction model for log_customer_report intent. Same "
+            "profile as customer-reference extraction — short structured "
+            "fields with evidence."
+        ),
+    )
+    copilot_title_model: str = Field(
+        default="gpt-5.4-mini",
+        description=(
+            "Tiny model for auto-titling a new conversation from its first "
+            "user turn. One call, ~10 tokens output."
+        ),
+    )
+
     # -- Provider filesystem roots ----------------------------------------
     storage_root: Path = Field(default=Path("/local-storage"))
     sent_mail_root: Path = Field(default=Path("/sent-mail"))

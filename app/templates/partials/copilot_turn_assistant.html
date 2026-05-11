@@ -1,0 +1,51 @@
+{# Assistant-side message bubble: text + tool-call chips + evidence + draft. #}
+<div class="turn assistant" data-turn-id="{{ turn.id }}" data-role="assistant">
+  <div class="bubble">
+    <div class="text">{{ turn.text }}</div>
+
+    {% if turn.tool_calls %}
+      <div class="meta">
+        {% for tc in turn.tool_calls %}
+          <span class="tool-chip" title="{{ tc.result_excerpt }}">
+            <span class="tool-name">{{ tc.tool_name }}</span>
+            {% if tc.latency_ms > 0 %}
+              <span class="tool-latency">· {{ tc.latency_ms }} ms</span>
+            {% endif %}
+          </span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if turn.evidence_used %}
+      <details class="evidence">
+        <summary class="muted">Evidence</summary>
+        <ul class="muted">
+          {% for q in turn.evidence_used %}
+            <li>"{{ q }}"</li>
+          {% endfor %}
+        </ul>
+      </details>
+    {% endif %}
+
+    {% if turn.pending_order_draft %}
+      <div class="draft-card draft-order" id="draft-order-{{ turn.id }}">
+        {% with draft=turn.pending_order_draft, turn_id=turn.id %}
+          {% include "partials/copilot_draft_order.html" %}
+        {% endwith %}
+      </div>
+    {% endif %}
+
+    {% if turn.pending_report_draft %}
+      <div class="draft-card draft-report" id="draft-report-{{ turn.id }}">
+        {% with draft=turn.pending_report_draft, turn_id=turn.id %}
+          {% include "partials/copilot_draft_report.html" %}
+        {% endwith %}
+      </div>
+    {% endif %}
+
+    <div class="meta footer">
+      {% if turn.model %}<span class="model">{{ turn.model }}</span>{% endif %}
+      {% if turn.latency_ms %}<span> · {{ turn.latency_ms }} ms</span>{% endif %}
+    </div>
+  </div>
+</div>

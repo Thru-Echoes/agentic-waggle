@@ -149,6 +149,8 @@ def get_copilot_response(
     citations: list[Citation] = []
     answer_text: str
     evidence_used: list[str] = list(intent.evidence)
+    pending_order: OrderDraft | None = None
+    pending_report: CustomerReportDraft | None = None
 
     # 3. Dispatch on intent
     if intent.intent == "query":
@@ -186,6 +188,7 @@ def get_copilot_response(
             text_in=user_text, model=report_model or main_model,
         )
         evidence_used.extend(report_draft.evidence)
+        pending_report = report_draft
         tool_calls.append(_record(
             "log_customer_report", {"text": user_text[:200]},
             f"varroa_pct={report_draft.varroa_pct} "
@@ -204,6 +207,7 @@ def get_copilot_response(
         order_result = draft_order_from_text(db=db, text_in=user_text)
         if isinstance(order_result, OrderDraft):
             evidence_used.extend(order_result.customer_evidence)
+            pending_order = order_result
             tool_calls.append(_record(
                 "draft_order_from_text", {"text": user_text[:200]},
                 f"customer={order_result.customer.customer_name} "
@@ -251,6 +255,9 @@ def get_copilot_response(
         tokens_output=0,
         cost_usd=Decimal("0"),
         latency_ms=total_latency,
+        pending_order_draft=pending_order,
+        pending_report_draft=pending_report,
+        resolved_customer_id=customer_id,
     )
 
 

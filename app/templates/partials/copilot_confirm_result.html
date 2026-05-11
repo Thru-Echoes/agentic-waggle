@@ -1,0 +1,17 @@
+{# Result of a draft confirmation — replaces the draft card body in place. #}
+<div class="confirm-result {% if result.ok %}ok{% else %}error{% endif %}">
+  {% if result.ok %}
+    <span class="badge sap">Saved</span>
+    <p>{{ result.message }}</p>
+    {% if result.persisted_id %}
+      {% if kind == "order" %}
+        <a class="muted" href="/orders" target="_blank" rel="noopener">View in Orders →</a>
+      {% elif kind == "report" %}
+        <a class="muted" href="/customer-reports" target="_blank" rel="noopener">View in Customer reports →</a>
+      {% endif %}
+    {% endif %}
+  {% else %}
+    <span class="badge alarm">Could not save</span>
+    <p>{{ result.message }}</p>
+  {% endif %}
+</div>
