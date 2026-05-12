@@ -1,4 +1,11 @@
-{# Inline customer-report draft card with Confirm. Receives `draft` (CustomerReportDraft) + `turn_id`. #}
+{# Inline customer-report draft card with Confirm + editable fields.
+   Receives `draft` (CustomerReportDraft) + `turn_id`.
+
+   Editable fields (varroa_pct, visit_date, narrative) are posted along
+   with the Confirm submit so the route layer can apply them over the
+   stashed CustomerReportDraft. The LLM-extracted observations +
+   action_items are pre-folded into the narrative textarea so the user
+   can edit them as plain text. #}
 <div class="draft-header">
   <strong>Customer report draft</strong>
   {% if draft.varroa_pct is not none %}
@@ -13,25 +20,7 @@
     <dt>Customer hint</dt>
     <dd>{{ draft.customer_id_hint }}</dd>
   {% endif %}
-  {% if draft.visit_date %}
-    <dt>Visit date</dt>
-    <dd>{{ draft.visit_date.date().isoformat() if draft.visit_date.__class__.__name__ == 'datetime' else draft.visit_date }}</dd>
-  {% endif %}
 </dl>
-
-{% if draft.observations %}
-  <h4>Observations</h4>
-  <ul class="bullet">
-    {% for o in draft.observations %}<li>{{ o }}</li>{% endfor %}
-  </ul>
-{% endif %}
-
-{% if draft.action_items %}
-  <h4>Follow-ups</h4>
-  <ul class="bullet">
-    {% for a in draft.action_items %}<li>{{ a }}</li>{% endfor %}
-  </ul>
-{% endif %}
 
 <form
   hx-post="/copilot/turns/{{ turn_id }}/confirm-report"
@@ -40,6 +29,43 @@
   hx-disabled-elt="find button"
   class="draft-actions"
 >
-  <button type="submit" class="action confirm-report">Confirm &amp; save report</button>
-  <span class="htmx-indicator muted"> · saving…</span>
+  <p class="draft-fields-row">
+    <label for="varroa-{{ turn_id }}">Varroa %</label>
+    <input
+      id="varroa-{{ turn_id }}"
+      type="number"
+      name="varroa_pct"
+      value="{{ draft.varroa_pct if draft.varroa_pct is not none else '' }}"
+      min="0"
+      max="100"
+      step="0.1"
+      class="draft-edit-num"
+      placeholder="e.g. 2.5"
+    >
+    <label for="visit-{{ turn_id }}">Visit date</label>
+    <input
+      id="visit-{{ turn_id }}"
+      type="date"
+      name="visit_date"
+      value="{{ (draft.visit_date.date() if draft.visit_date.__class__.__name__ == 'datetime' else draft.visit_date).isoformat() if draft.visit_date else '' }}"
+      class="draft-edit-date"
+    >
+  </p>
+
+  <p>
+    <label for="narrative-{{ turn_id }}">Narrative</label>
+    <textarea
+      id="narrative-{{ turn_id }}"
+      name="narrative"
+      rows="4"
+      class="draft-edit-text"
+      placeholder="Visit notes…"
+    >{% if draft.observations %}Observations: {{ draft.observations | join('; ') }}{% endif %}{% if draft.action_items %}{% if draft.observations %}
+{% endif %}Follow-ups: {{ draft.action_items | join('; ') }}{% endif %}</textarea>
+  </p>
+
+  <div class="draft-submit-row">
+    <button type="submit" class="action confirm-report">Confirm &amp; save report</button>
+    <span class="htmx-indicator muted"> · saving…</span>
+  </div>
 </form>

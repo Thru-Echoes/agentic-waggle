@@ -106,8 +106,76 @@ Rendered via Playwright from Mermaid sources in `../diagrams/source/`.
 ## Open / next
 
 - [ ] Record a 60-90s screen capture of the demo for the portfolio site.
-- [ ] Optional: hosted live demo (Fly.io or similar). Requires a budget cap
-  on the LLM key and a magic-link / basic-auth gate.
+- [ ] Optional: gate the live deploy behind basic auth (`fly secrets set
+  WAGGLE_USER=… WAGGLE_PASS=…`) if/when LLM cost-control becomes a concern.
+  Currently public.
+
+## Live deploy
+
+- **URL:** https://waggle.fly.dev (deployed 2026-05-11; Phase F + G live)
+- **Surfaces verified post-deploy:**
+  - `GET /` → dashboard renders, Copilot nav link visible
+  - `GET /copilot` → chat shell renders with composer
+  - `GET /api/copilot/conversations` → JSON list returns
+  - `POST /copilot/turns` → full LLM round-trip works (assistant bubble +
+    `build_context` tool chip + grounded answer about varroa)
+  - `GET /inbox` → 162 Extract buttons rendered
+  - `POST /inbox/confirm` with malformed JSON → "Could not save" error card
+  - `GET /api/orders?limit=1` → 150 seeded orders
+- **Migration 003 applied automatically** on first boot via `scripts/boot.py`
+  (`alembic upgrade head` → conversations + chat_turns tables created).
+- Image: rebuilt via `fly deploy --remote-only`, ~1 min build + 1.5 min
+  rolling restart with seeded volume reattached.
+
+## Phase H — copilot polish (done 2026-05-11)
+
+User-facing quality pass on the chat surface. Three upgrades that turn
+a working copilot into a polished one:
+
+- [x] **LLM-titled conversations** — replaced the deterministic 60-char
+  truncator with a Settings.copilot_title_model call that summarizes
+  the first user message into 4-6 words (ChatGPT-style). Falls back to
+  the truncator if the LLM call fails or returns nothing usable.
+  `_llm_title` adds ~0.5s to the first turn; subsequent turns are
+  unchanged. Examples produced in testing:
+  - *"What's the varroa trend at O'Reilly?"* → *"Varroa trend at O'Reilly"*
+  - *"Draft an order for St. Agnes — 40 hives."* → *"St. Agnes order draft"*
+- [x] **Inline draft editing before Confirm** — both order drafts
+  (/copilot + /inbox) and the customer-report draft (/copilot) now
+  render editable form fields inside the Confirm card. Order drafts
+  expose `qty_{i}`, `unit_price_{i}`, and `pollination_date` inputs;
+  report drafts expose `varroa_pct`, `visit_date`, and a `narrative`
+  textarea. The new `apply_order_overrides` helper in
+  `app/routes/_order_persistence.py` layers form-side edits onto the
+  stashed OrderDraft before persist; the inbox + copilot confirm
+  routes apply the same logic for consistency. Persisted rows are
+  tagged `edited_by_user=true` in transition metadata / report tags so
+  the audit trail distinguishes LLM output from human-edited output.
+- [x] **Streaming responses (Server-Sent Events) + step indicators** —
+  `POST /copilot/turns` now content-negotiates: HTML (existing
+  behavior) for tests / programmatic clients, SSE for the browser
+  composer. The orchestrator accepts an optional `on_step` callback
+  that fires at each stage (`intent_routed`, `context_built`,
+  `answer_drafting`, `answer_ready`, `draft_ready`); the streaming
+  endpoint drains those events from a queue and emits HTMX-friendly
+  status payloads so the user sees a live "Thinking… → Routed your
+  intent… → Loaded customer context… → Drafting your answer…"
+  cascade instead of staring at a spinner for 5-6 seconds. The
+  composer form was rewritten to use vanilla `fetch` + ReadableStream
+  for SSE parsing (the HTMX `hx-post` attributes were removed to
+  avoid double-submission). A pulsing honey-amber `.thinking-dot`
+  animation accompanies each status. HTMX is re-`process()`ed after
+  the final swap so the Confirm forms in draft cards stay clickable.
+
+### Test counts after Phase H
+
+| Suite | Pass | Skip | Notes |
+|---|---|---|---|
+| `make test` (full) | 310 | 14 | +5 from Phase G (2 streaming + 3 override). 14 skipped are Playwright tests (no Chromium-in-Docker). No flakes this run. |
+| `pytest tests/test_e2e_copilot_browser.py` | 11 | 0 | Real Chromium incl. streaming-mode submit |
+| `pytest tests/test_routes_copilot.py` | 21 | 0 | +2 for streaming (HTML vs SSE branches) |
+| `pytest tests/test_routes_inbox_confirm.py` | 9 | 0 | +3 for qty / date / unparseable overrides |
+| `pyright` on touched files | 0 errors, 14 warnings | — | Baseline pattern |
 
 ## Phase F — sales copilot frontend (done 2026-05-10)
 

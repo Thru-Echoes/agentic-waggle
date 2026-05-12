@@ -24,10 +24,29 @@ import logging
 import time
 import uuid
 from decimal import Decimal
-from typing import Any
+from typing import Any, Callable, Literal
 
 from langchain_core.language_models import BaseChatModel
 from sqlalchemy.orm import Session
+
+
+#: Stage names emitted via the optional ``on_step`` callback during one
+#: chat turn. The streaming /copilot/turns SSE branch maps these to
+#: front-end "thinking..." status updates.
+StreamStage = Literal[
+    "account_resolved",
+    "intent_routed",
+    "context_built",
+    "answer_drafting",
+    "answer_ready",
+    "draft_ready",
+]
+
+#: Callback signature for orchestrator progress events. Implementations
+#: should be fast and side-effect-only — the orchestrator does NOT await
+#: them. The streaming SSE endpoint pushes events into an asyncio queue
+#: from within this callback.
+OnStepFn = Callable[[StreamStage, Any], None]
 
 from agents.copilot.account_resolver import AccountIndex, resolve_account
 from agents.copilot.context_builder import ContextBundle, build_context
@@ -109,6 +128,7 @@ def get_copilot_response(
     models: dict[str, BaseChatModel],
     account_index: AccountIndex | None = None,
     active_account_id: uuid.UUID | None = None,
+    on_step: OnStepFn | None = None,
 ) -> CopilotResponse:
     """Handle one chat turn end-to-end.
 
@@ -118,9 +138,24 @@ def get_copilot_response(
         - ``report``   : extraction model for log_customer_report
     Falls back to a single shared model if any key is missing.
 
-    Side effects: 1-3 LLM calls; SELECTs against ``db``.
+    ``on_step`` is an optional progress callback fired at each major
+    stage. The streaming SSE endpoint passes one in to drive live
+    "thinking..." indicators; non-streaming callers can omit it. The
+    callback is called synchronously from within this function — it
+    must NOT block.
+
+    Side effects: 1-3 LLM calls; SELECTs against ``db``; ``on_step``
+    callbacks may have their own side effects (typically: pushing to a
+    queue).
     """
     t0 = time.perf_counter()
+
+    def _emit(stage: StreamStage, payload: Any) -> None:
+        if on_step is not None:
+            try:
+                on_step(stage, payload)
+            except Exception as exc:
+                log.warning("on_step callback raised: %s", exc)
 
     router_model = models.get("router") or models.get("main")
     main_model = models.get("main") or models.get("router")
@@ -135,9 +170,11 @@ def get_copilot_response(
         candidates = resolve_account(user_text, account_index)
         if candidates:
             customer_id = candidates[0]
+    _emit("account_resolved", {"customer_id": str(customer_id) if customer_id else None})
 
     # 2. Intent routing (1 LLM call)
     intent: IntentRoute = get_intent_route(user_text, model=router_model)
+    _emit("intent_routed", {"intent": intent.intent})
 
     # If the router pulled an explicit hint, override our resolution with it.
     if intent.target_account_hint and account_index is not None:
@@ -157,16 +194,22 @@ def get_copilot_response(
         bundle = build_context(
             query=user_text, customer_id=customer_id, db=db, top_k=5
         )
+        _emit("context_built", {
+            "reports": len(bundle.recent_reports),
+            "chunks": len(bundle.rag_chunks),
+        })
         prompt = _QUERY_PROMPT.format(
             question=user_text,
             customer_block=_format_customer_block(bundle),
             reports_block=_format_reports_block(bundle),
             rag_block=_format_rag_block(bundle),
         )
+        _emit("answer_drafting", {"intent": "query"})
         t_before = time.perf_counter()
         ai_msg = main_model.invoke(prompt)
         latency = int((time.perf_counter() - t_before) * 1000)
         answer_text = _ai_text(ai_msg)
+        _emit("answer_ready", {"latency_ms": latency})
         tool_calls.append(_record(
             "build_context",
             {"customer_id": str(customer_id) if customer_id else None,
@@ -184,9 +227,11 @@ def get_copilot_response(
             ))
 
     elif intent.intent == "log_customer_report":
+        _emit("answer_drafting", {"intent": "log_customer_report"})
         report_draft: CustomerReportDraft = log_customer_report(
             text_in=user_text, model=report_model or main_model,
         )
+        _emit("draft_ready", {"kind": "report"})
         evidence_used.extend(report_draft.evidence)
         pending_report = report_draft
         tool_calls.append(_record(
@@ -204,8 +249,10 @@ def get_copilot_response(
         )
 
     elif intent.intent == "create_order":
+        _emit("answer_drafting", {"intent": "create_order"})
         order_result = draft_order_from_text(db=db, text_in=user_text)
         if isinstance(order_result, OrderDraft):
+            _emit("draft_ready", {"kind": "order"})
             evidence_used.extend(order_result.customer_evidence)
             pending_order = order_result
             tool_calls.append(_record(

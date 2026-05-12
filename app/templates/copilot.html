@@ -64,15 +64,25 @@
       </div>
     </div>
 
-    {# Composer #}
+    {# Composer.
+
+       The form submits via JS to /copilot/turns with
+       Accept: text/event-stream so the server streams Server-Sent Events
+       — user_turn → status × N → complete. Each event is rendered into
+       the thread incrementally so the user gets live "thinking..."
+       feedback instead of staring at a spinner for 6 seconds.
+
+       Falls back to HTMX when JS is disabled (the hx-* attributes are
+       still present; preventDefault in the JS handler short-circuits
+       them when JS is alive). #}
+    {# No hx-post on the form — the JS submit handler below takes over
+       and POSTs to /copilot/turns with Accept: text/event-stream. HTMX
+       intercepting the same submit event led to double-firing. #}
     <form
       class="composer"
       id="composer-form"
-      hx-post="/copilot/turns"
-      hx-target="#thread"
-      hx-swap="beforeend"
-      hx-disabled-elt="#send-btn, #composer-text"
-      hx-on::after-request="this.reset(); document.getElementById('thread-empty')?.remove(); document.querySelector('.thread-scroll').scrollTop = document.querySelector('.thread-scroll').scrollHeight; document.getElementById('composer-text').focus();"
+      action="/copilot/turns"
+      method="post"
     >
       <input type="hidden" name="conversation_id" value="{{ conversation.id }}">
       <textarea
@@ -93,7 +103,6 @@
         aria-label="Send message"
       >
         Send
-        <span class="htmx-indicator">…</span>
       </button>
     </form>
 
@@ -101,8 +110,7 @@
 </div>
 
 <script>
-  // Auto-grow the composer textarea, capped at 200px so the thread
-  // scroll-area doesn't shrink to nothing.
+  // ── Auto-grow textarea + initial scroll ─────────────────────────
   (function () {
     var ta = document.getElementById('composer-text');
     if (!ta) return;
@@ -113,10 +121,148 @@
     ta.addEventListener('input', grow);
     grow();
   })();
-  // Auto-scroll thread to bottom on initial load.
   (function () {
     var pane = document.querySelector('.thread-scroll');
     if (pane) pane.scrollTop = pane.scrollHeight;
+  })();
+
+  // ── Streaming submit (Server-Sent Events) ───────────────────────
+  // Hijack the form submit so we can show live "thinking..." status
+  // bumps as the orchestrator progresses. If anything fails, we leave
+  // HTMX's hx-post wiring intact as a fallback (preventDefault would
+  // have to fail for that path to fire).
+  (function () {
+    var form = document.getElementById('composer-form');
+    if (!form || !window.fetch || !window.ReadableStream) return;
+    var thread = document.getElementById('thread');
+    var scrollPane = document.querySelector('.thread-scroll');
+    var sendBtn = document.getElementById('send-btn');
+    var ta = document.getElementById('composer-text');
+
+    function scrollToBottom() {
+      if (scrollPane) scrollPane.scrollTop = scrollPane.scrollHeight;
+    }
+
+    function thinkingNode() {
+      // Deliberately NOT class "assistant" — the thinking bubble is an
+      // interstitial UI element, not a real assistant turn. Keeping the
+      // class out avoids `.turn.assistant` selectors matching it before
+      // the final swap arrives.
+      var div = document.createElement('div');
+      div.id = 'thinking-bubble';
+      div.className = 'turn thinking-turn';
+      div.innerHTML =
+        '<div class="bubble">' +
+        '  <div class="text" id="thinking-text">' +
+        '    <span class="thinking-dot"></span> Thinking…' +
+        '  </div>' +
+        '</div>';
+      return div;
+    }
+
+    function parseEventBlock(block) {
+      var lines = block.split('\n');
+      var name = 'message';
+      var dataLines = [];
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (line.indexOf('event: ') === 0) name = line.slice(7);
+        else if (line.indexOf('data: ') === 0) dataLines.push(line.slice(6));
+      }
+      return { name: name, data: dataLines.join('\n') };
+    }
+
+    form.addEventListener('submit', async function (evt) {
+      evt.preventDefault();
+      // Bypass HTMX for this submit — HTMX only fires when the form
+      // submits "naturally"; preventDefault disables that path.
+
+      // CRITICAL: snapshot FormData BEFORE disabling form controls.
+      // Disabled inputs are excluded from FormData, which would silently
+      // send an empty `text` field and make the server 422 the request.
+      var fd = new FormData(form);
+
+      sendBtn.disabled = true;
+      ta.disabled = true;
+
+      var empty = document.getElementById('thread-empty');
+      if (empty) empty.remove();
+
+      var thinking = thinkingNode();
+      thread.appendChild(thinking);
+      scrollToBottom();
+
+      try {
+        var resp = await fetch('/copilot/turns', {
+          method: 'POST',
+          body: fd,
+          headers: { 'Accept': 'text/event-stream' },
+        });
+
+        if (!resp.ok || !resp.body) {
+          thinking.remove();
+          thread.insertAdjacentHTML(
+            'beforeend',
+            '<div class="turn assistant"><div class="bubble">' +
+              'Sorry — the server returned ' + resp.status + '. Please retry.' +
+              '</div></div>'
+          );
+          return;
+        }
+
+        var reader = resp.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+
+        while (true) {
+          var chunk = await reader.read();
+          if (chunk.done) break;
+          buffer += decoder.decode(chunk.value, { stream: true });
+
+          var idx;
+          while ((idx = buffer.indexOf('\n\n')) >= 0) {
+            var block = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 2);
+            if (!block.trim()) continue;
+            var ev = parseEventBlock(block);
+
+            if (ev.name === 'user_turn') {
+              thinking.insertAdjacentHTML('beforebegin', ev.data);
+              scrollToBottom();
+            } else if (ev.name === 'status') {
+              var txt = document.getElementById('thinking-text');
+              if (txt) txt.innerHTML = ev.data;
+            } else if (ev.name === 'complete') {
+              thinking.remove();
+              thread.insertAdjacentHTML('beforeend', ev.data);
+              // The final assistant bubble may include HTMX-wired forms
+              // (Confirm-order / Confirm-report). Content added via plain
+              // insertAdjacentHTML isn't wired up by HTMX automatically;
+              // tell HTMX to process it.
+              if (window.htmx && typeof window.htmx.process === 'function') {
+                try { window.htmx.process(thread); } catch (e) { /* noop */ }
+              }
+              scrollToBottom();
+            }
+          }
+        }
+      } catch (err) {
+        if (thinking && thinking.parentNode) thinking.remove();
+        thread.insertAdjacentHTML(
+          'beforeend',
+          '<div class="turn assistant"><div class="bubble">' +
+            'Network error while streaming. Please retry.' +
+            '</div></div>'
+        );
+      } finally {
+        sendBtn.disabled = false;
+        ta.disabled = false;
+        form.reset();
+        ta.style.height = 'auto';
+        ta.focus();
+        scrollToBottom();
+      }
+    });
   })();
 </script>
 {% endblock %}

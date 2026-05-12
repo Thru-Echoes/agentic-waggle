@@ -1,4 +1,10 @@
-{# Inline draft-order card with Confirm. Receives `draft` (OrderDraft) + `turn_id`. #}
+{# Inline draft-order card with Confirm + editable fields.
+   Receives `draft` (OrderDraft) + `turn_id`.
+
+   Editable fields are wrapped in the same `<form>` as the Confirm
+   submit so they post alongside (qty_{i} / unit_price_{i} /
+   pollination_date) and the route layer applies them on top of the
+   stashed OrderDraft via `apply_order_overrides`. #}
 <div class="draft-header">
   <strong>Order draft</strong>
   <span class="badge sap">{{ draft.state.value }}</span>
@@ -17,37 +23,6 @@
   </dd>
 </dl>
 
-<table class="rows draft-items">
-  <thead>
-    <tr><th>SKU</th><th>Item</th><th>Qty</th><th>Unit</th></tr>
-  </thead>
-  <tbody>
-    {% for li in draft.line_items %}
-      <tr>
-        <td><code>{{ li.sku }}</code></td>
-        <td>{{ li.source_description }}</td>
-        <td>{{ li.quantity }}</td>
-        <td>${{ "{:,.2f}".format(li.unit_price_usd) }}</td>
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
-<p class="draft-total">
-  <strong>Total:</strong> ${{ "{:,.2f}".format(draft.total_usd) }}
-  {% if draft.pollination_date %}
-    · Pollination date: {{ draft.pollination_date.isoformat() }}
-  {% endif %}
-</p>
-
-{% if draft.extraction_concerns %}
-  <details class="evidence">
-    <summary class="muted">Things to double-check</summary>
-    <ul class="muted">
-      {% for n in draft.extraction_concerns %}<li>{{ n }}</li>{% endfor %}
-    </ul>
-  </details>
-{% endif %}
-
 <form
   hx-post="/copilot/turns/{{ turn_id }}/confirm-order"
   hx-target="#draft-order-{{ turn_id }}"
@@ -55,6 +30,71 @@
   hx-disabled-elt="find button"
   class="draft-actions"
 >
-  <button type="submit" class="action confirm-order">Confirm &amp; save order</button>
-  <span class="htmx-indicator muted"> · saving…</span>
+  <table class="rows draft-items">
+    <thead>
+      <tr><th>SKU</th><th>Item</th><th>Qty</th><th>Unit</th></tr>
+    </thead>
+    <tbody>
+      {% for li in draft.line_items %}
+        <tr>
+          <td><code>{{ li.sku }}</code></td>
+          <td>{{ li.source_description }}</td>
+          <td>
+            <input
+              type="number"
+              name="qty_{{ loop.index0 }}"
+              value="{{ li.quantity }}"
+              min="1"
+              step="1"
+              class="draft-edit-num"
+              aria-label="Quantity for {{ li.sku }}"
+            >
+          </td>
+          <td>
+            $<input
+              type="number"
+              name="unit_price_{{ loop.index0 }}"
+              value="{{ '%.2f' | format(li.unit_price_usd) }}"
+              min="0.01"
+              step="0.01"
+              class="draft-edit-money"
+              aria-label="Unit price for {{ li.sku }}"
+            >
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="draft-total muted">
+    <small>Total auto-recomputed from the edited line items on save.</small>
+  </p>
+
+  <p class="draft-fields-row">
+    <label for="poll-date-{{ turn_id }}">Pollination date</label>
+    <input
+      id="poll-date-{{ turn_id }}"
+      type="date"
+      name="pollination_date"
+      value="{{ draft.pollination_date.isoformat() if draft.pollination_date else '' }}"
+      class="draft-edit-date"
+    >
+  </p>
+
+  {% if draft.extraction_concerns %}
+    <details class="evidence">
+      <summary class="muted">Things to double-check</summary>
+      <ul class="muted">
+        {% for n in draft.extraction_concerns %}<li>{{ n }}</li>{% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+
+  <div class="draft-submit-row">
+    <button type="submit" class="action confirm-order">Confirm &amp; save order</button>
+    <span class="muted draft-original-total">
+      LLM extracted total: ${{ "{:,.2f}".format(draft.total_usd) }}
+    </span>
+    <span class="htmx-indicator muted"> · saving…</span>
+  </div>
 </form>

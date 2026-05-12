@@ -318,6 +318,73 @@ class TestPostTurn:
 # ---------------------------------------------------------------------------
 
 
+class TestStreamingTurn:
+    """SSE streaming branch — Accept: text/event-stream."""
+
+    def test_streaming_emits_user_turn_status_complete(
+        self, client, db, faker_instance, require_llm_api_key
+    ) -> None:
+        _seed_min_for_orchestrator(db, faker_instance)
+        conv = Conversation()
+        db.add(conv); db.commit(); db.refresh(conv)
+
+        resp = client.post(
+            "/copilot/turns",
+            data={
+                "conversation_id": str(conv.id),
+                "text": "What's the general state of varroa across our customers?",
+            },
+            headers={"Accept": "text/event-stream"},
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/event-stream")
+
+        body = resp.text
+        # SSE framing: each event has "event: NAME\n" and "data: ..." lines.
+        # We assert at minimum: user_turn first, then status, then complete.
+        assert "event: user_turn" in body
+        assert "event: status" in body
+        assert "event: complete" in body
+        # Order: user_turn appears before complete.
+        assert body.index("event: user_turn") < body.index("event: complete")
+        # The complete event carries the full assistant bubble HTML.
+        assert "data-role=\"assistant\"" in body
+
+        # Two ChatTurns landed in DB regardless of streaming framing.
+        rows = db.execute(
+            text(
+                "SELECT role FROM chat_turns WHERE conversation_id = :cid "
+                "ORDER BY created_at"
+            ),
+            {"cid": str(conv.id)},
+        ).scalars().all()
+        assert list(rows) == ["user", "assistant"]
+
+    def test_non_streaming_branch_unchanged(
+        self, client, db, faker_instance, require_llm_api_key
+    ) -> None:
+        """Sanity: clients that don't ask for SSE still get the partial."""
+        _seed_min_for_orchestrator(db, faker_instance)
+        conv = Conversation()
+        db.add(conv); db.commit(); db.refresh(conv)
+
+        resp = client.post(
+            "/copilot/turns",
+            data={
+                "conversation_id": str(conv.id),
+                "text": "What's the state of varroa?",
+            },
+            # No Accept header → defaults to text/html
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/html")
+        # No SSE framing.
+        assert "event: user_turn" not in resp.text
+        # Both bubbles in the body (the canonical concatenated pair).
+        assert 'data-role="user"' in resp.text
+        assert 'data-role="assistant"' in resp.text
+
+
 class TestConfirmDrafts:
     def test_confirm_order_persists_when_draft_present(
         self, client, db, faker_instance, require_llm_api_key

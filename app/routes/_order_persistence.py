@@ -5,6 +5,11 @@ inbox confirm route (``app.routes.pages``). Centralizing the persistence
 logic keeps the two surfaces consistent — same row shape, same FSM
 transition record, same author-attribution rule.
 
+Also exports ``apply_order_overrides`` — the inline-draft-editing helper
+that applies user-edited form fields onto an OrderDraft before persist,
+so a salesperson can correct LLM mistakes (quantity, unit price,
+pollination date) without re-running extraction.
+
 Side effects (per call to ``persist_order_from_draft``):
     * One INSERT into ``orders``
     * One INSERT per line item into ``order_line_items``
@@ -15,12 +20,14 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any
+from datetime import date
+from decimal import Decimal, InvalidOperation
+from typing import Any, Mapping
 
 from sqlalchemy import text
 from sqlmodel import Session
 
-from agents.schemas import OrderDraft
+from agents.schemas import OrderDraft, ResolvedLineItem
 from db.enums import UserRole
 from db.models import Order, OrderLineItem, OrderStateTransition, User
 
@@ -142,7 +149,97 @@ def _coerce_uuid(val: Any) -> uuid.UUID:
     return uuid.UUID(str(val))
 
 
+# ---------------------------------------------------------------------------
+# Inline-edit overrides (applied before persist)
+# ---------------------------------------------------------------------------
+
+
+def apply_order_overrides(
+    draft: OrderDraft,
+    form: Mapping[str, str],
+) -> OrderDraft:
+    """Return a new OrderDraft with user-edited form fields applied.
+
+    Recognized form keys:
+        * ``qty_{i}`` — integer override for ``line_items[i].quantity``
+        * ``unit_price_{i}`` — decimal override for
+          ``line_items[i].unit_price_usd``
+        * ``pollination_date`` — ISO date (YYYY-MM-DD); empty string clears
+          the field
+
+    Unrecognized keys are ignored. Out-of-range or unparseable values are
+    silently skipped — the original draft value carries through. This is
+    deliberate: an empty / unparseable field in the form means "user
+    didn't touch this", not "user wants to wipe it." For genuine clear
+    semantics on ``pollination_date``, the form must send an empty
+    string explicitly.
+
+    Recomputes ``total_usd`` from the (possibly edited) line items so
+    persisted Order.total_usd matches what the user actually approved.
+
+    Pure function: returns a new ``OrderDraft``; ``draft`` itself is
+    frozen and is not mutated.
+    """
+    new_items: list[ResolvedLineItem] = []
+    for i, li in enumerate(draft.line_items):
+        qty = _parse_int(form.get(f"qty_{i}", "")) or li.quantity
+        unit = _parse_decimal(form.get(f"unit_price_{i}", ""))
+        if unit is None:
+            unit = li.unit_price_usd
+        # Use model_copy to preserve evidence + confidence + match_method.
+        new_items.append(li.model_copy(update={
+            "quantity": qty,
+            "unit_price_usd": unit,
+        }))
+    new_total = sum(
+        (li.unit_price_usd * li.quantity for li in new_items),
+        Decimal("0"),
+    )
+
+    new_pollination_date: date | None = draft.pollination_date
+    if "pollination_date" in form:
+        raw = form["pollination_date"].strip()
+        if raw == "":
+            new_pollination_date = None
+        else:
+            try:
+                new_pollination_date = date.fromisoformat(raw)
+            except ValueError:
+                pass  # ignore unparseable; keep original
+
+    return draft.model_copy(update={
+        "line_items": new_items,
+        "total_usd": new_total,
+        "pollination_date": new_pollination_date,
+    })
+
+
+def _parse_int(s: str) -> int | None:
+    """Parse a non-negative int form value; return None on failure."""
+    s = s.strip()
+    if not s:
+        return None
+    try:
+        n = int(s)
+    except ValueError:
+        return None
+    return n if n >= 1 else None
+
+
+def _parse_decimal(s: str) -> Decimal | None:
+    """Parse a positive decimal form value; return None on failure."""
+    s = s.strip()
+    if not s:
+        return None
+    try:
+        d = Decimal(s)
+    except (InvalidOperation, ValueError):
+        return None
+    return d if d > 0 else None
+
+
 __all__ = [
     "persist_order_from_draft",
     "resolve_default_apiarist",
+    "apply_order_overrides",
 ]

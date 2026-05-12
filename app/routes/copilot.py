@@ -36,8 +36,11 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+import asyncio
+from typing import AsyncIterator
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import desc, func, select, text
 from sqlmodel import Session
@@ -53,6 +56,7 @@ from agents.order_extractor import _build_chat_model
 from agents.schemas import OrderDraft
 from app.config import Settings, get_settings
 from app.routes._order_persistence import (
+    apply_order_overrides,
     persist_order_from_draft,
     resolve_default_apiarist,
 )
@@ -449,26 +453,94 @@ def _persist_assistant_turn(
 
 
 def _maybe_title_conversation(
-    conv: Conversation, first_user_text: str, db: Session
+    conv: Conversation,
+    first_user_text: str,
+    db: Session,
+    settings: Settings,
 ) -> None:
     """Set Conversation.title on the first user turn if not already set.
 
-    Falls back to the first ~60 chars of the user's text. We keep this
-    deterministic to avoid an extra LLM call per conversation in the
-    demo path; the LLM-titled variant is a future polish.
+    Uses an LLM (Settings.copilot_title_model) to summarize the first user
+    message into a 4-6 word title. Falls back to the deterministic 60-char
+    truncation if the LLM call fails or returns something unusable. Empty
+    titles fall through to the literal "Untitled conversation" string so
+    the rail never shows nothing.
 
-    Side effects: UPDATE on ``conversations`` if title is set.
+    The LLM call is small (single-prompt, ~10 tokens output) — adds
+    roughly half a second to the first turn. The cost saves us from
+    "What's the general state of varroa across our customers?" being
+    shown verbatim in the rail.
+
+    Side effects: one LLM call + UPDATE on ``conversations`` if title is set.
     """
     if conv.title:
         return
-    title = first_user_text.strip().splitlines()[0] if first_user_text.strip() else ""
-    if not title:
-        title = "Untitled conversation"
-    if len(title) > _TITLE_FALLBACK_LIMIT:
-        title = title[:_TITLE_FALLBACK_LIMIT].rstrip() + "…"
+    fallback = _deterministic_title(first_user_text)
+    title = _llm_title(first_user_text, settings) or fallback
     conv.title = title
     db.add(conv)
     db.commit()
+
+
+def _deterministic_title(first_user_text: str) -> str:
+    """Cheap fallback title — first line of the user's text, capped at 60 chars."""
+    title = first_user_text.strip().splitlines()[0] if first_user_text.strip() else ""
+    if not title:
+        return "Untitled conversation"
+    if len(title) > _TITLE_FALLBACK_LIMIT:
+        return title[:_TITLE_FALLBACK_LIMIT].rstrip() + "…"
+    return title
+
+
+_TITLE_PROMPT = """\
+Summarize this user message into a 4-6 word conversation title. The
+title should be short, descriptive, and capture the topic — like a
+ChatGPT conversation title.
+
+Examples:
+- "What's the varroa trend at O'Reilly?" → "Varroa trend at O'Reilly"
+- "Draft an order for St. Agnes — 40 hives." → "St. Agnes order draft"
+- "Visited Cascade today, mites at 3.5%" → "Cascade visit report"
+
+Message:
+{text}
+
+Return ONLY the title, no quotes, no punctuation at the end, no extra
+text. Max 60 characters.
+"""
+
+
+def _llm_title(text_in: str, settings: Settings) -> str | None:
+    """One-shot LLM call to summarize the first user turn into a short title.
+
+    Returns the trimmed title, or ``None`` if the call fails / returns
+    something unusable (so the caller can fall through to the
+    deterministic fallback).
+
+    Side effects: one LLM call (~10 tokens output).
+    """
+    try:
+        chat_model = _build_chat_model(settings.copilot_title_model)
+        prompt = _TITLE_PROMPT.format(text=text_in)
+        result = chat_model.invoke(prompt)
+        raw = getattr(result, "content", None)
+        if isinstance(raw, list):
+            raw = "".join(
+                str(b.get("text", "")) if isinstance(b, dict) else str(b)
+                for b in raw
+            )
+        if not isinstance(raw, str):
+            return None
+        title = raw.strip().strip('"').strip("'").rstrip(".").strip()
+        if not title:
+            return None
+        # Cap length defensively — the prompt says max 60 but models drift.
+        if len(title) > _TITLE_FALLBACK_LIMIT:
+            title = title[:_TITLE_FALLBACK_LIMIT].rstrip() + "…"
+        return title
+    except Exception as exc:
+        log.warning("title LLM call failed: %s — using fallback", exc)
+        return None
 
 
 def _resolve_active_customer_site(
@@ -583,15 +655,21 @@ def _render_shell(
 # ---------------------------------------------------------------------------
 
 
-@html_router.post("/copilot/turns", response_class=HTMLResponse)
-def post_turn(
+@html_router.post("/copilot/turns")
+async def post_turn(
     request: Request,
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     conversation_id: uuid.UUID = Form(...),
     text: str = Form(..., min_length=1, max_length=8_000),
-) -> HTMLResponse:
+):
     """Create a user turn → run orchestrator → persist + return both partials.
+
+    Content negotiation: when the client sends ``Accept: text/event-stream``
+    (set by the browser composer for live status updates), this returns
+    Server-Sent Events streaming user_turn → status… → complete. Otherwise
+    it returns the canonical HTML partial (used by tests, programmatic
+    clients, and as a graceful fallback when SSE isn't available).
 
     Side effects:
       * INSERT user ChatTurn
@@ -601,6 +679,20 @@ def post_turn(
         first turn)
     """
     conv = _get_or_create_conversation(db, conversation_id)
+
+    accept = request.headers.get("accept", "")
+    if "text/event-stream" in accept:
+        return StreamingResponse(
+            _stream_turn_events(
+                conv=conv, text=text, db=db, settings=settings,
+            ),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",  # disable nginx-style proxy buffering
+                "Connection": "keep-alive",
+            },
+        )
 
     # 1. Persist user turn first so the new row is visible if the LLM call
     # raises — fail-loud: the user message stays, the assistant slot stays
@@ -621,7 +713,7 @@ def post_turn(
     db.refresh(user_turn)
 
     # 2. First-turn title.
-    _maybe_title_conversation(conv, text, db)
+    _maybe_title_conversation(conv, text, db, settings)
 
     # 3. Run the orchestrator.
     models = _build_models(settings)
@@ -662,6 +754,163 @@ def post_turn(
 
 
 # ---------------------------------------------------------------------------
+# Streaming variant — Server-Sent Events for live status updates
+# ---------------------------------------------------------------------------
+
+
+#: User-facing labels for each orchestrator stage. The streaming SSE
+#: branch shows these as "thinking..." status messages while the LLM
+#: work happens. Stages the orchestrator emits but that aren't in this
+#: dict (e.g. ``account_resolved``) are silently skipped.
+_STAGE_LABELS: dict[str, str] = {
+    "intent_routed": "Routed your intent",
+    "context_built": "Loaded customer context",
+    "answer_drafting": "Drafting your answer",
+    "answer_ready": "Answer ready",
+    "draft_ready": "Building the draft card",
+}
+
+
+def _sse_event(name: str, html: str) -> bytes:
+    """Format an HTML payload as a single SSE event.
+
+    SSE ``data:`` is single-line by default; multi-line payloads need
+    each line prefixed. We strip-then-rejoin so the rendered HTML
+    survives the framing.
+    """
+    lines = html.strip().splitlines()
+    if not lines:
+        return f"event: {name}\ndata: \n\n".encode("utf-8")
+    body = "\n".join(f"data: {line}" for line in lines)
+    return f"event: {name}\n{body}\n\n".encode("utf-8")
+
+
+async def _stream_turn_events(
+    *,
+    conv: Conversation,
+    text: str,
+    db: Session,
+    settings: Settings,
+) -> AsyncIterator[bytes]:
+    """Async generator that emits SSE events for one chat turn.
+
+    Sequence of events:
+      1. ``user_turn`` — HTML for the user bubble, immediately
+      2. ``status`` × N — one per orchestrator stage label
+      3. ``complete`` — HTML for the assistant bubble (final swap)
+
+    The orchestrator runs inside ``asyncio.to_thread`` so the event loop
+    can keep draining the status queue while it works. The request-scoped
+    ``db`` session is used from the worker thread, which is safe because
+    the call is serialized — no concurrent access.
+
+    Side effects: INSERT user + assistant ChatTurns, UPDATE Conversation
+    metadata, 1-3 LLM calls.
+    """
+    # 1. Persist user turn first so the new row exists even if the LLM
+    # work raises.
+    user_turn = ChatTurn(
+        conversation_id=conv.id,
+        role="user",
+        text=text,
+        tool_calls=[],
+        evidence_used=[],
+        tokens_input=0,
+        tokens_output=0,
+        cost_usd=Decimal("0"),
+        latency_ms=0,
+    )
+    db.add(user_turn)
+    db.commit()
+    db.refresh(user_turn)
+
+    _maybe_title_conversation(conv, text, db, settings)
+
+    # Emit user bubble immediately.
+    user_html = templates.get_template("partials/copilot_turn_user.html").render(
+        turn=_turn_view_for_template(user_turn),
+    )
+    yield _sse_event("user_turn", user_html)
+    yield _sse_event("status", '<span class="thinking-dot"></span> Thinking…')
+
+    # 2. Set up the progress queue + run orchestrator in a thread.
+    queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+
+    def _on_step(stage: str, payload: Any) -> None:
+        try:
+            queue.put_nowait((stage, payload))
+        except asyncio.QueueFull:
+            pass
+
+    models = _build_models(settings)
+    account_index = _build_account_index_safe(db)
+
+    def _run_sync() -> CopilotResponse:
+        return get_copilot_response(
+            user_text=text,
+            db=db,
+            models=models,
+            account_index=account_index,
+            active_account_id=conv.active_account_id,
+            on_step=_on_step,
+        )
+
+    orch_task = asyncio.create_task(asyncio.to_thread(_run_sync))
+
+    # Drain status events as they arrive. Poll the queue with a short
+    # timeout so we wake up to check whether the task is done.
+    while True:
+        if orch_task.done() and queue.empty():
+            break
+        try:
+            stage, _payload = await asyncio.wait_for(queue.get(), timeout=0.2)
+        except asyncio.TimeoutError:
+            continue
+        label = _STAGE_LABELS.get(stage)
+        if label is None:
+            continue
+        yield _sse_event(
+            "status",
+            f'<span class="thinking-dot"></span> {label}…',
+        )
+
+    # 3. Surface any orchestrator exception as a friendly status, then
+    # close the stream. (Don't let exceptions bubble through SSE — the
+    # client gets a malformed stream otherwise.)
+    try:
+        response = await orch_task
+    except Exception as exc:
+        log.exception("orchestrator failed mid-stream")
+        yield _sse_event(
+            "complete",
+            (
+                '<div class="turn assistant"><div class="bubble">'
+                '<div class="text">Something went wrong while drafting the '
+                f'answer ({type(exc).__name__}). Please retry.</div>'
+                "</div></div>"
+            ),
+        )
+        return
+
+    # 4. Persist the assistant turn + sync conversation metadata.
+    assistant_turn = _persist_assistant_turn(
+        db, conversation_id=conv.id, response=response,
+    )
+    conv.updated_at = utc_now()
+    if response.resolved_customer_id is not None:
+        conv.active_account_id = response.resolved_customer_id
+    conv.model_used = response.model
+    db.add(conv)
+    db.commit()
+
+    # 5. Final swap: full assistant bubble HTML.
+    assistant_html = templates.get_template("partials/copilot_turn_assistant.html").render(
+        turn=_turn_view_for_template(assistant_turn),
+    )
+    yield _sse_event("complete", assistant_html)
+
+
+# ---------------------------------------------------------------------------
 # HTMX action: create new conversation
 # ---------------------------------------------------------------------------
 
@@ -687,16 +936,27 @@ def post_new_conversation(
 @html_router.post(
     "/copilot/turns/{turn_id}/confirm-order", response_class=HTMLResponse
 )
-def confirm_order(
+async def confirm_order(
     turn_id: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db_session),
 ) -> HTMLResponse:
     """Persist a stashed OrderDraft as a real ``orders`` row + line items.
 
+    Reads any user-edited overrides from the form body (``qty_{i}``,
+    ``unit_price_{i}``, ``pollination_date``) so the salesperson can
+    correct LLM mistakes before saving. The overrides are layered onto
+    the stashed draft via ``apply_order_overrides``.
+
     Side effects: INSERT on orders, order_line_items, order_state_transitions.
     """
-    result = _persist_order_draft(turn_id=turn_id, db=db)
+    form = await request.form()
+    overrides: dict[str, str] = {
+        k: v for k, v in form.items() if isinstance(v, str)
+    }
+    result = _persist_order_draft(
+        turn_id=turn_id, db=db, overrides=overrides,
+    )
     return templates.TemplateResponse(
         request, "partials/copilot_confirm_result.html", {"result": result, "kind": "order"}
     )
@@ -705,23 +965,39 @@ def confirm_order(
 @html_router.post(
     "/copilot/turns/{turn_id}/confirm-report", response_class=HTMLResponse
 )
-def confirm_report(
+async def confirm_report(
     turn_id: uuid.UUID,
     request: Request,
     db: Session = Depends(get_db_session),
 ) -> HTMLResponse:
     """Persist a stashed CustomerReportDraft as a real ``customer_reports`` row.
 
+    Reads optional override fields from the form: ``varroa_pct`` (float),
+    ``visit_date`` (ISO date), ``narrative`` (free text). When set, these
+    override the LLM-extracted values from the stashed draft.
+
     Side effects: INSERT on customer_reports.
     """
-    result = _persist_report_draft(turn_id=turn_id, db=db)
+    form = await request.form()
+    overrides: dict[str, str] = {
+        k: v for k, v in form.items() if isinstance(v, str)
+    }
+    result = _persist_report_draft(
+        turn_id=turn_id, db=db, overrides=overrides,
+    )
     return templates.TemplateResponse(
         request, "partials/copilot_confirm_result.html", {"result": result, "kind": "report"}
     )
 
 
-def _persist_order_draft(*, turn_id: uuid.UUID, db: Session) -> ConfirmResultOut:
-    """Look up the assistant turn, re-hydrate the OrderDraft, persist.
+def _persist_order_draft(
+    *,
+    turn_id: uuid.UUID,
+    db: Session,
+    overrides: dict[str, str] | None = None,
+) -> ConfirmResultOut:
+    """Look up the assistant turn, re-hydrate the OrderDraft, optionally
+    apply user-edited overrides, then persist.
 
     Returns a ``ConfirmResultOut`` ready to be rendered or returned via JSON.
     """
@@ -750,9 +1026,16 @@ def _persist_order_draft(*, turn_id: uuid.UUID, db: Session) -> ConfirmResultOut
             ),
         )
 
+    if overrides:
+        draft = apply_order_overrides(draft, overrides)
+
     order = persist_order_from_draft(
         draft, db,
-        metadata={"source": "copilot_confirm", "turn_id": str(turn_id)},
+        metadata={
+            "source": "copilot_confirm",
+            "turn_id": str(turn_id),
+            "edited_by_user": bool(overrides),
+        },
     )
     return ConfirmResultOut(
         ok=True,
@@ -765,7 +1048,12 @@ def _persist_order_draft(*, turn_id: uuid.UUID, db: Session) -> ConfirmResultOut
     )
 
 
-def _persist_report_draft(*, turn_id: uuid.UUID, db: Session) -> ConfirmResultOut:
+def _persist_report_draft(
+    *,
+    turn_id: uuid.UUID,
+    db: Session,
+    overrides: dict[str, str] | None = None,
+) -> ConfirmResultOut:
     """Look up the assistant turn, re-hydrate the CustomerReportDraft, persist.
 
     Falls back to the conversation's active_account_id when the draft
@@ -817,25 +1105,57 @@ def _persist_report_draft(*, turn_id: uuid.UUID, db: Session) -> ConfirmResultOu
     user = resolve_default_apiarist(db)
     site = _resolve_active_customer_site(db, customer_id)
 
+    overrides = overrides or {}
+
     visit_date: date
-    if draft.visit_date is not None:
-        visit_date = draft.visit_date.date() if isinstance(draft.visit_date, datetime) else draft.visit_date
+    raw_visit = overrides.get("visit_date", "").strip()
+    if raw_visit:
+        try:
+            visit_date = date.fromisoformat(raw_visit)
+        except ValueError:
+            visit_date = (
+                draft.visit_date.date()
+                if isinstance(draft.visit_date, datetime)
+                else (draft.visit_date or date.today())
+            )
+    elif draft.visit_date is not None:
+        visit_date = (
+            draft.visit_date.date()
+            if isinstance(draft.visit_date, datetime)
+            else draft.visit_date
+        )
     else:
         visit_date = date.today()
 
-    varroa_count = (
-        Decimal(str(draft.varroa_pct))
-        if draft.varroa_pct is not None
-        else Decimal("0")
-    )
+    raw_varroa = overrides.get("varroa_pct", "").strip()
+    if raw_varroa:
+        try:
+            varroa_count = Decimal(raw_varroa)
+        except Exception:
+            varroa_count = (
+                Decimal(str(draft.varroa_pct))
+                if draft.varroa_pct is not None
+                else Decimal("0")
+            )
+    elif draft.varroa_pct is not None:
+        varroa_count = Decimal(str(draft.varroa_pct))
+    else:
+        varroa_count = Decimal("0")
 
-    narrative_parts: list[str] = []
-    if draft.observations:
-        narrative_parts.append("Observations: " + "; ".join(draft.observations))
-    if draft.action_items:
-        narrative_parts.append("Follow-ups: " + "; ".join(draft.action_items))
-    narrative = "\n".join(narrative_parts) or "(no narrative captured)"
+    raw_narrative = overrides.get("narrative", "").strip()
+    if raw_narrative:
+        narrative = raw_narrative
+    else:
+        narrative_parts: list[str] = []
+        if draft.observations:
+            narrative_parts.append("Observations: " + "; ".join(draft.observations))
+        if draft.action_items:
+            narrative_parts.append("Follow-ups: " + "; ".join(draft.action_items))
+        narrative = "\n".join(narrative_parts) or "(no narrative captured)"
 
+    tags = ["from_copilot"]
+    if any(overrides.get(k, "").strip() for k in ("varroa_pct", "visit_date", "narrative")):
+        tags.append("edited_by_user")
     report = CustomerReport(
         customer_site_id=site.id,
         author_id=user.id,
@@ -845,7 +1165,7 @@ def _persist_report_draft(*, turn_id: uuid.UUID, db: Session) -> ConfirmResultOu
         diseases_observed=[],
         pesticide_exposure_note=None,
         narrative=narrative,
-        tags=["from_copilot"],
+        tags=tags,
     )
     db.add(report)
     db.commit()

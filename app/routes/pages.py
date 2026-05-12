@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -22,7 +22,10 @@ from sqlmodel import Session
 from agents.order_extractor import run_order_extraction
 from agents.schemas import EmailInput, ExtractionFailure, OrderDraft
 from app.config import Settings, get_settings
-from app.routes._order_persistence import persist_order_from_draft
+from app.routes._order_persistence import (
+    apply_order_overrides,
+    persist_order_from_draft,
+)
 from app.schemas.copilot import ConfirmResultOut
 from db.enums import OrderState
 from db.models import Customer, Order, CustomerReport
@@ -270,9 +273,8 @@ def inbox_extract(
 
 
 @router.post("/inbox/confirm", response_class=HTMLResponse)
-def inbox_confirm(
+async def inbox_confirm(
     request: Request,
-    draft_json: str = Form(...),
     db: Session = Depends(get_db_session),
 ) -> HTMLResponse:
     """HTMX action — persist a previously-extracted OrderDraft.
@@ -282,6 +284,11 @@ def inbox_confirm(
     re-validated and a row is inserted into ``orders`` plus its line
     items + initial state transition).
 
+    Inline-edit overrides (``qty_{i}`` / ``unit_price_{i}`` /
+    ``pollination_date``) sent alongside the draft are applied before
+    persist via ``apply_order_overrides``, so the salesperson can fix
+    LLM-extracted numbers without re-running the agent.
+
     Side effects: 1 INSERT on ``orders``, N on ``order_line_items``,
     1 on ``order_state_transitions``.
 
@@ -289,8 +296,16 @@ def inbox_confirm(
       * Malformed JSON
       * Draft customer didn't resolve (``customer_id is None``)
     """
+    form = await request.form()
+    draft_json_raw = form.get("draft_json")
+    if not isinstance(draft_json_raw, str):
+        # Missing field — let FastAPI's standard validation surface a 422.
+        # We could also return a 200 with an error card here, but treating
+        # an entirely-missing required field as a 422 is the standard.
+        raise HTTPException(status_code=422, detail="draft_json is required")
+
     try:
-        draft = OrderDraft.model_validate_json(draft_json)
+        draft = OrderDraft.model_validate_json(draft_json_raw)
     except Exception as exc:
         result = ConfirmResultOut(
             ok=False,
@@ -318,10 +333,16 @@ def inbox_confirm(
             {"result": result, "kind": "order"},
         )
 
+    overrides: dict[str, str] = {
+        k: v for k, v in form.items() if isinstance(v, str) and k != "draft_json"
+    }
+    if overrides:
+        draft = apply_order_overrides(draft, overrides)
+
     order = persist_order_from_draft(
         draft, db,
         source_email_id=None,
-        metadata={"source": "inbox_confirm"},
+        metadata={"source": "inbox_confirm", "edited_by_user": bool(overrides)},
     )
     result = ConfirmResultOut(
         ok=True,

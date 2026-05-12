@@ -216,6 +216,119 @@ class TestInboxConfirm:
         resp = client.post("/inbox/confirm", data={})
         assert resp.status_code == 422
 
+    def test_confirm_applies_qty_overrides(
+        self, client, db, faker_instance
+    ) -> None:
+        """User edits the quantity field; persisted order should reflect it."""
+        _seed_min(db, faker_instance)
+        db.commit()
+        draft = _build_matched_draft(db)
+        original_qty = draft.line_items[0].quantity
+        original_total = draft.total_usd
+        edited_qty = original_qty * 2
+
+        before_orders = _count(db, "orders")
+        resp = client.post(
+            "/inbox/confirm",
+            data={
+                "draft_json": draft.model_dump_json(),
+                "qty_0": str(edited_qty),
+            },
+        )
+        assert resp.status_code == 200
+        assert "Saved" in resp.text
+        assert _count(db, "orders") == before_orders + 1
+
+        # The persisted line item should carry the doubled quantity.
+        latest_order_id = db.execute(
+            text("SELECT id FROM orders ORDER BY created_at DESC LIMIT 1")
+        ).scalar_one()
+        persisted_qty = db.execute(
+            text(
+                "SELECT quantity FROM order_line_items "
+                "WHERE order_id = :oid"
+            ),
+            {"oid": str(latest_order_id)},
+        ).scalar_one()
+        assert int(persisted_qty) == edited_qty
+
+        # Total should be recomputed: doubled qty = doubled total.
+        persisted_total = db.execute(
+            text("SELECT total_usd FROM orders WHERE id = :oid"),
+            {"oid": str(latest_order_id)},
+        ).scalar_one()
+        from decimal import Decimal
+        assert Decimal(str(persisted_total)) == original_total * 2
+
+        # Transition metadata records the user edit for audit purposes.
+        meta = db.execute(
+            text(
+                "SELECT metadata FROM order_state_transitions "
+                "WHERE order_id = :oid"
+            ),
+            {"oid": str(latest_order_id)},
+        ).scalar_one()
+        assert meta.get("edited_by_user") is True
+
+    def test_confirm_applies_pollination_date_override(
+        self, client, db, faker_instance
+    ) -> None:
+        _seed_min(db, faker_instance)
+        db.commit()
+        draft = _build_matched_draft(db)
+
+        from datetime import date
+        target_date = date(2026, 6, 15)
+        resp = client.post(
+            "/inbox/confirm",
+            data={
+                "draft_json": draft.model_dump_json(),
+                "pollination_date": target_date.isoformat(),
+            },
+        )
+        assert resp.status_code == 200
+        assert "Saved" in resp.text
+
+        latest_pd = db.execute(
+            text(
+                "SELECT pollination_date FROM orders "
+                "ORDER BY created_at DESC LIMIT 1"
+            )
+        ).scalar_one()
+        assert latest_pd == target_date
+
+    def test_confirm_ignores_unparseable_overrides(
+        self, client, db, faker_instance
+    ) -> None:
+        """Garbage in the qty override field should fall back to the draft value."""
+        _seed_min(db, faker_instance)
+        db.commit()
+        draft = _build_matched_draft(db)
+        original_qty = draft.line_items[0].quantity
+
+        resp = client.post(
+            "/inbox/confirm",
+            data={
+                "draft_json": draft.model_dump_json(),
+                "qty_0": "not a number",
+                "unit_price_0": "abc",
+            },
+        )
+        assert resp.status_code == 200
+        assert "Saved" in resp.text
+
+        latest_order_id = db.execute(
+            text("SELECT id FROM orders ORDER BY created_at DESC LIMIT 1")
+        ).scalar_one()
+        persisted_qty = db.execute(
+            text(
+                "SELECT quantity FROM order_line_items "
+                "WHERE order_id = :oid"
+            ),
+            {"oid": str(latest_order_id)},
+        ).scalar_one()
+        assert int(persisted_qty) == original_qty
+
 
 # ---------------------------------------------------------------------------
 # Extract → draft (renders the confirm button)
