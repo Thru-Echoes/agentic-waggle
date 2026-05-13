@@ -10,7 +10,6 @@ from agents.schemas import (
     ConversationContext,
     CustomerCandidate,
     CustomerMatch,
-    SkuCandidate,
     SkuContext,
     SkuMatch,
 )
