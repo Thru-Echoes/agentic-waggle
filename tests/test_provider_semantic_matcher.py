@@ -43,13 +43,17 @@ def test_hybrid_retrieve_returns_canonical_name_for_exact_query(
 
 
 def test_hybrid_retrieve_returns_site_for_site_reference(seeded_customer_entries):
-    """'OReillys Back 40' is a distinctive alias seeded for O'Reilly Family Orchards.
+    """'OReilly Orchard' is a curated alias for O'Reilly Family Orchards,
+    stored in customers.aliases via EDGE_CASE_CUSTOMERS in seed/faker_providers.py.
 
-    The fixture inserts this alias entry so querying it should surface
-    O'Reilly's customer_id in the shortlist.
+    backfill_all (Task 6) indexes this alias entry so querying it should
+    surface O'Reilly's customer_id in the shortlist.
+
+    Note: the old test-only alias 'OReillys Back 40' was retired in Task 6
+    when db_session_with_search_entries switched to calling backfill_all.
     """
     candidates = semantic_matcher._hybrid_retrieve(
-        "OReillys Back 40",
+        "OReilly Orchard",
         table="customer_search_entries",
         db=seeded_customer_entries,
     )
@@ -457,3 +461,53 @@ def test_match_sku_exact_code_short_circuits_no_llm(seeded_customer_entries, mon
     assert match.confidence == 1.0
     assert match.sku_kind == "product"
     assert match.sku_code == test_sku
+
+
+# ---------------------------------------------------------------------------
+# Backfill + reindex
+# ---------------------------------------------------------------------------
+
+
+def test_backfill_all_is_idempotent(db_session_with_seed):
+    """Calling backfill_all twice produces the same final row counts."""
+    n1 = semantic_matcher.backfill_all(db_session_with_seed)
+    n2 = semantic_matcher.backfill_all(db_session_with_seed)
+    assert n1 == n2
+    assert n1 > 0
+
+
+def test_backfill_creates_entries_for_every_customer_and_alias(db_session_with_seed):
+    semantic_matcher.backfill_all(db_session_with_seed)
+    rows = db_session_with_seed.execute(text(
+        "SELECT COUNT(*) FROM customer_search_entries WHERE source = 'name'"
+    )).scalar_one()
+    customer_count = db_session_with_seed.execute(text(
+        "SELECT COUNT(*) FROM customers"
+    )).scalar_one()
+    assert rows == customer_count
+
+
+def test_backfill_creates_one_entry_per_site(db_session_with_seed):
+    semantic_matcher.backfill_all(db_session_with_seed)
+    rows = db_session_with_seed.execute(text(
+        "SELECT COUNT(*) FROM customer_search_entries WHERE source = 'site'"
+    )).scalar_one()
+    sites = db_session_with_seed.execute(text(
+        "SELECT COUNT(*) FROM customer_sites"
+    )).scalar_one()
+    assert rows == sites
+
+
+def test_reindex_customer_only_touches_that_customer(db_session_with_seed):
+    semantic_matcher.backfill_all(db_session_with_seed)
+    cid = db_session_with_seed.execute(text(
+        "SELECT id FROM customers LIMIT 1"
+    )).scalar_one()
+    before_total = db_session_with_seed.execute(text(
+        "SELECT COUNT(*) FROM customer_search_entries"
+    )).scalar_one()
+    semantic_matcher.reindex_customer(cid, db_session_with_seed)
+    after_total = db_session_with_seed.execute(text(
+        "SELECT COUNT(*) FROM customer_search_entries"
+    )).scalar_one()
+    assert before_total == after_total  # idempotent — same row count

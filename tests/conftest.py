@@ -230,75 +230,25 @@ def db_session_with_seed(db: Session) -> Session:
 
 @pytest.fixture
 def db_session_with_search_entries(db_session_with_seed: Session) -> Session:
-    """Inserts a minimal customer_search_entries set so Stage-A tests can run
-    before Task 7's full backfill is implemented.
+    """Seed search-entry tables via backfill_all so Stage-A tests can run.
 
-    Inserts one 'name' entry per customer, one 'site' entry per site, and a
-    single known 'alias' entry for O'Reilly Family Orchards ("OReillys Back 40")
-    so that site-reference and multi-source tests use a distinctive query with
-    no ambiguity.
+    Replaced in Task 6: instead of manually inserting rows, this fixture
+    calls providers.semantic_matcher.backfill_all which TRUNCATE-and-rebuilds
+    both customer_search_entries and sku_search_entries from the live seed data.
+    The explicit call here is a safety belt — backfill_all is idempotent.
 
-    Uses the real VectorSearchProvider (all-MiniLM-L6-v2, 384-dim) to build
-    embeddings — no mocks.
+    Source of truth for aliases is now customers.aliases (JSONB), which
+    includes curated aliases from EDGE_CASE_CUSTOMERS in seed/faker_providers.py
+    (e.g., "OReilly Orchard", "O'Reilly's Almonds" for O'Reilly Family Orchards).
+    The old test-only alias "OReillys Back 40" is retired; tests that queried
+    it have been updated to use real seed aliases.
 
-    This fixture is REPLACED after Task 7 lands and the fixture switches to
-    calling backfill_all() directly.
+    Uses real pgvector + sentence-transformers. No mocks.
 
-    Side effects: inserts into customer_search_entries; commits.
+    Side effects: calls backfill_all (TRUNCATE + INSERT + commit) on the
+        db_session_with_seed session.
     """
-    from providers.vector_search import VectorSearchProvider
+    from providers import semantic_matcher
 
-    provider = VectorSearchProvider()
-    db = db_session_with_seed
-
-    customer_rows = db.execute(
-        text("SELECT id AS customer_id, name AS entry_text FROM customers")
-    ).mappings().all()
-    for r in customer_rows:
-        emb = provider.embed(r["entry_text"])
-        db.execute(
-            text(
-                "INSERT INTO customer_search_entries "
-                "(customer_id, entry_text, source, embedding) "
-                "VALUES (:cid, :et, 'name', CAST(:emb AS vector))"
-            ),
-            {"cid": r["customer_id"], "et": r["entry_text"], "emb": emb},
-        )
-
-    site_rows = db.execute(
-        text("SELECT customer_id, name AS entry_text FROM customer_sites")
-    ).mappings().all()
-    for r in site_rows:
-        emb = provider.embed(r["entry_text"])
-        db.execute(
-            text(
-                "INSERT INTO customer_search_entries "
-                "(customer_id, entry_text, source, embedding) "
-                "VALUES (:cid, :et, 'site', CAST(:emb AS vector))"
-            ),
-            {"cid": r["customer_id"], "et": r["entry_text"], "emb": emb},
-        )
-
-    # Add a distinctive alias for O'Reilly so site-reference and multi-source
-    # tests can use a query with no ambiguity across the 40-customer corpus.
-    oreilly_row = db.execute(
-        text("SELECT id FROM customers WHERE name LIKE :n"),
-        {"n": "%O'Reilly%"},
-    ).first()
-    assert oreilly_row is not None, (
-        "O'Reilly Family Orchards not found in seeded customers. "
-        "Did seed/customers.py change? Update the alias fixture to match."
-    )
-    alias_text = "OReillys Back 40"
-    emb = provider.embed(alias_text)
-    db.execute(
-        text(
-            "INSERT INTO customer_search_entries "
-            "(customer_id, entry_text, source, embedding) "
-            "VALUES (:cid, :et, 'alias', CAST(:emb AS vector))"
-        ),
-        {"cid": oreilly_row.id, "et": alias_text, "emb": emb},
-    )
-
-    db.commit()
-    return db
+    semantic_matcher.backfill_all(db_session_with_seed)
+    return db_session_with_seed

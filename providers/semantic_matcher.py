@@ -841,27 +841,232 @@ def match_sku(
 
 
 # ---------------------------------------------------------------------------
-# Backfill (used by tests + seed + boot.py reindex-if-empty)
-# Stub here so tests can call it; full impl lives in Task 7.
+# Backfill + reindex helpers (Task 6)
 # ---------------------------------------------------------------------------
 
 
 def backfill_all(db: Session) -> int:
-    """Populate both search-entry tables from customers/sites/products/services.
+    """Truncate-and-rebuild both search-entry tables from
+    customers/sites/products/services. Idempotent.
 
-    Idempotent: TRUNCATEs the tables, then re-inserts. Returns total row count.
-    Real implementation in Task 7 (this stub is a placeholder).
+    Returns the total row count written across both tables.
+
+    Side effects:
+        * TRUNCATE on customer_search_entries + sku_search_entries.
+        * INSERTs proportional to (customers + aliases + sites +
+          products + services + their codes).
+        * Embeds every entry_text via the shared VectorSearchProvider.
+        * Commits the transaction.
 
     Parameters:
         db: SQLAlchemy Session for DB reads and writes.
 
     Returns:
-        Total number of rows inserted.
-
-    Side effects: TRUNCATEs and re-inserts into customer_search_entries and
-        sku_search_entries.
+        Total number of rows inserted across both tables.
     """
-    raise NotImplementedError(
-        "backfill_all is implemented in Task 7 of the matcher plan; "
-        "called from Stage-A tests via the seeded_customer_entries fixture."
-    )
+    client = _get_vector_provider()
+    db.execute(text("TRUNCATE TABLE customer_search_entries"))
+    db.execute(text("TRUNCATE TABLE sku_search_entries"))
+    total = 0
+
+    # Customer canonical names + aliases
+    rows = db.execute(text("SELECT id, name, aliases FROM customers")).mappings().all()
+    for r in rows:
+        emb = client.embed(r["name"])
+        db.execute(text(
+            "INSERT INTO customer_search_entries "
+            "(customer_id, entry_text, source, embedding) "
+            "VALUES (:cid, :et, 'name', CAST(:emb AS vector))"
+        ), {"cid": r["id"], "et": r["name"], "emb": emb})
+        total += 1
+        for alias in r.get("aliases") or []:
+            emb = client.embed(alias)
+            db.execute(text(
+                "INSERT INTO customer_search_entries "
+                "(customer_id, entry_text, source, embedding) "
+                "VALUES (:cid, :et, 'alias', CAST(:emb AS vector))"
+            ), {"cid": r["id"], "et": alias, "emb": emb})
+            total += 1
+
+    # Customer sites
+    site_rows = db.execute(text(
+        "SELECT customer_id, name FROM customer_sites"
+    )).mappings().all()
+    for r in site_rows:
+        emb = client.embed(r["name"])
+        db.execute(text(
+            "INSERT INTO customer_search_entries "
+            "(customer_id, entry_text, source, embedding) "
+            "VALUES (:cid, :et, 'site', CAST(:emb AS vector))"
+        ), {"cid": r["customer_id"], "et": r["name"], "emb": emb})
+        total += 1
+
+    # Products: name + code
+    prod_rows = db.execute(text(
+        "SELECT id, sku, name FROM products"
+    )).mappings().all()
+    for r in prod_rows:
+        emb = client.embed(r["name"])
+        db.execute(text(
+            "INSERT INTO sku_search_entries "
+            "(product_id, entry_text, source, embedding) "
+            "VALUES (:pid, :et, 'product_name', CAST(:emb AS vector))"
+        ), {"pid": r["id"], "et": r["name"], "emb": emb})
+        total += 1
+        emb = client.embed(r["sku"])
+        db.execute(text(
+            "INSERT INTO sku_search_entries "
+            "(product_id, entry_text, source, embedding) "
+            "VALUES (:pid, :et, 'product_code', CAST(:emb AS vector))"
+        ), {"pid": r["id"], "et": r["sku"], "emb": emb})
+        total += 1
+
+    # Services: name + code
+    svc_rows = db.execute(text(
+        "SELECT id, sku, name FROM services"
+    )).mappings().all()
+    for r in svc_rows:
+        emb = client.embed(r["name"])
+        db.execute(text(
+            "INSERT INTO sku_search_entries "
+            "(service_id, entry_text, source, embedding) "
+            "VALUES (:sid, :et, 'service_name', CAST(:emb AS vector))"
+        ), {"sid": r["id"], "et": r["name"], "emb": emb})
+        total += 1
+        emb = client.embed(r["sku"])
+        db.execute(text(
+            "INSERT INTO sku_search_entries "
+            "(service_id, entry_text, source, embedding) "
+            "VALUES (:sid, :et, 'service_code', CAST(:emb AS vector))"
+        ), {"sid": r["id"], "et": r["sku"], "emb": emb})
+        total += 1
+
+    db.commit()
+    logger.info("backfill_all complete: %d entries written", total)
+    return total
+
+
+def reindex_customer(customer_id: uuid.UUID, db: Session) -> None:
+    """Rebuild customer_search_entries for a single customer.
+
+    Parameters:
+        customer_id: UUID of the customer to reindex.
+        db: SQLAlchemy Session for DB reads and writes.
+
+    Side effects:
+        * DELETE then INSERT for that customer's rows. Commit.
+
+    Raises:
+        LookupError: when no customer with the given id exists.
+    """
+    client = _get_vector_provider()
+    db.execute(text(
+        "DELETE FROM customer_search_entries WHERE customer_id = :cid"
+    ), {"cid": customer_id})
+    row = db.execute(text(
+        "SELECT id, name, aliases FROM customers WHERE id = :cid"
+    ), {"cid": customer_id}).mappings().first()
+    if not row:
+        raise LookupError(
+            f"reindex_customer: customer {customer_id!r} not found. "
+            f"Does the customer exist in the customers table?"
+        )
+    emb = client.embed(row["name"])
+    db.execute(text(
+        "INSERT INTO customer_search_entries "
+        "(customer_id, entry_text, source, embedding) "
+        "VALUES (:cid, :et, 'name', CAST(:emb AS vector))"
+    ), {"cid": customer_id, "et": row["name"], "emb": emb})
+    for alias in row.get("aliases") or []:
+        emb = client.embed(alias)
+        db.execute(text(
+            "INSERT INTO customer_search_entries "
+            "(customer_id, entry_text, source, embedding) "
+            "VALUES (:cid, :et, 'alias', CAST(:emb AS vector))"
+        ), {"cid": customer_id, "et": alias, "emb": emb})
+    site_rows = db.execute(text(
+        "SELECT name FROM customer_sites WHERE customer_id = :cid"
+    ), {"cid": customer_id}).mappings().all()
+    for s in site_rows:
+        emb = client.embed(s["name"])
+        db.execute(text(
+            "INSERT INTO customer_search_entries "
+            "(customer_id, entry_text, source, embedding) "
+            "VALUES (:cid, :et, 'site', CAST(:emb AS vector))"
+        ), {"cid": customer_id, "et": s["name"], "emb": emb})
+    db.commit()
+
+
+def reindex_sku(
+    *,
+    product_id: uuid.UUID | None = None,
+    service_id: uuid.UUID | None = None,
+    db: Session,
+) -> None:
+    """Rebuild sku_search_entries for a single product OR service.
+
+    Pass exactly one of product_id / service_id.
+
+    Parameters:
+        product_id: UUID of the product to reindex, or None.
+        service_id: UUID of the service to reindex, or None.
+        db: SQLAlchemy Session for DB reads and writes.
+
+    Side effects:
+        * DELETE then INSERT for that product/service's rows. Commit.
+
+    Raises:
+        ValueError: when both or neither of product_id / service_id are passed.
+        LookupError: when the specified product or service does not exist.
+    """
+    if (product_id is None) == (service_id is None):
+        raise ValueError(
+            "reindex_sku: pass exactly one of product_id/service_id, not both or neither. "
+            f"Got product_id={product_id!r}, service_id={service_id!r}."
+        )
+    client = _get_vector_provider()
+    if product_id:
+        db.execute(text(
+            "DELETE FROM sku_search_entries WHERE product_id = :pid"
+        ), {"pid": product_id})
+        row = db.execute(text(
+            "SELECT sku, name FROM products WHERE id = :pid"
+        ), {"pid": product_id}).mappings().first()
+        if not row:
+            raise LookupError(
+                f"reindex_sku: product {product_id!r} not found. "
+                f"Does the product exist in the products table?"
+            )
+        for entry_text, source in [
+            (row["name"], "product_name"),
+            (row["sku"], "product_code"),
+        ]:
+            emb = client.embed(entry_text)
+            db.execute(text(
+                "INSERT INTO sku_search_entries "
+                "(product_id, entry_text, source, embedding) "
+                "VALUES (:pid, :et, :s, CAST(:emb AS vector))"
+            ), {"pid": product_id, "et": entry_text, "s": source, "emb": emb})
+    else:
+        db.execute(text(
+            "DELETE FROM sku_search_entries WHERE service_id = :sid"
+        ), {"sid": service_id})
+        row = db.execute(text(
+            "SELECT sku, name FROM services WHERE id = :sid"
+        ), {"sid": service_id}).mappings().first()
+        if not row:
+            raise LookupError(
+                f"reindex_sku: service {service_id!r} not found. "
+                f"Does the service exist in the services table?"
+            )
+        for entry_text, source in [
+            (row["name"], "service_name"),
+            (row["sku"], "service_code"),
+        ]:
+            emb = client.embed(entry_text)
+            db.execute(text(
+                "INSERT INTO sku_search_entries "
+                "(service_id, entry_text, source, embedding) "
+                "VALUES (:sid, :et, :s, CAST(:emb AS vector))"
+            ), {"sid": service_id, "et": entry_text, "s": source, "emb": emb})
+    db.commit()
