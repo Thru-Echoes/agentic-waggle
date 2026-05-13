@@ -39,7 +39,7 @@ from typing import Any
 import asyncio
 from typing import AsyncIterator
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import desc, func, select, text
@@ -574,6 +574,48 @@ def _resolve_active_customer_site(
     if site is None:
         raise LookupError("CustomerSite vanished between SELECT and ORM load.")
     return site
+
+
+# ---------------------------------------------------------------------------
+# Internal-only render routes (template testing)
+# ---------------------------------------------------------------------------
+
+
+@html_router.get("/_internal/render/confirm-match", response_class=HTMLResponse)
+async def _internal_render_confirm_match(
+    request: Request,
+    turn_id: uuid.UUID,
+    customer_id: uuid.UUID,
+    customer_name: str,
+) -> HTMLResponse:
+    """Test-only route. Renders the confirm-match partial in isolation."""
+    return templates.TemplateResponse(
+        request,
+        "partials/copilot_confirm_match.html",
+        {"turn_id": turn_id, "customer_id": customer_id,
+         "customer_name": customer_name},
+    )
+
+
+@html_router.get("/_internal/render/pick-match", response_class=HTMLResponse)
+async def _internal_render_pick_match(
+    request: Request,
+    turn_id: uuid.UUID,
+    alt: list[str] = Query(default_factory=list),
+) -> HTMLResponse:
+    """Test-only route. Renders the pick-match partial.
+
+    Each `alt` query param is `customer_id|customer_name`.
+    """
+    alternatives = []
+    for a in alt:
+        cid, name = a.split("|", 1)
+        alternatives.append({"customer_id": cid, "customer_name": name, "confidence": None})
+    return templates.TemplateResponse(
+        request,
+        "partials/copilot_pick_match.html",
+        {"turn_id": turn_id, "alternatives": alternatives},
+    )
 
 
 # ---------------------------------------------------------------------------

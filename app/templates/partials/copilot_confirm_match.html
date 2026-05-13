@@ -1,0 +1,24 @@
+{# Inline-confirm card shown when 0.50 <= matcher confidence < 0.80. #}
+<div class="match-confirm-card" data-turn-id="{{ turn_id }}">
+  <div class="match-confirm-prompt">
+    <span class="thinking-dot"></span>
+    <span>Logging this for <strong>{{ customer_name }}</strong> — is that right?</span>
+  </div>
+  <form class="match-confirm-form"
+        method="post"
+        action="/copilot/turns/{{ turn_id }}/confirm-match"
+        hx-post="/copilot/turns/{{ turn_id }}/confirm-match"
+        hx-target="closest .match-confirm-card"
+        hx-swap="outerHTML">
+    <input type="hidden" name="customer_id" value="{{ customer_id }}">
+    <button type="submit" class="action primary">Yes, proceed</button>
+    <button type="submit"
+            class="action ghost"
+            name="action"
+            value="reject"
+            formaction="/copilot/turns/{{ turn_id }}/confirm-match?reject=1"
+            hx-post="/copilot/turns/{{ turn_id }}/confirm-match?reject=1">
+      No, pick another
+    </button>
+  </form>
+</div>

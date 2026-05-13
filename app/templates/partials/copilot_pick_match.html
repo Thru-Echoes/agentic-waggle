@@ -1,0 +1,28 @@
+{# Alternatives picker shown when matcher confidence < 0.50 or null. #}
+<div class="match-pick-card" data-turn-id="{{ turn_id }}">
+  <div class="match-pick-prompt">
+    <span>I couldn't tell which customer. Did you mean:</span>
+  </div>
+  <ul class="match-pick-list">
+    {% for alt in alternatives %}
+      <li>
+        <form method="post"
+              action="/copilot/turns/{{ turn_id }}/confirm-match"
+              hx-post="/copilot/turns/{{ turn_id }}/confirm-match"
+              hx-target="closest .match-pick-card"
+              hx-swap="outerHTML">
+          <input type="hidden" name="customer_id" value="{{ alt.customer_id }}">
+          <button type="submit" class="action ghost">
+            {{ alt.customer_name }}
+            {% if alt.confidence %}
+              <span class="muted">({{ "%.0f%%"|format(alt.confidence * 100) }})</span>
+            {% endif %}
+          </button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+  <div class="match-pick-rephrase muted">
+    Or rephrase your message in the composer below.
+  </div>
+</div>
