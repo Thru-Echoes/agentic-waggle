@@ -342,4 +342,180 @@ def _record(
     )
 
 
-__all__ = ["get_copilot_response"]
+
+# ---------------------------------------------------------------------------
+# Resume helpers — re-dispatch a paused turn with a user-confirmed customer
+# ---------------------------------------------------------------------------
+
+
+def resume_with_customer(
+    *,
+    conv_id: uuid.UUID,
+    paused_turn: Any,
+    chosen_customer_id: uuid.UUID,
+    db: Session,
+) -> Any:
+    """Re-dispatch the paused turn's original intent with the user-picked customer_id.
+
+    Reads the ``pending_customer_match`` marker stored in the paused turn's
+    ``tool_calls`` JSONB to recover the original intent and hint, then
+    dispatches to the appropriate resume helper.
+
+    Does NOT clear the pending marker — that is the route handler's
+    responsibility so it can do it in a single commit alongside other
+    changes.
+
+    Raises ``RuntimeError`` if the pending marker is missing or the intent
+    is unrecognised.
+
+    Side effects: INSERTs one assistant ChatTurn row, depending on the
+    intent dispatched to the resume helper.
+    """
+    pending = next(
+        (
+            tc for tc in (paused_turn.tool_calls or [])
+            if tc.get("tool_name") == "pending_customer_match"
+        ),
+        None,
+    )
+    if pending is None:
+        raise RuntimeError("resume_with_customer: no pending_customer_match on this turn")
+    target_intent = pending.get("target_intent")
+    if target_intent == "log_customer_report":
+        return _resume_log_report(conv_id, chosen_customer_id, pending, db)
+    if target_intent == "create_order":
+        return _resume_create_order(conv_id, chosen_customer_id, pending, db)
+    raise RuntimeError(
+        f"resume_with_customer: unknown intent {target_intent!r} — "
+        f"expected 'log_customer_report' or 'create_order'"
+    )
+
+
+def _resume_log_report(
+    conv_id: uuid.UUID,
+    customer_id: uuid.UUID,
+    pending: dict[str, Any],
+    db: Session,
+) -> Any:
+    """Create a minimal assistant ChatTurn for a resumed log_customer_report.
+
+    Looks up the customer name and inserts an assistant turn that signals
+    the intent is now pinned to the chosen customer. The full extraction
+    (including any pending_report_draft stash) is deferred — Task 12 wires
+    the actual re-run when the orchestrator integration lands. For now this
+    produces a lightweight confirmation turn so the UI has something to
+    show.
+
+    Side effects: one SELECT on customers, one INSERT on chat_turns.
+    """
+    from sqlalchemy import text as sa_text
+    from db.models import ChatTurn, utc_now
+    from decimal import Decimal
+
+    # Resolve customer name for the user-facing message.
+    row = db.execute(
+        sa_text("SELECT name FROM customers WHERE id = :cid"),
+        {"cid": str(customer_id)},
+    ).mappings().first()
+    customer_name = row["name"] if row else str(customer_id)
+
+    hint = pending.get("hint") or ""
+    answer = (
+        f"Got it — logging this for {customer_name}. "
+        "I'll extract the visit report now."
+        + (f" (You mentioned: \"{hint}\")" if hint else "")
+    )
+
+    tool_call_records: list[dict[str, Any]] = [
+        {
+            "tool_name": "resume_log_report",
+            "arguments": {
+                "customer_id": str(customer_id),
+                "customer_name": customer_name,
+            },
+            "result_excerpt": f"Resumed log_customer_report for {customer_name}",
+            "latency_ms": 0,
+            "tokens": 0,
+        }
+    ]
+
+    turn = ChatTurn(
+        conversation_id=conv_id,
+        role="assistant",
+        text=answer,
+        tool_calls=tool_call_records,
+        evidence_used=[],
+        model="resume",
+        tokens_input=0,
+        tokens_output=0,
+        cost_usd=Decimal("0"),
+        latency_ms=0,
+    )
+    db.add(turn)
+    db.commit()
+    db.refresh(turn)
+    return turn
+
+
+def _resume_create_order(
+    conv_id: uuid.UUID,
+    customer_id: uuid.UUID,
+    pending: dict[str, Any],
+    db: Session,
+) -> Any:
+    """Create a minimal assistant ChatTurn for a resumed create_order intent.
+
+    Mirrors ``_resume_log_report`` — lightweight confirmation turn that
+    signals the customer is now pinned. The full order extraction re-run
+    lands in Task 12 when the orchestrator integration is wired.
+
+    Side effects: one SELECT on customers, one INSERT on chat_turns.
+    """
+    from sqlalchemy import text as sa_text
+    from db.models import ChatTurn, utc_now
+    from decimal import Decimal
+
+    row = db.execute(
+        sa_text("SELECT name FROM customers WHERE id = :cid"),
+        {"cid": str(customer_id)},
+    ).mappings().first()
+    customer_name = row["name"] if row else str(customer_id)
+
+    hint = pending.get("hint") or ""
+    answer = (
+        f"Got it — drafting the order for {customer_name}."
+        + (f" (You mentioned: \"{hint}\")" if hint else "")
+    )
+
+    tool_call_records: list[dict[str, Any]] = [
+        {
+            "tool_name": "resume_create_order",
+            "arguments": {
+                "customer_id": str(customer_id),
+                "customer_name": customer_name,
+            },
+            "result_excerpt": f"Resumed create_order for {customer_name}",
+            "latency_ms": 0,
+            "tokens": 0,
+        }
+    ]
+
+    turn = ChatTurn(
+        conversation_id=conv_id,
+        role="assistant",
+        text=answer,
+        tool_calls=tool_call_records,
+        evidence_used=[],
+        model="resume",
+        tokens_input=0,
+        tokens_output=0,
+        cost_usd=Decimal("0"),
+        latency_ms=0,
+    )
+    db.add(turn)
+    db.commit()
+    db.refresh(turn)
+    return turn
+
+
+__all__ = ["get_copilot_response", "resume_with_customer"]

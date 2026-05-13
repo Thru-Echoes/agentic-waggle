@@ -8,6 +8,7 @@ Surfaces in this module:
     POST /copilot/conversations                   — new empty conversation, redirect
     POST /copilot/turns/{turn_id}/confirm-order   — persist a stashed OrderDraft → orders row
     POST /copilot/turns/{turn_id}/confirm-report  — persist a stashed CustomerReportDraft
+    POST /copilot/turns/{turn_id}/confirm-match   — resume a paused turn after customer pick
     GET  /copilot/rail                            — re-render conversation list partial
 
     GET  /api/copilot/conversations               — JSON list (programmatic clients)
@@ -1221,6 +1222,109 @@ def _persist_report_draft(
             f"{visit_date.isoformat()} (varroa {varroa_count})."
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# HTMX action: confirm-match — resume a paused turn after customer selection
+# ---------------------------------------------------------------------------
+
+
+@html_router.post(
+    "/copilot/turns/{turn_id}/confirm-match", response_class=HTMLResponse
+)
+async def confirm_match(
+    request: Request,
+    turn_id: uuid.UUID,
+    customer_id: uuid.UUID | None = Form(default=None),
+    reject: bool = Query(default=False),
+    db: Session = Depends(get_db_session),
+) -> HTMLResponse:
+    """Resume a paused turn whose matcher returned low confidence.
+
+    Two paths:
+      * ``customer_id`` provided: commit that customer, re-dispatch via
+        ``resume_with_customer``, return the resumed assistant turn partial.
+      * ``reject=1``: swap in the pick-match card listing the alternatives
+        stored in the ``pending_customer_match`` marker on the turn.
+
+    Raises ``HTTPException`` 404 when the turn is missing, 409 when the
+    turn has no pending match marker, and 400 when ``customer_id`` is
+    absent on the non-reject path.
+
+    Side effects: on the commit path, one INSERT on chat_turns and one
+    UPDATE on the paused turn's tool_calls column.
+    """
+    turn = db.get(ChatTurn, turn_id)
+    if turn is None:
+        raise HTTPException(status_code=404, detail="Turn not found")
+
+    pending = _extract_pending_match(turn)
+    if pending is None:
+        raise HTTPException(
+            status_code=409, detail="No pending match on this turn"
+        )
+
+    if reject:
+        alternatives = [
+            {
+                "customer_id": c[0],
+                "customer_name": c[1],
+                "confidence": c[2],
+            }
+            for c in pending.get("alternatives", [])
+        ]
+        return templates.TemplateResponse(
+            request,
+            "partials/copilot_pick_match.html",
+            {"turn_id": turn_id, "alternatives": alternatives},
+        )
+
+    if customer_id is None:
+        raise HTTPException(
+            status_code=400, detail="customer_id required when reject is not set"
+        )
+
+    from agents.copilot.orchestrator import resume_with_customer
+
+    resumed_turn = resume_with_customer(
+        conv_id=_coerce_uuid(turn.conversation_id),
+        paused_turn=turn,
+        chosen_customer_id=customer_id,
+        db=db,
+    )
+    _clear_pending_match(turn, db)
+
+    resumed_view = _turn_view_for_template(resumed_turn)
+    return templates.TemplateResponse(
+        request,
+        "partials/copilot_turn_assistant.html",
+        {"turn": resumed_view},
+    )
+
+
+def _extract_pending_match(turn: ChatTurn) -> dict | None:
+    """Return the first ``pending_customer_match`` record from a turn's tool_calls.
+
+    Returns ``None`` if no such record exists.
+    """
+    for tc in turn.tool_calls or []:
+        if tc.get("tool_name") == "pending_customer_match":
+            return tc
+    return None
+
+
+def _clear_pending_match(turn: ChatTurn, db: Session) -> None:
+    """Remove the ``pending_customer_match`` record from a turn's tool_calls.
+
+    Side effects: mutates ``turn.tool_calls`` in place and commits.
+    """
+    turn.tool_calls = [
+        tc
+        for tc in (turn.tool_calls or [])
+        if tc.get("tool_name") != "pending_customer_match"
+    ]
+    db.add(turn)
+    db.commit()
 
 
 # ---------------------------------------------------------------------------
