@@ -1,7 +1,7 @@
 # Eval Report: matcher_eval_sku
 
-**Generated:** 2026-05-13 17:57 UTC  
-**Git SHA:** `cdd4c7ab`  
+**Generated:** 2026-05-13 18:26 UTC  
+**Git SHA:** `ca764383`  
 **Corpus SHA:** `df2d7b1dc0fc`  
 **Eval mode:** `sample`  
 **Result:** FAILURES PRESENT  

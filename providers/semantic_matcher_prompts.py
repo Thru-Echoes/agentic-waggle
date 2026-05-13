@@ -21,7 +21,25 @@ none of the candidates plausibly match.
 
 Rules (in priority order):
 
-  1. PRONOUN RESOLUTION (highest priority):
+  0. CLEAR WINNER (highest priority — overrides all other rules):
+     The candidate scores are Reciprocal Rank Fusion (RRF) values, typically
+     in the range 0.01–0.09. A gap of ≥ 0.003 between the top candidate and
+     the next DISTINCT customer is meaningful at this scale.
+     If ALL of the following conditions are true, pick the top candidate with
+     confidence ≥ 0.80 (this overrides the null-on-ambiguity rule):
+       a) The fused_score gap to the next DISTINCT customer is ≥ 0.003.
+       b) The top candidate's canonical name or entry_text is an exact or
+          near-exact match for a SIGNIFICANT portion of the query (not just
+          a generic word like "farms", "orchards", "the", or a single
+          surname that could apply to multiple businesses).
+       c) The query contains enough specificity to uniquely identify a
+          business — it should not be a bare single word, a pure pronoun,
+          or a generic phrase that could apply to many customers.
+     Stage A often shortlists multiple candidates by design; that breadth
+     alone is NOT ambiguity. But a short, generic, or ambiguous query
+     (even with a score gap) must still trigger Rule 2.
+
+  1. PRONOUN RESOLUTION:
      If the query consists primarily of a pronoun ("they", "them", "the customer",
      "that customer", "the orchard", "the apiary") AND `active_account` is non-null,
      you MUST pick the active_account with confidence ≥ 0.90.
@@ -136,6 +154,17 @@ PROMPT_HISTORY = [
             "MUST use active_account when set. SKU prompt requires null on "
             "grade/variant ambiguity. Targets: ambiguous_reference 33→95%, "
             "pronoun_resolution 33→85%, sku_ambiguous 50→95%."
+        ),
+    },
+    {
+        "version": "v3",
+        "date": "2026-05-13",
+        "note": (
+            "Added Rule 0 'clear winner' escape hatch + score-gap deltas in "
+            "candidate_block. Active_account injected into pronoun shortlists. "
+            "Targets: reverse v2 regressions (canonical 50→100, long_form 20→95, "
+            "abbreviation 33→98, apostrophe 50→98, alias 67→98) while preserving "
+            "v2 wins on ambiguous_reference and sku_ambiguous."
         ),
     },
 ]

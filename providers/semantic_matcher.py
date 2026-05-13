@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
 RRF_K = 60
 TOP_K = 5
 RETRIEVE_LIMIT = 20  # per-source before fusion
-PROMPT_VERSION = "v2"
+PROMPT_VERSION = "v3"
 LLM_DISAMBIG_MAX_ATTEMPTS = 2
 # Multiplier applied to the top candidate's fused_score when the LLM picks an
 # id outside our shortlist and we fall back to the top Stage-A result.
@@ -298,15 +298,31 @@ def _format_customer_candidate_block(
     )
     id_to_name = {r["id"]: r["name"] for r in name_rows}
 
+    # De-duplicate by customer_id: keep the representative entry with the
+    # highest fused_score per customer, preserving sorted order.  The
+    # multi-source boost in Stage A causes all entries for the same customer
+    # to share an identical score, so we take the first occurrence (which is
+    # also the highest after ORDER BY boosted_score DESC).
+    seen_ids: set[uuid.UUID] = set()
+    deduped: list[Candidate] = []
+    for c in candidates:
+        if c.customer_id and c.customer_id not in seen_ids:
+            seen_ids.add(c.customer_id)
+            deduped.append(c)
+
     lines: list[str] = []
-    for i, c in enumerate(candidates, 1):
-        if not c.customer_id:
-            continue
-        name = id_to_name.get(c.customer_id, "(unknown)")
+    for i, c in enumerate(deduped, 1):
+        name = id_to_name.get(c.customer_id, "(unknown)")  # type: ignore[arg-type]
+        is_last = i == len(deduped)
+        if is_last:
+            gap_str = "last"
+        else:
+            gap = c.fused_score - deduped[i].fused_score
+            gap_str = f"+{gap:.4f} vs next"
         lines.append(
             f"{i}. customer_id={c.customer_id} name={name!r} "
             f"matched on source={c.source} entry={c.entry_text!r} "
-            f"(fused_score={c.fused_score:.4f})"
+            f"(fused_score={c.fused_score:.4f}, {gap_str})"
         )
     return "\n".join(lines)
 
@@ -475,15 +491,28 @@ def _llm_disambiguate(
             # from alternatives; drop any entry that would fail validation so
             # the primary match still comes through.
             if kind == "customer" and isinstance(parsed.get("alternatives"), list):
-                before = len(parsed["alternatives"])
-                parsed["alternatives"] = [
-                    alt for alt in parsed["alternatives"]
-                    if isinstance(alt, dict) and "source" in alt
-                ]
-                dropped = before - len(parsed["alternatives"])
+                remapped: list[dict[str, Any]] = []
+                for alt in parsed["alternatives"]:
+                    if not isinstance(alt, dict):
+                        continue
+                    # Remap plausibility_score → confidence when the LLM uses
+                    # the wrong field name (happens with gpt-5.4-nano + json_schema
+                    # mode that returns fused_score echoed as plausibility_score).
+                    if "confidence" not in alt and "plausibility_score" in alt:
+                        alt = dict(alt)
+                        alt["confidence"] = alt.pop("plausibility_score")
+                    if "source" not in alt:
+                        continue
+                    # Normalise source to the Literal values the schema requires.
+                    if alt.get("source") not in ("name", "alias", "site", "active_account"):
+                        alt = dict(alt)
+                        alt["source"] = "name"
+                    remapped.append(alt)
+                dropped = len(parsed["alternatives"]) - len(remapped)
+                parsed["alternatives"] = remapped
                 if dropped:
                     logger.warning(
-                        "LLM omitted 'source' from %d customer alternative(s); dropped before validate",
+                        "Dropped %d customer alternative(s) missing required fields",
                         dropped,
                     )
             elif kind == "sku" and isinstance(parsed.get("alternatives"), list):
@@ -698,6 +727,36 @@ def match_customer(
         table="customer_search_entries",
         db=db,
     )
+
+    # Inject the active account into the shortlist for pronoun queries so the
+    # LLM can always apply Rule 1 (PRONOUN RESOLUTION) even when Stage A did
+    # not surface it.  source="active_account" is a sentinel recognisable by
+    # downstream code.
+    active_account_id = getattr(conversation_ctx, "active_account_id", None)
+    if active_account_id is not None:
+        has_active = any(c.customer_id == active_account_id for c in candidates)
+        if not has_active:
+            row = db.execute(
+                text("SELECT name FROM customers WHERE id = :id"),
+                {"id": active_account_id},
+            ).first()
+            if row:
+                candidates.append(
+                    Candidate(
+                        entry_id=uuid.uuid4(),
+                        customer_id=active_account_id,
+                        product_id=None,
+                        service_id=None,
+                        entry_text=row.name,
+                        source="active_account",
+                        dense_rank=None,
+                        fts_rank=None,
+                        dense_score=None,
+                        fts_score=None,
+                        fused_score=0.50,
+                    )
+                )
+
     if not candidates:
         result: Any = CustomerMatch(
             customer_id=None,
