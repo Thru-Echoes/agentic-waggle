@@ -279,4 +279,5 @@ CREATE INDEX sku_search_entries_product_id_idx
     ON sku_search_entries (product_id);
 CREATE INDEX sku_search_entries_service_id_idx
     ON sku_search_entries (service_id);
+
 CREATE INDEX ix_chat_turns_conversation_id ON chat_turns (conversation_id, created_at);

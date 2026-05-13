@@ -30,9 +30,9 @@ from typing import Any, ClassVar, Optional
 from enum import Enum as PyEnum
 
 from pgvector.sqlalchemy import Vector  # type: ignore[import-not-found]
-from sqlalchemy import CheckConstraint, Column, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, ForeignKey, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -531,6 +531,10 @@ class CustomerSearchEntry(SQLModel, table=True):
     The `embedding` and `tsv` columns are managed by raw DDL in the migration
     (pgvector VECTOR(384) and GENERATED ALWAYS AS tsvector). They are not
     declared here to avoid SQLModel trying to re-create them via the ORM.
+
+    Note: Customer.search_entries is intentionally NOT declared — search
+    entries are a provider-layer concern; the Customer model never navigates
+    to its entries (entries are queried directly via match_customer).
     """
 
     __tablename__: ClassVar[str] = "customer_search_entries"
@@ -543,10 +547,30 @@ class CustomerSearchEntry(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     customer_id: uuid.UUID = Field(
-        foreign_key="customers.id", nullable=False
+        sa_column=Column(
+            "customer_id",
+            PGUUID(as_uuid=True),
+            ForeignKey("customers.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
     )
-    entry_text: str = Field(..., nullable=False)
-    source: str = Field(..., nullable=False)
+    entry_text: str = Field(
+        ...,
+        nullable=False,
+        description="The text surface form indexed for hybrid retrieval (FTS + pgvector cosine).",
+    )
+    # NOTE: Literal["name", "alias", "site"] is the correct Python type but
+    # SQLModel's mapper cannot introspect Literal for table models (issubclass
+    # fails on Literal args). The DB-level CHECK constraint is the authoritative
+    # enforcement. Use Literal in the Pydantic response schemas instead.
+    source: str = Field(
+        ...,
+        nullable=False,
+        description=(
+            "Origin of this entry: customer name, alias, or site name. "
+            "Valid values: 'name' | 'alias' | 'site' (enforced by DB CHECK constraint)."
+        ),
+    )
     # pgvector embedding + generated tsv handled by raw DDL — not modeled on
     # the Python side to avoid SQLModel re-declaring them with wrong types.
     created_at: datetime = Field(default_factory=utc_now, nullable=False)
@@ -584,13 +608,41 @@ class SkuSearchEntry(SQLModel, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     product_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="products.id", nullable=True
+        default=None,
+        sa_column=Column(
+            "product_id",
+            PGUUID(as_uuid=True),
+            ForeignKey("products.id", ondelete="CASCADE"),
+            nullable=True,
+        ),
     )
     service_id: Optional[uuid.UUID] = Field(
-        default=None, foreign_key="services.id", nullable=True
+        default=None,
+        sa_column=Column(
+            "service_id",
+            PGUUID(as_uuid=True),
+            ForeignKey("services.id", ondelete="CASCADE"),
+            nullable=True,
+        ),
     )
-    entry_text: str = Field(..., nullable=False)
-    source: str = Field(..., nullable=False)
+    entry_text: str = Field(
+        ...,
+        nullable=False,
+        description="The text surface form indexed for hybrid retrieval (FTS + pgvector cosine).",
+    )
+    # NOTE: Literal[...] is the correct Python type but SQLModel's mapper
+    # cannot introspect Literal for table models. DB-level CHECK constraint
+    # is the authoritative enforcement. Use Literal in Pydantic response schemas.
+    source: str = Field(
+        ...,
+        nullable=False,
+        description=(
+            "Origin of this entry: product name/code/alias or service name/code/alias. "
+            "Valid values: 'product_name' | 'product_code' | 'product_alias' | "
+            "'service_name' | 'service_code' | 'service_alias' "
+            "(enforced by DB CHECK constraint)."
+        ),
+    )
     created_at: datetime = Field(default_factory=utc_now, nullable=False)
 
 
