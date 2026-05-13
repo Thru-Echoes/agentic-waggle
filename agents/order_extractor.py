@@ -6,11 +6,11 @@ Flow (StateGraph nodes, routed by the output of each):
         ↓ (order_request)
     extract_customer_reference
         ↓
-    match_customer (rapidfuzz against `customers`)
+    match_customer (semantic_matcher: hybrid retrieve + LLM disambiguate)
         ↓
     extract_line_items (LLM with `.with_structured_output(list[RequestedLineItem])`)
         ↓
-    resolve_skus (rapidfuzz + fallback LLM against `products` + `services`)
+    resolve_skus (semantic_matcher: hybrid retrieve + LLM disambiguate per item)
         ↓
     assemble_draft
         ↓ END
@@ -22,7 +22,7 @@ populated — no silent success. The caller (route handler or MCP tool) sees
 Side effects:
     * SELECTs against the provided Session at `match_customer` and `resolve_skus`.
     * One LLM call per node that uses the chat model (classify, extract_customer,
-      extract_line_items, potentially resolve_skus for LLM-guess fallback).
+      extract_line_items) plus one LLM disambiguate call per item in resolve_skus.
 """
 # pyright: reportMissingImports=false
 # pyright: reportTypedDictNotRequiredAccess=false
@@ -33,6 +33,7 @@ Side effects:
 from __future__ import annotations
 
 import logging
+import uuid
 from decimal import Decimal
 from typing import Any, Literal, NotRequired, TypedDict
 
@@ -43,8 +44,8 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from agents.customer_matcher import find_customer_match
 from agents.schemas import (
+    ConversationContext,
     CustomerMatch,
     CustomerReference,
     EmailInput,
@@ -54,8 +55,9 @@ from agents.schemas import (
     OrderDraft,
     RequestedLineItem,
     ResolvedLineItem,
+    SkuContext,
 )
-from agents.sku_resolver import _load_catalog, resolve_line_item, resolve_via_llm
+from providers import semantic_matcher
 
 log = logging.getLogger(__name__)
 
@@ -229,28 +231,50 @@ def extract_customer_reference_node(state: _State) -> dict[str, Any]:
 
 
 def match_customer_node(state: _State) -> dict[str, Any]:
-    """Fuzzy-match the mentioned name against the customers table."""
+    """Semantic-match the mentioned name against the customers table.
+
+    Uses providers.semantic_matcher.match_customer which runs a hybrid
+    retrieve (pgvector + FTS) followed by an LLM disambiguate step.
+    Each order extraction is treated as its own conversation (synthetic
+    uuid per call) so there is no cross-extraction cache pollution.
+
+    Side effects: DB SELECTs + one LLM API call via semantic_matcher.
+    """
     ref = state["customer_ref"]
-    match = find_customer_match(state["db"], ref.mentioned_name)
+    # Each order extraction is a synthetic conversation — no real chat thread.
+    ctx = ConversationContext()
+    match: CustomerMatch = semantic_matcher.match_customer(
+        ref.mentioned_name,
+        conversation_ctx=ctx,
+        conversation_id=uuid.uuid4(),
+        db=state["db"],
+    )
     if match.customer_id is None:
+        alt_names = [a.customer_name for a in match.alternatives]
         return _fail(
             "match_customer",
             (
-                f"No customer matches {ref.mentioned_name!r} (best score "
-                f"{match.score:.1f}, min {60.0}). "
-                f"Candidates inspected: {match.candidates_considered}"
+                f"No customer matches {ref.mentioned_name!r} "
+                f"(confidence {match.confidence:.2f}). "
+                f"Candidates inspected: {alt_names}"
             ),
             {**state, "customer_match": match},  # type: ignore[misc]
         )
     out: dict[str, Any] = {"customer_match": match}
-    if match.ambiguous:
-        out["notes"] = list(state.get("notes", [])) + [
-            (
-                f"Ambiguous customer match for {ref.mentioned_name!r}: "
-                f"picked {match.customer_name!r} but "
-                f"{match.candidates_considered[1]!r} was a close second."
-            )
-        ]
+    # Flag ambiguous when alternatives are close (within 0.15 confidence).
+    if match.alternatives:
+        top_alt = match.alternatives[0]
+        if top_alt.customer_id != match.customer_id:
+            gap = match.confidence - top_alt.confidence
+            if gap < 0.15 and top_alt.confidence > 0.3:
+                out["notes"] = list(state.get("notes", [])) + [
+                    (
+                        f"Ambiguous customer match for {ref.mentioned_name!r}: "
+                        f"picked {match.customer_name!r} (conf {match.confidence:.2f}) "
+                        f"but {top_alt.customer_name!r} was close "
+                        f"(conf {top_alt.confidence:.2f})."
+                    )
+                ]
     return out
 
 
@@ -296,26 +320,82 @@ def extract_line_items_node(state: _State) -> dict[str, Any]:
 def resolve_skus_node(state: _State) -> dict[str, Any]:
     """Resolve every RequestedLineItem to a real Product or Service SKU.
 
-    Pipeline per item:
-        1. Deterministic exact + fuzzy match (``resolve_line_item``).
-        2. If miss: LLM fallback (``resolve_via_llm``). Accepted only when
-           the LLM's self-confidence clears LLM_CONFIDENCE_FLOOR.
-        3. Still no match: drop the item and add a plain-language note to
-           extraction_concerns so the salesperson sees what was skipped.
+    Uses providers.semantic_matcher.match_sku per item, which runs a
+    hybrid retrieve (pgvector + FTS) followed by an LLM disambiguate step.
+    Items that cannot be resolved (sku_kind is None after the matcher) are
+    dropped and surfaced in extraction_concerns for salesperson review.
+
+    Each item gets its own synthetic conversation_id so the per-conversation
+    cache does not conflate distinct line items within the same order.
+
+    Side effects:
+        * DB SELECTs per item (Stage A) + one LLM API call per item (Stage B).
     """
     db = state["db"]
-    catalog = _load_catalog(db)
+    sku_ctx = SkuContext()
     resolved: list[ResolvedLineItem] = []
     unresolved: list[str] = []
+
     for req in state["requested_items"]:
-        r = resolve_line_item(db, req, catalog=catalog)
-        if r is None:
-            # LLM fallback — last chance before declaring this item unresolved.
-            r = resolve_via_llm(req, catalog, state["models"]["resolver_fallback"])
-        if r is None:
+        # Prefer the literal SKU if the email cited one — fast-path.
+        query = req.mentioned_sku or req.description
+        sku_match = semantic_matcher.match_sku(
+            query,
+            sku_context=sku_ctx,
+            conversation_id=uuid.uuid4(),
+            db=db,
+        )
+        if sku_match.sku_kind is None:
             unresolved.append(req.description)
             continue
-        resolved.append(r)
+
+        # Determine match_method for audit trail.
+        if req.mentioned_sku and sku_match.confidence >= 0.99:
+            method: Literal["exact_sku", "fuzzy_name", "llm_guess"] = "exact_sku"
+        elif sku_match.confidence >= 0.85:
+            method = "fuzzy_name"
+        else:
+            method = "llm_guess"
+
+        # Use the email-mentioned price if provided; fall back to catalog price.
+        unit_price = req.mentioned_unit_price_usd
+        if unit_price is None:
+            # Look up catalog price for the resolved SKU.
+            from sqlalchemy import text as _text
+
+            if sku_match.product_id:
+                row = db.execute(
+                    _text("SELECT price_usd FROM products WHERE id = :pid"),
+                    {"pid": sku_match.product_id},
+                ).first()
+                unit_price = Decimal(str(row.price_usd)) if row else Decimal("0")
+            else:
+                row = db.execute(
+                    _text("SELECT default_rate_usd FROM services WHERE id = :sid"),
+                    {"sid": sku_match.service_id},
+                ).first()
+                unit_price = (
+                    Decimal(str(row.default_rate_usd))
+                    if row and row.default_rate_usd is not None
+                    else Decimal("0")
+                )
+
+        # Combine matcher evidence with email-source evidence from the request.
+        combined_evidence = list(req.evidence) + list(sku_match.evidence)
+
+        resolved.append(
+            ResolvedLineItem(
+                sku=sku_match.sku_code or "",
+                product_id=sku_match.product_id,
+                service_id=sku_match.service_id,
+                quantity=req.quantity,
+                unit_price_usd=unit_price,
+                match_method=method,
+                source_description=req.description,
+                evidence=combined_evidence,
+                confidence=sku_match.confidence,
+            )
+        )
 
     if not resolved:
         return _fail(
