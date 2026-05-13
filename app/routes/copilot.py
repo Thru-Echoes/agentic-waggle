@@ -46,7 +46,6 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import desc, func, select, text
 from sqlmodel import Session
 
-from agents.copilot.account_resolver import AccountIndex, build_account_index
 from agents.copilot.conversation_schemas import (
     CopilotResponse,
     CustomerReportDraft,
@@ -141,19 +140,6 @@ def _build_models(settings: Settings) -> dict[str, Any]:
         "main": _build_chat_model(settings.copilot_main_model),
         "report": _build_chat_model(settings.copilot_report_model),
     }
-
-
-def _build_account_index_safe(db: Session) -> AccountIndex | None:
-    """Build the account index; return None if customers table is empty.
-
-    The orchestrator handles ``account_index=None`` by skipping the
-    deterministic resolver — this keeps fresh-DB demos working before any
-    customers are seeded.
-    """
-    count = db.execute(select(func.count(Customer.id))).scalar_one()
-    if count == 0:
-        return None
-    return build_account_index(db)
 
 
 def _list_conversations(db: Session, limit: int = 50) -> list[ConversationListItem]:
@@ -1178,13 +1164,18 @@ def _persist_report_draft(
 
     customer_id = conv.active_account_id
     if customer_id is None and draft.customer_id_hint:
-        # Fall back to a fresh deterministic resolver call against the hint.
-        index = _build_account_index_safe(db)
-        if index is not None:
-            from agents.copilot.account_resolver import resolve_account
-            ids = resolve_account(draft.customer_id_hint, index)
-            if ids:
-                customer_id = ids[0]
+        # Fall back to semantic_matcher when no active account is set on the
+        # conversation — covers confirm-report calls on fresh conversations.
+        from providers import semantic_matcher
+        from agents.schemas import ConversationContext
+        match = semantic_matcher.match_customer(
+            draft.customer_id_hint,
+            conversation_ctx=ConversationContext(),
+            conversation_id=turn.conversation_id,
+            db=db,
+        )
+        if match.customer_id is not None:
+            customer_id = match.customer_id
 
     if customer_id is None:
         return ConfirmResultOut(

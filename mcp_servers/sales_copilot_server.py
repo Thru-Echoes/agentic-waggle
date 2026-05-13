@@ -22,7 +22,6 @@ from typing import Any
 from fastmcp import FastMCP
 from sqlalchemy import text
 
-from agents.customer_matcher import find_customer_match
 from db.session import session_scope
 from mcp_servers.schemas import (
     CustomerHit,
@@ -49,35 +48,61 @@ server: FastMCP = FastMCP(
 
 @server.tool
 def find_customer(name_or_alias: str, top_k: int = 5) -> list[CustomerHit]:
-    """Fuzzy-match a customer by name or alias.
+    """Semantic-match a customer by name or alias.
 
     Use when the user refers to a customer by a partial, misspelled, or
-    alias form. Returns the top-k highest-scoring customers (rapidfuzz
-    0-100 similarity). Returns an empty list if nothing crosses the
-    60.0 floor.
+    alias form. Uses embedding + LLM disambiguation. Returns the top-k
+    best-matching customers. Returns an empty list if no confident match
+    is found.
     """
+    import uuid as _uuid
+    from agents.schemas import ConversationContext
+    from providers import semantic_matcher
+
     with session_scope() as db:
-        match = find_customer_match(db, name_or_alias)
+        match = semantic_matcher.match_customer(
+            name_or_alias,
+            conversation_ctx=ConversationContext(),
+            conversation_id=_uuid.uuid4(),
+            db=db,
+        )
         if match.customer_id is None:
             return []
+
+        # Collect candidates: the top match plus alternatives, up to top_k.
+        candidate_ids: list[uuid.UUID] = [match.customer_id]
+        for alt in match.alternatives[: top_k - 1]:
+            candidate_ids.append(alt.customer_id)
+        candidate_ids = candidate_ids[:top_k]
+
         rows = (
             db.execute(
                 text(
                     "SELECT id, name, erp_customer_no, market_segment "
-                    "FROM customers WHERE name = ANY(:names)"
+                    "FROM customers WHERE id = ANY(CAST(:ids AS uuid[]))"
                 ),
-                {"names": match.candidates_considered[:top_k]},
+                {"ids": [str(cid) for cid in candidate_ids]},
             )
             .mappings()
             .all()
         )
-        by_name = {r["name"]: r for r in rows}
+        by_id = {str(r["id"]): r for r in rows}
+
+        # Build ordered output: top match first, then alternatives.
         out: list[CustomerHit] = []
-        for cand_name in match.candidates_considered[:top_k]:
-            r = by_name.get(cand_name)
+        for i, cid in enumerate(candidate_ids):
+            r = by_id.get(str(cid))
             if r is None:
                 continue
-            score = match.score if cand_name == match.customer_name else 0.0
+            # Top match uses the matcher confidence; alternatives use their own.
+            if i == 0:
+                score = round(match.confidence * 100.0, 1)
+            else:
+                alt_conf = next(
+                    (a.confidence for a in match.alternatives if a.customer_id == cid),
+                    0.0,
+                )
+                score = round(alt_conf * 100.0, 1)
             out.append(
                 CustomerHit(
                     customer_id=r["id"],
