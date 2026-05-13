@@ -472,7 +472,6 @@ def chat_copilot_turn(db: Session, draft: OrderDraft) -> None:
     """
     from datetime import datetime, timezone
 
-    from agents.copilot.account_resolver import build_account_index
     from agents.copilot.orchestrator import get_copilot_response
     from agents.order_extractor import _build_chat_model
     from app.config import get_settings
@@ -483,7 +482,6 @@ def chat_copilot_turn(db: Session, draft: OrderDraft) -> None:
         "main": _build_chat_model(settings.copilot_main_model),
         "report": _build_chat_model(settings.copilot_report_model),
     }
-    account_index = build_account_index(db)
 
     customer_name = draft.customer.customer_name or "this customer"
     user_text = (
@@ -517,12 +515,12 @@ def chat_copilot_turn(db: Session, draft: OrderDraft) -> None:
     )
     print(f"    user turn: {user_text!r}")
 
-    # Orchestrator
+    # Orchestrator (semantic matcher replaces account_index — Task 12+)
     response = get_copilot_response(
         user_text=user_text,
         db=db,
         models=models,
-        account_index=account_index,
+        conv_id=conv_id,
         active_account_id=draft.customer.customer_id,
     )
 

@@ -293,6 +293,50 @@ def _get_or_create_conversation(
     return conv
 
 
+def _last_3_customer_ids(
+    db: Session, conversation_id: uuid.UUID
+) -> list[uuid.UUID]:
+    """Return the three most-recently-resolved customer IDs in a conversation.
+
+    Scans assistant turns in reverse-chronological order and collects
+    distinct customer IDs from ``match_customer`` tool_call records.
+    Used to populate ``ConversationContext.last_3_customer_ids`` for the
+    semantic matcher's recency boost.
+
+    Side effects: one SELECT on chat_turns.
+    """
+    rows = db.execute(
+        text(
+            """
+            SELECT tool_calls
+            FROM chat_turns
+            WHERE conversation_id = :cid AND role = 'assistant'
+            ORDER BY created_at DESC
+            LIMIT 20
+            """
+        ),
+        {"cid": str(conversation_id)},
+    ).mappings().all()
+
+    seen: list[uuid.UUID] = []
+    for row in rows:
+        for tc in row.get("tool_calls") or []:
+            if tc.get("tool_name") == "match_customer":
+                cid_str = tc.get("customer_id")
+                if cid_str:
+                    try:
+                        cid = uuid.UUID(cid_str)
+                    except ValueError:
+                        continue
+                    if cid not in seen:
+                        seen.append(cid)
+            if len(seen) >= 3:
+                break
+        if len(seen) >= 3:
+            break
+    return seen[:3]
+
+
 def _load_turns(db: Session, conversation_id: uuid.UUID) -> list[ChatTurn]:
     """Fetch all turns for a conversation in chronological order."""
     rows = db.execute(
@@ -434,6 +478,11 @@ def _persist_assistant_turn(
             "latency_ms": 0,
             "tokens": 0,
         })
+    # Flat sentinel — stored with target_intent, hint, alternatives at the
+    # top level so _extract_pending_match / resume_with_customer can read
+    # them with a single tc.get() call (no nesting).
+    if response.pending_customer_match is not None:
+        tool_call_records.append(response.pending_customer_match)
 
     turn = ChatTurn(
         conversation_id=conversation_id,
@@ -760,13 +809,13 @@ async def post_turn(
 
     # 3. Run the orchestrator.
     models = _build_models(settings)
-    account_index = _build_account_index_safe(db)
     response = get_copilot_response(
         user_text=text,
         db=db,
         models=models,
-        account_index=account_index,
+        conv_id=conv.id,
         active_account_id=conv.active_account_id,
+        last_3_customer_ids=_last_3_customer_ids(db, conv.id),
     )
 
     # 4. Persist assistant turn (with any stashed drafts).
@@ -886,15 +935,16 @@ async def _stream_turn_events(
             pass
 
     models = _build_models(settings)
-    account_index = _build_account_index_safe(db)
+    _conv_last_3 = _last_3_customer_ids(db, conv.id)
 
     def _run_sync() -> CopilotResponse:
         return get_copilot_response(
             user_text=text,
             db=db,
             models=models,
-            account_index=account_index,
+            conv_id=conv.id,
             active_account_id=conv.active_account_id,
+            last_3_customer_ids=_conv_last_3,
             on_step=_on_step,
         )
 

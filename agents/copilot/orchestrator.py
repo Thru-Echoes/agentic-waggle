@@ -2,8 +2,11 @@
 
 Pipeline per turn:
 
-    1. Resolve any account hint in the user input via the prebuilt
-       AccountIndex → customer_id (None if no match).
+    1. Resolve any customer hint via the semantic matcher (pgvector +
+       LLM disambiguate). Branch on confidence:
+         - < 0.50 or None  → emit pick-match turn (user must choose)
+         - 0.50–0.79        → emit confirm-match turn (user must confirm)
+         - ≥ 0.80           → proceed with resolved customer_id
     2. Route intent via the LLM router → IntentRoute(Grounded).
     3. Dispatch on intent:
          query                 → build context, generate grounded answer
@@ -34,7 +37,7 @@ from sqlalchemy.orm import Session
 #: chat turn. The streaming /copilot/turns SSE branch maps these to
 #: front-end "thinking..." status updates.
 StreamStage = Literal[
-    "account_resolved",
+    "customer_resolved",
     "intent_routed",
     "context_built",
     "answer_drafting",
@@ -48,7 +51,6 @@ StreamStage = Literal[
 #: from within this callback.
 OnStepFn = Callable[[StreamStage, Any], None]
 
-from agents.copilot.account_resolver import AccountIndex, resolve_account
 from agents.copilot.context_builder import ContextBundle, build_context
 from agents.copilot.conversation_schemas import (
     Citation,
@@ -62,7 +64,8 @@ from agents.copilot.tools import (
     draft_order_from_text,
     log_customer_report,
 )
-from agents.schemas import OrderDraft, ExtractionFailure
+from agents.schemas import ConversationContext, OrderDraft, ExtractionFailure
+from providers import semantic_matcher
 
 log = logging.getLogger(__name__)
 
@@ -126,8 +129,9 @@ def get_copilot_response(
     user_text: str,
     db: Session,
     models: dict[str, BaseChatModel],
-    account_index: AccountIndex | None = None,
+    conv_id: uuid.UUID | None = None,
     active_account_id: uuid.UUID | None = None,
+    last_3_customer_ids: list[uuid.UUID] | None = None,
     on_step: OnStepFn | None = None,
 ) -> CopilotResponse:
     """Handle one chat turn end-to-end.
@@ -137,6 +141,10 @@ def get_copilot_response(
         - ``main``     : main answer-generation model
         - ``report``   : extraction model for log_customer_report
     Falls back to a single shared model if any key is missing.
+
+    ``conv_id`` is the conversation UUID, used as the semantic matcher's
+    per-conversation LRU cache key. Pass None only in tests that don't
+    exercise the matcher path.
 
     ``on_step`` is an optional progress callback fired at each major
     stage. The streaming SSE endpoint passes one in to drive live
@@ -164,25 +172,127 @@ def get_copilot_response(
     if router_model is None or main_model is None:
         raise RuntimeError("orchestrator: at least one chat model required")
 
-    # 1. Account resolution (deterministic, no LLM)
-    customer_id: uuid.UUID | None = active_account_id
-    if account_index is not None:
-        candidates = resolve_account(user_text, account_index)
-        if candidates:
-            customer_id = candidates[0]
-    _emit("account_resolved", {"customer_id": str(customer_id) if customer_id else None})
-
-    # 2. Intent routing (1 LLM call)
+    # 1. Intent routing (1 LLM call) — done first so we get the explicit hint.
     intent: IntentRoute = get_intent_route(user_text, model=router_model)
     _emit("intent_routed", {"intent": intent.intent})
 
-    # If the router pulled an explicit hint, override our resolution with it.
-    if intent.target_account_hint and account_index is not None:
-        ids = resolve_account(intent.target_account_hint, account_index)
-        if ids:
-            customer_id = ids[0]
+    # 2. Customer resolution via semantic matcher (pgvector + LLM disambiguate).
+    #    Use the explicit hint from the router if available; fall back to the
+    #    full user text so the matcher has something to work with even when
+    #    the router didn't extract a dedicated hint.
+    customer_id: uuid.UUID | None = active_account_id
+    matcher_tool_calls: list[dict[str, Any]] = []
 
-    tool_calls: list[ToolCallRecord] = []
+    hint = intent.target_account_hint or user_text
+    _effective_conv_id = conv_id if conv_id is not None else uuid.uuid4()
+    ctx = ConversationContext(
+        active_account_id=active_account_id,
+        last_3_customer_ids=list(last_3_customer_ids or [])[:3],
+    )
+
+    try:
+        match = semantic_matcher.match_customer(
+            hint,
+            conversation_ctx=ctx,
+            conversation_id=_effective_conv_id,
+            db=db,
+        )
+    except semantic_matcher.MatcherIndexEmpty:
+        # Index not yet backfilled — fall back to active_account_id silently.
+        log.warning(
+            "semantic_matcher index empty; falling back to active_account_id=%s",
+            active_account_id,
+        )
+        match = None  # type: ignore[assignment]
+
+    if match is not None and (match.customer_id is None or match.confidence < 0.50):
+        # Low confidence — ask the user to pick from alternatives.
+        alt_list = [
+            [str(a.customer_id), a.customer_name, a.confidence]
+            for a in match.alternatives[:3]
+        ]
+        pending_marker: dict[str, Any] = {
+            "tool_name": "pending_customer_match",
+            "target_intent": intent.intent,
+            "hint": hint,
+            "alternatives": alt_list,
+        }
+        if match.alternatives:
+            answer_text = (
+                "I couldn't tell which customer you meant. Did you mean: "
+                + ", ".join(a.customer_name for a in match.alternatives[:3])
+                + " — or try rephrasing your message."
+            )
+        else:
+            answer_text = (
+                "I couldn't find that customer. Try a more specific name."
+            )
+        total_latency = int((time.perf_counter() - t0) * 1000)
+        return CopilotResponse(
+            text=answer_text,
+            citations=[],
+            tool_calls=[],
+            pending_customer_match=pending_marker,
+            evidence_used=list(match.evidence),
+            model=getattr(main_model, "model_name", "unknown"),
+            tokens_input=0,
+            tokens_output=0,
+            latency_ms=total_latency,
+            resolved_customer_id=None,
+        )
+
+    if match is not None and match.confidence < 0.80:
+        # Medium confidence — ask the user to confirm the top hit.
+        pending_marker = {
+            "tool_name": "pending_customer_match",
+            "target_intent": intent.intent,
+            "hint": hint,
+            "alternatives": [
+                [str(match.customer_id), match.customer_name or "", match.confidence]
+            ],
+        }
+        answer_text = (
+            f"Logging this for {match.customer_name} — is that right?"
+        )
+        total_latency = int((time.perf_counter() - t0) * 1000)
+        return CopilotResponse(
+            text=answer_text,
+            citations=[],
+            tool_calls=[],
+            pending_customer_match=pending_marker,
+            evidence_used=list(match.evidence),
+            model=getattr(main_model, "model_name", "unknown"),
+            tokens_input=0,
+            tokens_output=0,
+            latency_ms=total_latency,
+            resolved_customer_id=None,
+        )
+
+    # High confidence (≥ 0.80) or index-empty fallback.
+    if match is not None and match.customer_id is not None:
+        customer_id = match.customer_id
+        # Observability: record the matcher call in tool_calls for this turn.
+        matcher_tool_calls = [{
+            "tool_name": "match_customer",
+            "hint": hint,
+            "customer_id": str(match.customer_id),
+            "confidence": match.confidence,
+            "alternatives_count": len(match.alternatives),
+        }]
+
+    _emit("customer_resolved", {"customer_id": str(customer_id) if customer_id else None})
+
+    # Build ToolCallRecord list, prepending the matcher observability record.
+    tool_calls: list[ToolCallRecord] = [
+        ToolCallRecord(
+            tool_name=tc["tool_name"],
+            arguments={k: v for k, v in tc.items() if k != "tool_name"},
+            result_excerpt=f"confidence={tc.get('confidence', 0):.2f} customer_id={tc.get('customer_id')}",
+            latency_ms=0,
+            tokens=0,
+        )
+        for tc in matcher_tool_calls
+    ]
     citations: list[Citation] = []
     answer_text: str
     evidence_used: list[str] = list(intent.evidence)

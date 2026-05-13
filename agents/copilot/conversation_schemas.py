@@ -278,3 +278,12 @@ class CopilotResponse(BaseModel):
             "active-account indicator + Conversation.active_account_id update."
         ),
     )
+    pending_customer_match: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Set when the semantic matcher returned low or medium confidence. "
+            "The route layer appends this as a flat JSONB sentinel with keys "
+            "tool_name, target_intent, hint, alternatives so the "
+            "confirm-match route can resume the paused turn. Backend-only."
+        ),
+    )
