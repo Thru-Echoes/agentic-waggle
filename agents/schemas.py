@@ -157,7 +157,8 @@ class ConversationContext(BaseModel):
     )
     last_3_customer_ids: list[uuid.UUID] = Field(
         default_factory=list,
-        description="Recent customer IDs referenced in this conversation.",
+        max_length=3,
+        description="Recent customer IDs referenced in this conversation (most recent first, max 3).",
     )
 
 
@@ -241,7 +242,12 @@ class SkuMatch(Grounded):
 
     @model_validator(mode="after")
     def _exactly_one_id(self) -> "SkuMatch":
-        """Enforce exactly one of product_id/service_id when sku_kind is set."""
+        """Enforce exactly one of product_id/service_id when sku_kind is set.
+
+        Also enforces that the non-null ID matches the declared sku_kind —
+        prevents silent cross-kind mismatches (e.g. sku_kind='product' with
+        only service_id set).
+        """
         if self.sku_kind is None:
             if self.product_id is not None or self.service_id is not None:
                 raise ValueError("sku_kind None requires both IDs null")
@@ -251,6 +257,15 @@ class SkuMatch(Grounded):
             raise ValueError(
                 "SkuMatch must set exactly one of product_id/service_id "
                 "when sku_kind is not None"
+            )
+        # The non-null ID must match the declared kind
+        if self.sku_kind == "product" and self.product_id is None:
+            raise ValueError(
+                "SkuMatch: sku_kind='product' requires product_id to be set (got service_id only)"
+            )
+        if self.sku_kind == "service" and self.service_id is None:
+            raise ValueError(
+                "SkuMatch: sku_kind='service' requires service_id to be set (got product_id only)"
             )
         return self
 
