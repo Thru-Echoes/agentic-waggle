@@ -515,6 +515,85 @@ class ChatTurn(SQLModel, table=True):
     conversation: Mapped[Optional["Conversation"]] = Relationship(back_populates="turns")
 
 
+# ---------------------------------------------------------------------------
+# Semantic matcher: customer_search_entries + sku_search_entries
+# ---------------------------------------------------------------------------
+
+
+class CustomerSearchEntry(SQLModel, table=True):
+    """One indexed search entry — a customer name, alias, or site name.
+
+    Hybrid retrieval (pgvector cosine + Postgres FTS) ranks rows; LLM
+    disambiguator picks one. Many entries point to one customer.
+
+    Source values: 'name' | 'alias' | 'site' (CHECK-constrained at the DB).
+
+    The `embedding` and `tsv` columns are managed by raw DDL in the migration
+    (pgvector VECTOR(384) and GENERATED ALWAYS AS tsvector). They are not
+    declared here to avoid SQLModel trying to re-create them via the ORM.
+    """
+
+    __tablename__: ClassVar[str] = "customer_search_entries"
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('name', 'alias', 'site')",
+            name="customer_search_entries_source_check",
+        ),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    customer_id: uuid.UUID = Field(
+        foreign_key="customers.id", nullable=False
+    )
+    entry_text: str = Field(..., nullable=False)
+    source: str = Field(..., nullable=False)
+    # pgvector embedding + generated tsv handled by raw DDL — not modeled on
+    # the Python side to avoid SQLModel re-declaring them with wrong types.
+    created_at: datetime = Field(default_factory=utc_now, nullable=False)
+
+    customer: Mapped[Optional["Customer"]] = Relationship()
+
+
+class SkuSearchEntry(SQLModel, table=True):
+    """One indexed search entry for a product or service.
+
+    Exactly one of product_id / service_id is non-null (enforced by a CHECK
+    constraint at the DB level: (product_id IS NULL) <> (service_id IS NULL)).
+
+    Source values: 'product_name' | 'product_code' | 'product_alias' |
+                   'service_name' | 'service_code' | 'service_alias'
+                   (CHECK-constrained at the DB).
+
+    The `embedding` and `tsv` columns are managed by raw DDL in the migration
+    (pgvector VECTOR(384) and GENERATED ALWAYS AS tsvector). They are not
+    declared here to avoid SQLModel trying to re-create them via the ORM.
+    """
+
+    __tablename__: ClassVar[str] = "sku_search_entries"
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('product_name','product_code','product_alias',"
+            "'service_name','service_code','service_alias')",
+            name="sku_search_entries_source_check",
+        ),
+        CheckConstraint(
+            "(product_id IS NULL) <> (service_id IS NULL)",
+            name="sku_search_entries_exactly_one_target",
+        ),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    product_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="products.id", nullable=True
+    )
+    service_id: Optional[uuid.UUID] = Field(
+        default=None, foreign_key="services.id", nullable=True
+    )
+    entry_text: str = Field(..., nullable=False)
+    source: str = Field(..., nullable=False)
+    created_at: datetime = Field(default_factory=utc_now, nullable=False)
+
+
 __all__ = [
     "utc_now",
     "Territory",
@@ -536,4 +615,6 @@ __all__ = [
     "OrderStateTransition",
     "Conversation",
     "ChatTurn",
+    "CustomerSearchEntry",
+    "SkuSearchEntry",
 ]

@@ -1,0 +1,121 @@
+"""semantic matcher: customer_search_entries + sku_search_entries.
+
+Two indexed tables backing providers/semantic_matcher.py.
+
+  customer_search_entries — one row per (customer.name | customer alias |
+    customer_site.name); FK to customers. Hybrid retrieval uses pgvector
+    cosine on `embedding` PLUS GIN(tsv) FTS, fused via RRF.
+
+  sku_search_entries — one row per (product name | product code | product
+    alias | service name | service code | service alias). Exactly one of
+    product_id / service_id is non-null (CHECK constraint).
+
+Both tables have a generated `tsv` column (to_tsvector('english',
+entry_text)) so lexical search uses the same source-of-truth column.
+
+Revision ID: 004_semantic_matcher
+Revises: 003_add_copilot_conversations
+Create Date: 2026-05-12
+"""
+# pyright: reportMissingImports=false
+from __future__ import annotations
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import JSONB, UUID, TSVECTOR
+
+
+revision: str = "004_semantic_matcher"
+down_revision: Union[str, None] = "003_add_copilot_conversations"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    """Create customer_search_entries and sku_search_entries tables.
+
+    Both tables have pgvector IVFFlat indexes for cosine similarity and
+    GIN indexes on generated tsvector columns for full-text search.
+
+    Side effects: creates two tables and five indexes in the DB.
+    """
+    # ----- customer_search_entries -----
+    op.execute(
+        """
+        CREATE TABLE customer_search_entries (
+            id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+            entry_text  TEXT NOT NULL,
+            source      TEXT NOT NULL,
+            embedding   VECTOR(384) NOT NULL,
+            tsv         TSVECTOR GENERATED ALWAYS AS
+                          (to_tsvector('english', entry_text)) STORED NOT NULL,
+            created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT customer_search_entries_source_check
+                CHECK (source IN ('name', 'alias', 'site'))
+        )
+        """
+    )
+    op.execute(
+        "CREATE INDEX customer_search_entries_embedding_ivfflat "
+        "ON customer_search_entries USING ivfflat (embedding vector_cosine_ops) "
+        "WITH (lists = 32)"
+    )
+    op.execute(
+        "CREATE INDEX customer_search_entries_tsv_gin "
+        "ON customer_search_entries USING gin (tsv)"
+    )
+    op.create_index(
+        "customer_search_entries_customer_id_idx",
+        "customer_search_entries",
+        ["customer_id"],
+    )
+
+    # ----- sku_search_entries -----
+    op.execute(
+        """
+        CREATE TABLE sku_search_entries (
+            id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            product_id  UUID NULL REFERENCES products(id) ON DELETE CASCADE,
+            service_id  UUID NULL REFERENCES services(id) ON DELETE CASCADE,
+            entry_text  TEXT NOT NULL,
+            source      TEXT NOT NULL,
+            embedding   VECTOR(384) NOT NULL,
+            tsv         TSVECTOR GENERATED ALWAYS AS
+                          (to_tsvector('english', entry_text)) STORED NOT NULL,
+            created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT sku_search_entries_source_check
+                CHECK (source IN ('product_name','product_code','product_alias',
+                                  'service_name','service_code','service_alias')),
+            CONSTRAINT sku_search_entries_exactly_one_target
+                CHECK ((product_id IS NULL) <> (service_id IS NULL))
+        )
+        """
+    )
+    op.execute(
+        "CREATE INDEX sku_search_entries_embedding_ivfflat "
+        "ON sku_search_entries USING ivfflat (embedding vector_cosine_ops) "
+        "WITH (lists = 16)"
+    )
+    op.execute(
+        "CREATE INDEX sku_search_entries_tsv_gin "
+        "ON sku_search_entries USING gin (tsv)"
+    )
+    op.create_index(
+        "sku_search_entries_product_id_idx", "sku_search_entries", ["product_id"]
+    )
+    op.create_index(
+        "sku_search_entries_service_id_idx", "sku_search_entries", ["service_id"]
+    )
+
+
+def downgrade() -> None:
+    """Drop both semantic-matcher search tables.
+
+    Side effects: drops sku_search_entries and customer_search_entries
+    (and all their indexes) from the DB.
+    """
+    op.drop_table("sku_search_entries")
+    op.drop_table("customer_search_entries")
