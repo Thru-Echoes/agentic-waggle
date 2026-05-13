@@ -9,6 +9,6 @@ can consume them without importing the agent runtime.
 """
 from __future__ import annotations
 
-from agents import customer_matcher, order_extractor, schemas, sku_resolver
+from agents import order_extractor, schemas
 
-__all__ = ["customer_matcher", "order_extractor", "schemas", "sku_resolver"]
+__all__ = ["order_extractor", "schemas"]
