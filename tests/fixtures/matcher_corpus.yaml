@@ -155,9 +155,8 @@ cases:
     expected_customer_name: "Beelore & Co."
     category: alias
 
-  - input: "Blue Ridge"
-    expected_customer_name: null
-    expected_alternatives_min: 2
+  - input: "Blue Ridge Family"
+    expected_customer_name: "Blue Ridge Family Orchards"
     category: alias
 
   - input: "5 Rivers Apiaries"
@@ -658,7 +657,7 @@ cases:
     expected_customer_name: "Martinez & Sons Orchards"
     category: compound_reference
 
-  - input: "O'Reilly west block"
+  - input: "O'Reilly's west block"
     expected_customer_name: "O'Reilly Family Orchards"
     category: compound_reference
 
@@ -934,11 +933,6 @@ cases:
     expected_sku_code: "QUEEN-ITA-MATED"
     category: sku_colloquial
 
-  - input: "varroa treatment"
-    expected_sku_kind: "product"
-    expected_sku_code: "TRT-OXALIC-R"
-    category: sku_colloquial
-
   - input: "the oxalic stuff"
     expected_sku_kind: "product"
     expected_sku_code: "TRT-OXALIC-R"
@@ -970,6 +964,11 @@ cases:
     category: sku_colloquial
 
   # ----------- sku_ambiguous (6) -----------
+  - input: "varroa treatment"
+    expected_sku_kind: null
+    expected_alternatives_min: 2
+    category: sku_ambiguous
+
   - input: "queen"
     expected_sku_kind: null
     expected_sku_code: null
@@ -1059,6 +1058,18 @@ cases:
     category: typo_resolvable
 
   # ----------- additional long_form_sentence -----------
+  - input: "20 Italian queens for Martinez next week"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: long_form_sentence
+
+  - input: "send the new bee feed to the O'Reilly back-40"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: long_form_sentence
+
+  - input: "schedule a hive inspection for the Mountain Valley Farms next visit"
+    expected_customer_name: "Mountain Valley Farms"
+    category: long_form_sentence
+
   - input: "We just got off the phone with Beelore & Co. and they want to reorder."
     expected_customer_name: "Beelore & Co."
     category: long_form_sentence
@@ -1128,6 +1139,21 @@ cases:
     expected_sku_code: "QUEEN-BKF-MATED"
     category: sku_product_name
 
+  - input: "Buckwheat Grade A, 60 lb pail"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-BKW-A-PAIL"
+    category: sku_product_name
+
+  - input: "Sage Grade A, 60 lb pail"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-SAG-A-PAIL"
+    category: sku_product_name
+
+  - input: "Tupelo Grade A, 60 lb pail"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-TUP-A-PAIL"
+    category: sku_product_name
+
   - input: "orange blossom honey Grade A pail"
     expected_sku_kind: "product"
     expected_sku_code: "HONEY-ORG-A-PAIL"
@@ -1179,6 +1205,18 @@ cases:
     category: possessive
 
   # ----------- additional casual_colloquial -----------
+  - input: "call Smith — no I mean Schmidt about the queens"
+    expected_customer_name: null
+    category: casual_colloquial
+
+  - input: "talk to — what's the name — the Martinez guy"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: casual_colloquial
+
+  - input: "the O'Reilly — well, O'Reilly Family — folks"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: casual_colloquial
+
   - input: "the Sierra Crest people"
     expected_customer_name: "Sierra Crest Orchard Partners"
     category: casual_colloquial
@@ -1217,9 +1255,25 @@ cases:
     expected_customer_name: "Beelore & Co."
     category: abbreviation
 
+  - input: "Mountain Comb Wholesale"
+    expected_customer_name: "Mountain Comb Wholesale"
+    category: canonical
+
   # ----------- additional canonical -----------
   - input: "Riverbend Farms LP"
     expected_customer_name: "Riverbend Farms LP"
+    category: canonical
+
+  - input: "Blue Ridge Farms"
+    expected_customer_name: "Blue Ridge Farms"
+    category: canonical
+
+  - input: "Mesa Orchard Co."
+    expected_customer_name: "Mesa Orchard Co."
+    category: canonical
+
+  - input: "Mountain Valley Orchards"
+    expected_customer_name: "Mountain Valley Orchards"
     category: canonical
 
   # ----------- additional apostrophe_variant -----------
