@@ -183,3 +183,119 @@ def clean_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Strip API keys from the environment, so the provider's init raises."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+
+# ---------------------------------------------------------------------------
+# Semantic matcher fixtures (Tasks 3-7)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def db_session_with_seed(db: Session) -> Session:
+    """Provides a SQLAlchemy Session against a fresh schema seeded with
+    customers, regions, and sites using the real seed generators.
+
+    Uses `db` (per-test fresh-schema fixture) so test isolation is preserved.
+    Calls seed generators directly with the test DB session rather than
+    `generate.run()`, which opens its own connection internally.
+
+    Side effects: inserts rows into regions, customers, customer_sites.
+    """
+    from faker import Faker
+
+    from seed import (
+        customers as customers_gen,
+        regions as regions_gen,
+        sites as sites_gen,
+    )
+    from seed.faker_providers import BeekeepingProvider
+
+    SEED_VALUE = 42
+    faker = Faker(locale="en_US")
+    Faker.seed(SEED_VALUE)
+    faker.add_provider(BeekeepingProvider)
+
+    regions = regions_gen.generate()
+    regions_gen.persist(db, regions)
+
+    customers = customers_gen.generate(faker)
+    customers_gen.persist(db, customers)
+
+    sites = sites_gen.generate(faker, customers, regions)
+    sites_gen.persist(db, sites)
+
+    db.commit()
+    return db
+
+
+@pytest.fixture
+def db_session_with_search_entries(db_session_with_seed: Session) -> Session:
+    """Inserts a minimal customer_search_entries set so Stage-A tests can run
+    before Task 7's full backfill is implemented.
+
+    Inserts one 'name' entry per customer, one 'site' entry per site, and a
+    single known 'alias' entry for O'Reilly Family Orchards ("OReillys Back 40")
+    so that site-reference and multi-source tests use a distinctive query with
+    no ambiguity.
+
+    Uses the real VectorSearchProvider (all-MiniLM-L6-v2, 384-dim) to build
+    embeddings — no mocks.
+
+    This fixture is REPLACED after Task 7 lands and the fixture switches to
+    calling backfill_all() directly.
+
+    Side effects: inserts into customer_search_entries; commits.
+    """
+    from providers.vector_search import VectorSearchProvider
+
+    provider = VectorSearchProvider()
+    db = db_session_with_seed
+
+    customer_rows = db.execute(
+        text("SELECT id AS customer_id, name AS entry_text FROM customers")
+    ).mappings().all()
+    for r in customer_rows:
+        emb = provider.embed(r["entry_text"])
+        db.execute(
+            text(
+                "INSERT INTO customer_search_entries "
+                "(customer_id, entry_text, source, embedding) "
+                "VALUES (:cid, :et, 'name', CAST(:emb AS vector))"
+            ),
+            {"cid": r["customer_id"], "et": r["entry_text"], "emb": emb},
+        )
+
+    site_rows = db.execute(
+        text("SELECT customer_id, name AS entry_text FROM customer_sites")
+    ).mappings().all()
+    for r in site_rows:
+        emb = provider.embed(r["entry_text"])
+        db.execute(
+            text(
+                "INSERT INTO customer_search_entries "
+                "(customer_id, entry_text, source, embedding) "
+                "VALUES (:cid, :et, 'site', CAST(:emb AS vector))"
+            ),
+            {"cid": r["customer_id"], "et": r["entry_text"], "emb": emb},
+        )
+
+    # Add a distinctive alias for O'Reilly so site-reference and multi-source
+    # tests can use a query with no ambiguity across the 40-customer corpus.
+    oreilly_row = db.execute(
+        text("SELECT id FROM customers WHERE name LIKE :n"),
+        {"n": "%O'Reilly%"},
+    ).first()
+    if oreilly_row is not None:
+        alias_text = "OReillys Back 40"
+        emb = provider.embed(alias_text)
+        db.execute(
+            text(
+                "INSERT INTO customer_search_entries "
+                "(customer_id, entry_text, source, embedding) "
+                "VALUES (:cid, :et, 'alias', CAST(:emb AS vector))"
+            ),
+            {"cid": oreilly_row.id, "et": alias_text, "emb": emb},
+        )
+
+    db.commit()
+    return db
