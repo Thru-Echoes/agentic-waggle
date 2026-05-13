@@ -285,17 +285,20 @@ def db_session_with_search_entries(db_session_with_seed: Session) -> Session:
         text("SELECT id FROM customers WHERE name LIKE :n"),
         {"n": "%O'Reilly%"},
     ).first()
-    if oreilly_row is not None:
-        alias_text = "OReillys Back 40"
-        emb = provider.embed(alias_text)
-        db.execute(
-            text(
-                "INSERT INTO customer_search_entries "
-                "(customer_id, entry_text, source, embedding) "
-                "VALUES (:cid, :et, 'alias', CAST(:emb AS vector))"
-            ),
-            {"cid": oreilly_row.id, "et": alias_text, "emb": emb},
-        )
+    assert oreilly_row is not None, (
+        "O'Reilly Family Orchards not found in seeded customers. "
+        "Did seed/customers.py change? Update the alias fixture to match."
+    )
+    alias_text = "OReillys Back 40"
+    emb = provider.embed(alias_text)
+    db.execute(
+        text(
+            "INSERT INTO customer_search_entries "
+            "(customer_id, entry_text, source, embedding) "
+            "VALUES (:cid, :et, 'alias', CAST(:emb AS vector))"
+        ),
+        {"cid": oreilly_row.id, "et": alias_text, "emb": emb},
+    )
 
     db.commit()
     return db
