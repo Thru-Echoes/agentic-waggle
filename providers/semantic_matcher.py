@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
 RRF_K = 60
 TOP_K = 5
 RETRIEVE_LIMIT = 20  # per-source before fusion
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 LLM_DISAMBIG_MAX_ATTEMPTS = 2
 # Multiplier applied to the top candidate's fused_score when the LLM picks an
 # id outside our shortlist and we fall back to the top Stage-A result.
