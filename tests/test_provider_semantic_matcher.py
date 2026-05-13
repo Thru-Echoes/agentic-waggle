@@ -8,6 +8,7 @@ LLM tests are added in later tasks and skip cleanly without an OPENAI_API_KEY.
 """
 from __future__ import annotations
 
+import os
 import uuid
 
 import pytest
@@ -100,3 +101,74 @@ def test_hybrid_retrieve_multi_source_boost(seeded_customer_entries):
         by_customer.setdefault(c.customer_id, []).append(c)
     top_customer_id = candidates[0].customer_id
     assert len(by_customer[top_customer_id]) >= 2
+
+
+# ---------------------------------------------------------------------------
+# Stage B — LLM disambiguation
+# ---------------------------------------------------------------------------
+
+require_openai_key = pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY"),
+    reason="OPENAI_API_KEY not set — LLM disambig tests skipped",
+)
+
+
+@require_openai_key
+def test_llm_disambiguate_picks_active_account_on_ambiguous_tie(
+    seeded_customer_entries,
+):
+    """When two candidates have similar fused scores, the LLM should
+    prefer the active_account_id from conversation context."""
+    from agents.schemas import ConversationContext
+
+    candidates = semantic_matcher._hybrid_retrieve(
+        "the orchard",
+        table="customer_search_entries",
+        db=seeded_customer_entries,
+    )
+    if len(candidates) < 2:
+        pytest.skip("Seed data didn't produce a useful ambiguous shortlist")
+
+    active_id = candidates[1].customer_id  # not the top-scoring one
+    ctx = ConversationContext(
+        active_account_id=active_id,
+        last_3_customer_ids=[active_id] if active_id else [],
+    )
+
+    result = semantic_matcher._llm_disambiguate(
+        query="the orchard",
+        candidates=candidates,
+        kind="customer",
+        ctx=ctx,
+        db=seeded_customer_entries,
+    )
+    from agents.schemas import CustomerMatch
+
+    assert isinstance(result, CustomerMatch)
+    assert result.customer_id == active_id
+
+
+@require_openai_key
+def test_llm_disambiguate_returns_null_on_clear_miss(seeded_customer_entries):
+    """For a hint that doesn't plausibly match any candidate, the LLM
+    should return customer_id=None."""
+    from agents.schemas import ConversationContext, CustomerMatch
+
+    candidates = semantic_matcher._hybrid_retrieve(
+        "Italian queens",
+        table="customer_search_entries",
+        db=seeded_customer_entries,
+    )
+    if not candidates:
+        pytest.skip("Empty candidate list — degenerate test")
+
+    result = semantic_matcher._llm_disambiguate(
+        query="Zephyr Bee Company",
+        candidates=candidates,
+        kind="customer",
+        ctx=ConversationContext(),
+        db=seeded_customer_entries,
+    )
+    assert isinstance(result, CustomerMatch)
+    assert result.customer_id is None
+    assert result.confidence < 0.5

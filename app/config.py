@@ -149,6 +149,10 @@ class Settings(BaseSettings):
             "user turn. One call, ~10 tokens output."
         ),
     )
+    copilot_matcher_disambig_model: str = Field(
+        default="gpt-5.4-nano",
+        description="OpenAI chat model for the semantic matcher's LLM disambiguator.",
+    )
 
     # -- Provider filesystem roots ----------------------------------------
     storage_root: Path = Field(default=Path("/local-storage"))

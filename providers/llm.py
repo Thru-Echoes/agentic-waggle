@@ -28,7 +28,10 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Any, Iterator
+from typing import TYPE_CHECKING, Any, Iterator
+
+if TYPE_CHECKING:
+    import openai
 
 
 @dataclass
@@ -44,6 +47,26 @@ class LLMConfigurationError(RuntimeError):
     Intentional. The stack requires a real LLM; there is no canned-response
     fallback.
     """
+
+
+def get_openai_client() -> "openai.OpenAI":
+    """Return a fresh ``openai.OpenAI`` client, raising ``LLMConfigurationError``
+    when ``OPENAI_API_KEY`` is not set.
+
+    Returns:
+        Configured ``openai.OpenAI`` instance.
+
+    Side effects: reads ``OPENAI_API_KEY`` from the environment.
+    """
+    import openai
+
+    key = os.environ.get("OPENAI_API_KEY")
+    if not key:
+        raise LLMConfigurationError(
+            "OPENAI_API_KEY is not set. "
+            "The semantic-matcher LLM disambiguator requires a real OpenAI key."
+        )
+    return openai.OpenAI(api_key=key)
 
 
 def resolve_provider() -> str:
