@@ -23,8 +23,6 @@ from __future__ import annotations
 from typing import Sequence, Union
 
 from alembic import op
-import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB, UUID, TSVECTOR
 
 
 revision: str = "004_semantic_matcher"
