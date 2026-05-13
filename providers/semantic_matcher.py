@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
 RRF_K = 60
 TOP_K = 5
 RETRIEVE_LIMIT = 20  # per-source before fusion
-PROMPT_VERSION = "v3"
+PROMPT_VERSION = "v4"
 LLM_DISAMBIG_MAX_ATTEMPTS = 2
 # Multiplier applied to the top candidate's fused_score when the LLM picks an
 # id outside our shortlist and we fall back to the top Stage-A result.
@@ -127,11 +127,14 @@ def _get_vector_provider() -> VectorSearchProvider:
 
 
 def _normalize_for_index_and_query(s: str) -> str:
-    """Lightweight normalization applied to both index entries and queries.
+    """Lightweight normalization applied to both index entries (at build
+    time) and incoming queries (at match time).
 
-    Lowercases, collapses whitespace, strips ASCII punctuation that
-    interferes with FTS tokenization while keeping internal hyphens
-    (e.g., 'back-40' stays as one token).
+    Lowercases, strips trailing possessive markers ('s), collapses
+    whitespace, removes ASCII punctuation that interferes with FTS
+    tokenization while keeping internal hyphens (e.g., 'back-40' stays
+    as one token), and strips common company suffixes that don't
+    contribute to identity matching.
 
     Parameters:
         s: Raw input string.
@@ -142,9 +145,23 @@ def _normalize_for_index_and_query(s: str) -> str:
     Side effects: none.
     """
     s = (s or "").lower().strip()
+    # Strip trailing possessive markers BEFORE general punct-strip
+    # (otherwise "o'reilly's" becomes "o reilly s" with a stray 's')
+    s = s.replace("'s ", " ").replace("'s\n", "\n").replace("'s\t", "\t")
+    if s.endswith("'s"):
+        s = s[:-2]
+    # Now strip general punctuation
     for ch in [",", ".", "'", '"', "(", ")", "/", "&", "!", "?", ":", ";"]:
         s = s.replace(ch, " ")
-    return " ".join(s.split())
+    # Collapse multiple spaces
+    s = " ".join(s.split())
+    # Strip common company suffix tokens AFTER lowercasing/punct-stripping
+    # (so "Co.", "Inc.", "LLC" all reduce to bare-name FTS targets)
+    suffix_tokens = {"co", "inc", "llc", "ltd", "company", "corp", "corporation"}
+    tokens = s.split()
+    while tokens and tokens[-1] in suffix_tokens:
+        tokens.pop()
+    return " ".join(tokens)
 
 
 def _hybrid_retrieve(
@@ -260,6 +277,43 @@ def _hybrid_retrieve(
                 fused_score=float(r["boosted_score"]),
             )
         )
+
+    # Safety fallback: if the hybrid query returned nothing (FTS matched zero
+    # rows and dense had no overlap with the FULL OUTER JOIN partner), fall
+    # back to a pure dense retrieval.  SET LOCAL ivfflat.probes is already
+    # active for this transaction so it applies here too.
+    if not candidates:
+        fallback_sql = f"""
+        SELECT
+          id, {target_cols}, entry_text, source,
+          1 - (embedding <=> CAST(:emb AS vector)) AS dense_score,
+          ROW_NUMBER() OVER (ORDER BY embedding <=> CAST(:emb AS vector)) AS dense_rank
+        FROM {table}
+        ORDER BY embedding <=> CAST(:emb AS vector)
+        LIMIT :top_k
+        """
+        fallback_rows = db.execute(
+            text(fallback_sql),
+            {"emb": embedding, "top_k": TOP_K},
+        ).mappings().all()
+        for r in fallback_rows:
+            dense_score = float(r["dense_score"]) if r.get("dense_score") is not None else 0.0
+            candidates.append(
+                Candidate(
+                    entry_id=uuid.UUID(str(r["id"])),
+                    customer_id=uuid.UUID(str(r["customer_id"])) if r.get("customer_id") else None,
+                    product_id=uuid.UUID(str(r["product_id"])) if r.get("product_id") else None,
+                    service_id=uuid.UUID(str(r["service_id"])) if r.get("service_id") else None,
+                    entry_text=r["entry_text"],
+                    source=r["source"],
+                    dense_rank=int(r["dense_rank"]) if r.get("dense_rank") is not None else None,
+                    fts_rank=None,
+                    dense_score=dense_score,
+                    fts_score=None,
+                    fused_score=dense_score,
+                )
+            )
+
     return candidates
 
 

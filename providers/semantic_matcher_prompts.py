@@ -50,7 +50,7 @@ Rules (in priority order):
      none of them is the active_account or in recent_customer_names, you MUST return:
        - customer_id = null
        - confidence ≤ 0.40
-       - alternatives populated with the top 2-3 candidates and their plausibility scores
+       - alternatives populated with the top 2-3 candidates and their confidence scores
      Do NOT pick one. The user must disambiguate.
 
   3. SITE-NAME REFERENCES:
@@ -165,6 +165,16 @@ PROMPT_HISTORY = [
             "Targets: reverse v2 regressions (canonical 50→100, long_form 20→95, "
             "abbreviation 33→98, apostrophe 50→98, alias 67→98) while preserving "
             "v2 wins on ambiguous_reference and sku_ambiguous."
+        ),
+    },
+    {
+        "version": "v4",
+        "date": "2026-05-13",
+        "note": (
+            "Stage A normalization improvements: trailing possessive stripping, "
+            "company-suffix tokens dropped, dense-only retrieval fallback when "
+            "FTS returns empty. Plus residual wording fix: 'plausibility scores' "
+            "→ 'confidence scores' (prevents v2-era field-name mismatch)."
         ),
     },
 ]
