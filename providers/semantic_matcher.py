@@ -65,6 +65,11 @@ RRF_K = 60
 TOP_K = 5
 RETRIEVE_LIMIT = 20  # per-source before fusion
 PROMPT_VERSION = "v1"
+LLM_DISAMBIG_MAX_ATTEMPTS = 2
+# Multiplier applied to the top candidate's fused_score when the LLM picks an
+# id outside our shortlist and we fall back to the top Stage-A result.
+# Half-confidence signals that we are uncertain about the fallback.
+DEFENSE_CHECK_CONFIDENCE_PENALTY = 0.5
 
 # ivfflat index probe count — controls recall vs. speed trade-off.
 # Default of 1 is too low for small datasets (tests with ~140 rows).
@@ -442,7 +447,7 @@ def _llm_disambiguate(
     )
 
     last_error: Exception | None = None
-    for attempt in (1, 2):
+    for attempt in range(1, LLM_DISAMBIG_MAX_ATTEMPTS + 1):
         try:
             resp = client.chat.completions.create(
                 model=model,
@@ -464,14 +469,37 @@ def _llm_disambiguate(
             parsed: dict[str, Any] = json.loads(raw)
 
             # Defensive: strip malformed alternatives rather than letting
-            # them abort the whole match. The LLM often omits ``source``
-            # from CustomerCandidate entries; drop any alternative that
-            # would fail validation so the primary match still comes through.
+            # them abort the whole match. The LLM often omits required fields
+            # from alternatives; drop any entry that would fail validation so
+            # the primary match still comes through.
             if kind == "customer" and isinstance(parsed.get("alternatives"), list):
+                before = len(parsed["alternatives"])
                 parsed["alternatives"] = [
                     alt for alt in parsed["alternatives"]
                     if isinstance(alt, dict) and "source" in alt
                 ]
+                dropped = before - len(parsed["alternatives"])
+                if dropped:
+                    logger.warning(
+                        "LLM omitted 'source' from %d customer alternative(s); dropped before validate",
+                        dropped,
+                    )
+            elif kind == "sku" and isinstance(parsed.get("alternatives"), list):
+                before = len(parsed["alternatives"])
+                parsed["alternatives"] = [
+                    alt for alt in parsed["alternatives"]
+                    if isinstance(alt, dict)
+                    and "sku_kind" in alt
+                    and "sku_code" in alt
+                    and "name" in alt
+                    and "confidence" in alt
+                ]
+                dropped = before - len(parsed["alternatives"])
+                if dropped:
+                    logger.warning(
+                        "LLM omitted required fields from %d SKU alternative(s); dropped before validate",
+                        dropped,
+                    )
 
             match = match_class.model_validate(parsed)
 
@@ -488,7 +516,7 @@ def _llm_disambiguate(
                     return CustomerMatch(
                         customer_id=top.customer_id if top else None,
                         customer_name=None,
-                        confidence=(top.fused_score * 0.5) if top else 0.0,
+                        confidence=(top.fused_score * DEFENSE_CHECK_CONFIDENCE_PENALTY) if top else 0.0,
                         evidence=[query],
                         alternatives=[],
                     )

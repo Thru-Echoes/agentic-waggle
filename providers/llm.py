@@ -170,11 +170,9 @@ def _openai_complete(
 
     Default model: `Settings.openai_model` (currently `gpt-5.4-mini`).
     """
-    import openai
-
     from app.config import get_settings
 
-    client = openai.OpenAI()
+    client = get_openai_client()
     model = kwargs.pop("model", get_settings().openai_model)
     messages: list[dict[str, Any]] = []
     if system:
