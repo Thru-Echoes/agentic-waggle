@@ -761,6 +761,7 @@ def match_sku(
         )
 
     if len(query) > 512:
+        logger.warning("Truncating over-long matcher query from %d to 512 chars", len(query))
         query = query[:512]
 
     _check_index_populated("sku_search_entries", db)

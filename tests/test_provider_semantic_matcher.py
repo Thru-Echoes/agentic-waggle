@@ -244,10 +244,19 @@ def test_match_customer_empty_hint_returns_null_no_llm_call(
 
 
 def test_cache_lru_evicts_oldest(seeded_customer_entries, monkeypatch):
-    """Cache cap is CACHE_CAP_PER_CONV (64); the 65th distinct hint
-    evicts the oldest."""
-    from agents.schemas import ConversationContext
+    """Cache cap is CACHE_CAP_PER_CONV; the (N+1)th distinct hint evicts the oldest."""
+    from agents.schemas import CustomerMatch, ConversationContext
+
     monkeypatch.setattr(semantic_matcher, "CACHE_CAP_PER_CONV", 2)
+
+    # Stub _llm_disambiguate so this test doesn't depend on the LLM.
+    def stub_llm(*, query, candidates, kind, ctx, db):
+        return CustomerMatch(
+            customer_id=None, customer_name=None,
+            confidence=0.5, evidence=[query], alternatives=[],
+        )
+
+    monkeypatch.setattr(semantic_matcher, "_llm_disambiguate", stub_llm)
     semantic_matcher.clear_caches()
 
     conv_id = uuid.uuid4()
@@ -261,13 +270,24 @@ def test_cache_lru_evicts_oldest(seeded_customer_entries, monkeypatch):
     assert len(cache) == 2
 
 
-def test_concurrent_calls_idempotent(seeded_customer_entries):
+def test_concurrent_calls_idempotent(seeded_customer_entries, monkeypatch):
     """Two threads calling match_customer with the same args produce
     the same answer (idempotent under race)."""
     import concurrent.futures
-    from agents.schemas import ConversationContext
+    from agents.schemas import CustomerMatch, ConversationContext
 
+    # Stub _llm_disambiguate with a deterministic fixed-id result.
+    fixed_id = uuid.uuid4()
+
+    def stub_llm(*, query, candidates, kind, ctx, db):
+        return CustomerMatch(
+            customer_id=fixed_id, customer_name="stub",
+            confidence=0.9, evidence=[query], alternatives=[],
+        )
+
+    monkeypatch.setattr(semantic_matcher, "_llm_disambiguate", stub_llm)
     semantic_matcher.clear_caches()
+
     conv_id = uuid.uuid4()
     ctx = ConversationContext()
 
