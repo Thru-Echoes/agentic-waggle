@@ -172,3 +172,113 @@ def test_llm_disambiguate_returns_null_on_clear_miss(seeded_customer_entries):
     assert isinstance(result, CustomerMatch)
     assert result.customer_id is None
     assert result.confidence < 0.5
+
+
+# ---------------------------------------------------------------------------
+# Public API + cache (Stage C)
+# ---------------------------------------------------------------------------
+
+@require_openai_key
+def test_match_customer_canonical(seeded_customer_entries):
+    from agents.schemas import ConversationContext
+
+    match = semantic_matcher.match_customer(
+        "O'Reilly Family Orchards",
+        conversation_ctx=ConversationContext(),
+        conversation_id=uuid.uuid4(),
+        db=seeded_customer_entries,
+    )
+    assert match.customer_id is not None
+    assert match.confidence >= 0.80
+    assert "O'Reilly" in (match.customer_name or "")
+
+
+@require_openai_key
+def test_match_customer_cache_hit_avoids_second_llm_call(
+    seeded_customer_entries, monkeypatch,
+):
+    """Second call with the same (hint, ctx, conv) hits the cache —
+    monkeypatch _llm_disambiguate to assert it's only called once."""
+    from agents.schemas import ConversationContext
+
+    call_count = {"n": 0}
+    original = semantic_matcher._llm_disambiguate
+
+    def counting(*args, **kwargs):
+        call_count["n"] += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(semantic_matcher, "_llm_disambiguate", counting)
+    semantic_matcher.clear_caches()
+
+    conv_id = uuid.uuid4()
+    ctx = ConversationContext()
+    semantic_matcher.match_customer(
+        "O'Reilly", conversation_ctx=ctx, conversation_id=conv_id,
+        db=seeded_customer_entries,
+    )
+    semantic_matcher.match_customer(
+        "O'Reilly", conversation_ctx=ctx, conversation_id=conv_id,
+        db=seeded_customer_entries,
+    )
+    assert call_count["n"] == 1, "LLM should have been called only once"
+
+
+def test_match_customer_empty_hint_returns_null_no_llm_call(
+    seeded_customer_entries, monkeypatch,
+):
+    """Empty hint short-circuits — no LLM call."""
+    from agents.schemas import ConversationContext
+
+    def boom(*args, **kwargs):
+        raise AssertionError("LLM should not be called for empty hint")
+
+    monkeypatch.setattr(semantic_matcher, "_llm_disambiguate", boom)
+    semantic_matcher.clear_caches()
+
+    match = semantic_matcher.match_customer(
+        "", conversation_ctx=ConversationContext(),
+        conversation_id=uuid.uuid4(), db=seeded_customer_entries,
+    )
+    assert match.customer_id is None
+
+
+def test_cache_lru_evicts_oldest(seeded_customer_entries, monkeypatch):
+    """Cache cap is CACHE_CAP_PER_CONV (64); the 65th distinct hint
+    evicts the oldest."""
+    from agents.schemas import ConversationContext
+    monkeypatch.setattr(semantic_matcher, "CACHE_CAP_PER_CONV", 2)
+    semantic_matcher.clear_caches()
+
+    conv_id = uuid.uuid4()
+    ctx = ConversationContext()
+    for hint in ["foo", "bar", "baz"]:  # 3 hints, cap is 2
+        semantic_matcher.match_customer(
+            hint, conversation_ctx=ctx, conversation_id=conv_id,
+            db=seeded_customer_entries,
+        )
+    cache = semantic_matcher._cache_for(conv_id)
+    assert len(cache) == 2
+
+
+def test_concurrent_calls_idempotent(seeded_customer_entries):
+    """Two threads calling match_customer with the same args produce
+    the same answer (idempotent under race)."""
+    import concurrent.futures
+    from agents.schemas import ConversationContext
+
+    semantic_matcher.clear_caches()
+    conv_id = uuid.uuid4()
+    ctx = ConversationContext()
+
+    def call():
+        return semantic_matcher.match_customer(
+            "O'Reilly", conversation_ctx=ctx, conversation_id=conv_id,
+            db=seeded_customer_entries,
+        )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+        f1 = ex.submit(call)
+        f2 = ex.submit(call)
+        r1, r2 = f1.result(), f2.result()
+    assert r1.customer_id == r2.customer_id

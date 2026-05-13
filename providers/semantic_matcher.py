@@ -35,7 +35,9 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections import OrderedDict
 from dataclasses import dataclass
+from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal
 
 from sqlalchemy import text
@@ -557,6 +559,281 @@ def _llm_disambiguate(
             evidence=[],
             alternatives=[],
         )
+
+
+# ---------------------------------------------------------------------------
+# Stage C — Public API + cache
+# ---------------------------------------------------------------------------
+
+CACHE_CAP_PER_CONV = 64
+
+_conv_caches: dict[uuid.UUID, OrderedDict[tuple, Any]] = {}
+_cache_lock = Lock()
+
+
+def _cache_for(conversation_id: uuid.UUID) -> OrderedDict[tuple, Any]:
+    """Return (or create) the per-conversation LRU cache dict.
+
+    Parameters:
+        conversation_id: UUID identifying the conversation.
+
+    Returns:
+        The OrderedDict used as an LRU cache for this conversation.
+
+    Side effects: Inserts an empty OrderedDict into _conv_caches if absent
+        (protected by _cache_lock).
+    """
+    with _cache_lock:
+        return _conv_caches.setdefault(conversation_id, OrderedDict())
+
+
+def clear_caches() -> None:
+    """Test helper — clears all per-conversation caches.
+
+    Side effects: empties _conv_caches under _cache_lock.
+    """
+    with _cache_lock:
+        _conv_caches.clear()
+
+
+def _ctx_key(ctx: Any) -> tuple:
+    """Stable, hashable key derived from a ConversationContext or SkuContext.
+
+    Parameters:
+        ctx: ConversationContext, SkuContext, or unknown object.
+
+    Returns:
+        A hashable tuple suitable for use as a dict key.
+
+    Side effects: none.
+    """
+    from agents.schemas import ConversationContext, SkuContext
+
+    if isinstance(ctx, ConversationContext):
+        return ("conv", ctx.active_account_id, tuple(ctx.last_3_customer_ids))
+    if isinstance(ctx, SkuContext):
+        return ("sku",)
+    return ("none",)
+
+
+class MatcherIndexEmpty(RuntimeError):
+    """Search-entries table is empty — backfill must run before matching."""
+
+
+def _check_index_populated(table: str, db: Session) -> None:
+    """Raise MatcherIndexEmpty if the given search-entries table has no rows.
+
+    Parameters:
+        table: Table name to count — caller-controlled, never user input.
+        db: SQLAlchemy Session for DB reads.
+
+    Side effects: one SELECT COUNT(*) query.
+
+    Raises:
+        MatcherIndexEmpty: when the table is empty.
+    """
+    n = db.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one()
+    if not n:
+        raise MatcherIndexEmpty(
+            f"{table} is empty. Run providers.semantic_matcher.backfill_all(db) "
+            f"or set MATCHER_BOOTSTRAP=1 to auto-reindex on boot."
+        )
+
+
+def match_customer(
+    hint: str,
+    *,
+    conversation_ctx: Any,  # ConversationContext
+    conversation_id: uuid.UUID,
+    db: Session,
+) -> Any:  # CustomerMatch
+    """Resolve a free-text customer reference to a customer row.
+
+    Parameters:
+        hint: Free-text customer reference from a user or conversation.
+        conversation_ctx: ConversationContext providing active account + recency.
+        conversation_id: UUID identifying the current conversation (used as
+            the LRU cache key).
+        db: SQLAlchemy Session for DB reads.
+
+    Returns:
+        CustomerMatch with customer_id=None if the hint is empty or no match
+        is found with sufficient confidence.
+
+    Side effects:
+        * Reads customers + customer_search_entries (Stage A + Stage B DB reads).
+        * One OpenAI API call (Stage B) unless cache-hit or empty hint.
+        * Writes to the per-conversation in-memory LRU cache.
+    """
+    from agents.schemas import CustomerMatch
+
+    if not hint or not hint.strip():
+        return CustomerMatch(
+            customer_id=None,
+            customer_name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+
+    if len(hint) > 512:
+        logger.warning(
+            "Truncating over-long matcher hint from %d to 512 chars", len(hint)
+        )
+        hint = hint[:512]
+
+    _check_index_populated("customer_search_entries", db)
+
+    cache = _cache_for(conversation_id)
+    cache_key = (_normalize_for_index_and_query(hint), _ctx_key(conversation_ctx))
+    if cache_key in cache:
+        cache.move_to_end(cache_key)
+        return cache[cache_key]
+
+    candidates = _hybrid_retrieve(
+        hint,
+        table="customer_search_entries",
+        db=db,
+    )
+    if not candidates:
+        result: Any = CustomerMatch(
+            customer_id=None,
+            customer_name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+    else:
+        result = _llm_disambiguate(
+            query=hint,
+            candidates=candidates,
+            kind="customer",
+            ctx=conversation_ctx,
+            db=db,
+        )
+
+    cache[cache_key] = result
+    while len(cache) > CACHE_CAP_PER_CONV:
+        cache.popitem(last=False)
+
+    return result
+
+
+def match_sku(
+    query: str,
+    *,
+    sku_context: Any,  # SkuContext
+    conversation_id: uuid.UUID,
+    db: Session,
+) -> Any:  # SkuMatch
+    """Resolve a free-text product/service reference to a SKU row.
+
+    Short-circuits on exact SKU-code match (skips Stage A + B entirely).
+
+    Parameters:
+        query: Free-text product or service reference from a user or extraction.
+        sku_context: SkuContext providing order-level hints.
+        conversation_id: UUID identifying the current conversation (used as
+            the LRU cache key).
+        db: SQLAlchemy Session for DB reads.
+
+    Returns:
+        SkuMatch with sku_kind=None if the query is empty or unresolvable.
+
+    Side effects:
+        * Reads sku_search_entries + products + services (Stage A + Stage B).
+        * One OpenAI API call (Stage B) unless cache-hit, empty query, or
+          exact SKU-code short-circuit.
+        * Writes to the per-conversation in-memory LRU cache.
+    """
+    from agents.schemas import SkuMatch
+
+    if not query or not query.strip():
+        return SkuMatch(
+            sku_kind=None,
+            product_id=None,
+            service_id=None,
+            sku_code=None,
+            name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+
+    if len(query) > 512:
+        query = query[:512]
+
+    _check_index_populated("sku_search_entries", db)
+
+    # Exact SKU-code short-circuit — skips embedding + LLM entirely.
+    normalized = query.strip().upper()
+    row = db.execute(
+        text("SELECT id, sku, name FROM products WHERE sku = :sku"),
+        {"sku": normalized},
+    ).first()
+    if row:
+        return SkuMatch(
+            sku_kind="product",
+            product_id=row.id,
+            service_id=None,
+            sku_code=row.sku,
+            name=row.name,
+            confidence=1.0,
+            evidence=[query],
+            alternatives=[],
+        )
+    row = db.execute(
+        text("SELECT id, sku, name FROM services WHERE sku = :sku"),
+        {"sku": normalized},
+    ).first()
+    if row:
+        return SkuMatch(
+            sku_kind="service",
+            product_id=None,
+            service_id=row.id,
+            sku_code=row.sku,
+            name=row.name,
+            confidence=1.0,
+            evidence=[query],
+            alternatives=[],
+        )
+
+    cache = _cache_for(conversation_id)
+    cache_key = ("sku", _normalize_for_index_and_query(query), _ctx_key(sku_context))
+    if cache_key in cache:
+        cache.move_to_end(cache_key)
+        return cache[cache_key]
+
+    candidates = _hybrid_retrieve(
+        query,
+        table="sku_search_entries",
+        db=db,
+    )
+    if not candidates:
+        result = SkuMatch(
+            sku_kind=None,
+            product_id=None,
+            service_id=None,
+            sku_code=None,
+            name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+    else:
+        result = _llm_disambiguate(
+            query=query,
+            candidates=candidates,
+            kind="sku",
+            ctx=sku_context,
+            db=db,
+        )
+
+    cache[cache_key] = result
+    while len(cache) > CACHE_CAP_PER_CONV:
+        cache.popitem(last=False)
+
+    return result
 
 
 # ---------------------------------------------------------------------------
