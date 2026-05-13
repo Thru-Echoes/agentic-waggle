@@ -2,8 +2,8 @@
 
 Public surface:
 
-    match_customer(hint, conversation_ctx, db) -> CustomerMatch
-    match_sku(query, sku_context, db) -> SkuMatch
+    match_customer(hint, *, conversation_ctx, conversation_id, db) -> CustomerMatch
+    match_sku(query, *, sku_context, conversation_id, db) -> SkuMatch
     reindex_customer(customer_id, db) -> None
     reindex_sku(product_id=..., service_id=..., db) -> None
     backfill_all(db) -> int
@@ -613,7 +613,10 @@ def _ctx_key(ctx: Any) -> tuple:
         return ("conv", ctx.active_account_id, tuple(ctx.last_3_customer_ids))
     if isinstance(ctx, SkuContext):
         return ("sku",)
-    return ("none",)
+    raise TypeError(
+        f"_ctx_key: unsupported context type {type(ctx).__name__}; "
+        f"expected ConversationContext or SkuContext"
+    )
 
 
 class MatcherIndexEmpty(RuntimeError):
@@ -646,7 +649,7 @@ def match_customer(
     conversation_ctx: Any,  # ConversationContext
     conversation_id: uuid.UUID,
     db: Session,
-) -> Any:  # CustomerMatch
+) -> "CustomerMatch":
     """Resolve a free-text customer reference to a customer row.
 
     Parameters:
@@ -725,7 +728,7 @@ def match_sku(
     sku_context: Any,  # SkuContext
     conversation_id: uuid.UUID,
     db: Session,
-) -> Any:  # SkuMatch
+) -> "SkuMatch":
     """Resolve a free-text product/service reference to a SKU row.
 
     Short-circuits on exact SKU-code match (skips Stage A + B entirely).
@@ -811,7 +814,7 @@ def match_sku(
         db=db,
     )
     if not candidates:
-        result = SkuMatch(
+        result: Any = SkuMatch(
             sku_kind=None,
             product_id=None,
             service_id=None,

@@ -302,3 +302,158 @@ def test_concurrent_calls_idempotent(seeded_customer_entries, monkeypatch):
         f2 = ex.submit(call)
         r1, r2 = f1.result(), f2.result()
     assert r1.customer_id == r2.customer_id
+
+
+# ---------------------------------------------------------------------------
+# I-1: MatcherIndexEmpty — fail-loud when search-entries table is empty
+# ---------------------------------------------------------------------------
+
+
+def test_match_customer_raises_when_index_empty(db_session_with_seed):
+    """customer_search_entries empty → MatcherIndexEmpty raised.
+
+    db_session_with_seed seeds customers/regions/sites but inserts NO
+    customer_search_entries rows, so the index-populated guard must fire.
+    """
+    from agents.schemas import ConversationContext
+    from providers.semantic_matcher import MatcherIndexEmpty
+
+    with pytest.raises(MatcherIndexEmpty, match="customer_search_entries is empty"):
+        semantic_matcher.match_customer(
+            "O'Reilly",
+            conversation_ctx=ConversationContext(),
+            conversation_id=uuid.uuid4(),
+            db=db_session_with_seed,
+        )
+
+
+def test_match_sku_raises_when_index_empty(db_session_with_seed):
+    """sku_search_entries empty → MatcherIndexEmpty raised.
+
+    db_session_with_seed inserts no sku_search_entries rows, so the
+    index-populated guard must fire before any SKU matching proceeds.
+    """
+    from agents.schemas import SkuContext
+    from providers.semantic_matcher import MatcherIndexEmpty
+
+    with pytest.raises(MatcherIndexEmpty, match="sku_search_entries is empty"):
+        semantic_matcher.match_sku(
+            "Italian queens",
+            sku_context=SkuContext(),
+            conversation_id=uuid.uuid4(),
+            db=db_session_with_seed,
+        )
+
+
+# ---------------------------------------------------------------------------
+# I-2: Truncation — hint > 512 chars is silently trimmed to 512
+# ---------------------------------------------------------------------------
+
+
+def test_match_customer_truncates_long_hint(seeded_customer_entries, monkeypatch, caplog):
+    """Hint > 512 chars → truncated to 512 + WARNING logged.
+
+    Passes a 9-char prefix that retrieves real candidates from the seeded
+    index ('O\'Reilly ') then pads to 600 chars total. The stub captures
+    the query as it arrives at the LLM stage so we can assert length == 512.
+    """
+    import logging
+
+    from agents.schemas import ConversationContext, CustomerMatch
+
+    captured_hint: dict[str, str | None] = {"value": None}
+
+    def stub_llm(*, query, candidates, kind, ctx, db):
+        captured_hint["value"] = query
+        return CustomerMatch(
+            customer_id=None,
+            customer_name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+
+    monkeypatch.setattr(semantic_matcher, "_llm_disambiguate", stub_llm)
+    semantic_matcher.clear_caches()
+
+    # 9-char prefix ensures Stage-A retrieves real candidates so stub is called;
+    # total length is 9 + 591 = 600 chars → truncated to 512.
+    prefix = "O'Reilly "
+    long_hint = prefix + "x" * (600 - len(prefix))
+    assert len(long_hint) == 600
+
+    with caplog.at_level(logging.WARNING, logger="providers.semantic_matcher"):
+        semantic_matcher.match_customer(
+            long_hint,
+            conversation_ctx=ConversationContext(),
+            conversation_id=uuid.uuid4(),
+            db=seeded_customer_entries,
+        )
+
+    assert captured_hint["value"] is not None, (
+        "stub_llm was never called — Stage-A returned no candidates for the long hint. "
+        "The prefix must surface real results from seeded_customer_entries."
+    )
+    assert len(captured_hint["value"]) == 512
+    assert any("Truncating" in rec.message for rec in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# I-3: Exact-SKU short-circuit — confidence=1.0, no LLM call
+# ---------------------------------------------------------------------------
+
+
+def test_match_sku_exact_code_short_circuits_no_llm(seeded_customer_entries, monkeypatch):
+    """Exact SKU code → confidence=1.0, NO LLM call, returns product info.
+
+    Inserts a product row and a matching sku_search_entries row directly via
+    SQL (the conftest's db_session_with_seed doesn't seed products), then
+    passes that product's SKU code to match_sku and confirms the exact-match
+    short-circuit fires — i.e., confidence=1.0 and _llm_disambiguate is never
+    called.
+    """
+    from agents.schemas import SkuContext
+    from providers.vector_search import VectorSearchProvider
+
+    db = seeded_customer_entries
+    test_sku = "TEST-ITQ-NUC5"
+    test_name = "Italian Queen, 5-frame nuc"
+    product_id = uuid.uuid4()
+
+    # Insert a minimal product row (no FK dependencies on products).
+    db.execute(
+        text(
+            "INSERT INTO products (id, sku, name, category, price_usd, is_regulated) "
+            "VALUES (:id, :sku, :name, 'bee_stock', 45.00, false)"
+        ),
+        {"id": str(product_id), "sku": test_sku, "name": test_name},
+    )
+
+    # Insert one sku_search_entries row so _check_index_populated passes.
+    client = VectorSearchProvider()
+    emb = client.embed(test_name)
+    db.execute(
+        text(
+            "INSERT INTO sku_search_entries "
+            "(product_id, entry_text, source, embedding) "
+            "VALUES (:pid, :et, 'product_name', CAST(:emb AS vector))"
+        ),
+        {"pid": str(product_id), "et": test_name, "emb": emb},
+    )
+    db.commit()
+
+    def boom(*args, **kwargs):
+        raise AssertionError("LLM should not be called for an exact SKU code match")
+
+    monkeypatch.setattr(semantic_matcher, "_llm_disambiguate", boom)
+    semantic_matcher.clear_caches()
+
+    match = semantic_matcher.match_sku(
+        test_sku,
+        sku_context=SkuContext(),
+        conversation_id=uuid.uuid4(),
+        db=db,
+    )
+    assert match.confidence == 1.0
+    assert match.sku_kind == "product"
+    assert match.sku_code == test_sku
