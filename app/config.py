@@ -150,7 +150,7 @@ class Settings(BaseSettings):
         ),
     )
     copilot_matcher_disambig_model: str = Field(
-        default="gpt-5.4-nano",
+        default="gpt-5.4-mini",
         description="OpenAI chat model for the semantic matcher's LLM disambiguator.",
     )
 

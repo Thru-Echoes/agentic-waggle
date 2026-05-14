@@ -1164,6 +1164,11 @@ cases:
     expected_sku_code: "TRT-FORMIC-R"
     category: sku_product_name
 
+  - input: "wildflower honey drum Grade A"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-WLD-A-DRUM"
+    category: sku_product_name
+
   # ----------- additional sku_qty_plus_product -----------
   - input: "4 Buckfast mated queens"
     expected_sku_kind: "product"
@@ -1185,6 +1190,20 @@ cases:
     category: negative_case
 
   - input: "Summit Bee Ranch"
+    expected_customer_name: null
+    category: negative_case
+
+  # Near-miss negatives constructed from real-seed tokens
+  # (per .reports/matcher_corpus_review.md §a Gap 4)
+  - input: "Mountain Comb Partners"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Blue Ridge Bee Co."
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Seven Acres Orchards"
     expected_customer_name: null
     category: negative_case
 
