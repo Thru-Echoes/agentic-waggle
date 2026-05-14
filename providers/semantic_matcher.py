@@ -14,9 +14,9 @@ Pipeline (both customer + SKU paths):
         embed(query) -> pgvector cosine over <table>.embedding (top 20)
         +
         plainto_tsquery(query) -> ts_rank over <table>.tsv (top 20)
-        -> Reciprocal Rank Fusion (k=60) -> top 5 fused candidates
-        -> multi-source boost (when 2+ entries from the same target
-          rank in top-N, sum their fused scores)
+        -> Reciprocal Rank Fusion (k=60)
+        -> best-entry-per-target (ROW_NUMBER PARTITION BY target ORDER BY
+          rrf_score DESC; keep rank-1) -> top 5 distinct targets
 
     Stage B — LLM disambiguate (added in Task 4):
         gpt-5.4-nano with structured output (response_format=json_schema)
@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -66,7 +67,7 @@ logger = logging.getLogger(__name__)
 RRF_K = 60
 TOP_K = 5
 RETRIEVE_LIMIT = 20  # per-source before fusion
-PROMPT_VERSION = "v4"
+PROMPT_VERSION = "v5"
 LLM_DISAMBIG_MAX_ATTEMPTS = 2
 # Multiplier applied to the top candidate's fused_score when the LLM picks an
 # id outside our shortlist and we fall back to the top Stage-A result.
@@ -126,39 +127,184 @@ def _get_vector_provider() -> VectorSearchProvider:
     return _vector_provider
 
 
-def _normalize_for_index_and_query(s: str) -> str:
-    """Lightweight normalization applied to both index entries (at build
-    time) and incoming queries (at match time).
+# v5 query-time noise stripping for retrieval recall.  These patterns only
+# affect *query* normalization — indexed entries (customer names, aliases,
+# site names, product names) are stored raw in customer_search_entries /
+# sku_search_entries and the FTS tsv is computed at INSERT time from raw
+# entry_text.  Tightening these patterns does NOT require an index rebuild.
 
-    Lowercases, strips trailing possessive markers ('s), collapses
-    whitespace, removes ASCII punctuation that interferes with FTS
-    tokenization while keeping internal hyphens (e.g., 'back-40' stays
-    as one token), and strips common company suffixes that don't
-    contribute to identity matching.
+_SUBJECT_LINE_PREFIX_RE = re.compile(
+    r"^\s*(?:fwd|fw|re|urgent|action\s*item|todo|note|reminder|update|alert)"
+    r"\s*[:\-—]+\s*",
+    re.IGNORECASE,
+)
+
+_LEADING_STOP_PHRASE_RE = re.compile(
+    r"^\s*(?:"
+    # Trailing colloquial reference that wraps the entity from the front.
+    r"those\s+(?:folks|guys|people)\s+at\s+|"
+    # Modal-question wrappers: "Can you …", "Could you …", "Would we …".
+    r"(?:can|could|would|will)\s+(?:you|we)\s+|"
+    r"please\s+|"
+    r"let'?s\s+|"
+    # First-person scheduling phrases.
+    r"i\s+(?:need|want|have|should|will|am\s+going)\s+to\s+|"
+    r"we\s+(?:need|want|have|should|will|are\s+going)\s+to\s+|"
+    # Speech-act verbs with a noun-phrase complement.
+    r"check\s+(?:if|on|whether)\s+|"
+    r"log\s+(?:a\s+)?(?:note|reminder|todo)\s+(?:that|on|for|to|about)\s+|"
+    r"(?:put|leave)\s+a\s+(?:note|reminder)\s+(?:that|on|for|to|about)\s+|"
+    r"follow[\s\-]+up\s+(?:with|on|about)\s+|"
+    r"schedule\s+(?:a\s+|the\s+|some\s+)?|"
+    r"pull\s+up\s+(?:the\s+)?(?:account\s+|file\s+|info(?:rmation)?\s+|details\s+)?(?:for\s+|on\s+)?|"
+    r"look\s+up\s+(?:the\s+)?|"
+    # Bare admin verbs that precede a noun phrase.  None of the seed
+    # customer names start with any of these, so stripping is safe.
+    r"(?:invoice|draft|send|post|contact|call|email|notify|alert|review|approve|find|locate)\s+|"
+    # Leading determiners — stripped only at position 0 by the ^\s* anchor.
+    r"the\s+|"
+    r"a\s+(?:note|reminder)\s+(?:for|on|about|that)\s+"
+    r")",
+    re.IGNORECASE,
+)
+
+_CASUAL_SUFFIX_RE = re.compile(
+    r"\s+(?:folks|guys|people|team|crew|account|gang|crowd)\s*$",
+    re.IGNORECASE,
+)
+
+# Business-suffix abbreviation expansions applied at query time so a
+# verbose form ("Haley Farms Limited Partnership", "ACME Incorporated")
+# matches the same indexed alias/name as the abbreviated form.  Indexed
+# entries already use the short form, so this only adjusts the query.
+# After expansion, the trailing-suffix-token pop will drop the resulting
+# short form ("lp", "inc", "co") — that's the desired symmetry.
+_BUSINESS_ABBREVIATION_SUBS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\blimited\s+partnership\b", re.IGNORECASE), "lp"),
+    (re.compile(r"\blimited\s+liability\s+company\b", re.IGNORECASE), "llc"),
+    (re.compile(r"\bincorporated\b", re.IGNORECASE), "inc"),
+    (re.compile(r"\bcorporation\b", re.IGNORECASE), "corp"),
+    (re.compile(r"\bcompany\b", re.IGNORECASE), "co"),
+]
+
+# SKU-only quantity prefix patterns.  Two cases:
+#   A. Mass unit ("100 lb of winter fondant"): strip digits + mass unit +
+#      optional "of" so only the product family survives.
+#   B. Bare digit ("10 Carniolan mated queens"): strip the digit but KEEP
+#      everything after, including packaging units ("drums", "pails",
+#      "jars", "frames", "cases", "boxes").  Packaging units are needed by
+#      Stage B to pick the right SIZE variant ("5 drums of clover honey"
+#      must reach HONEY-CLV-A-DRUM, not HONEY-CLV-A-PAIL).
+#
+# Both patterns are SKU-path-only.  Applying them to customer queries
+# would corrupt aliases like "7 Acres Farms" → "Seven Acres Farms".
+_QTY_MASS_PREFIX_RE = re.compile(
+    r"^\s*\d+(?:\.\d+)?\s+"
+    r"(?:lbs?|pounds?|kg|kgs?|oz|ounces?|gallons?|liters?|litres?|each|ea\.?)\s+"
+    r"(?:of\s+)?",
+    re.IGNORECASE,
+)
+_QTY_BARE_PREFIX_RE = re.compile(
+    r"^\s*\d+(?:\.\d+)?\s+",
+    re.IGNORECASE,
+)
+
+
+def _normalize_for_index_and_query(
+    s: str,
+    *,
+    kind: Literal["customer", "sku"] | None = None,
+) -> str:
+    """Lightweight normalization applied to incoming queries at match time.
+
+    Despite the name, this function only runs at query time.  Indexed
+    entries (customer names / aliases / site names / product names) are
+    stored raw in the search-entry tables and the FTS tsv is generated at
+    INSERT time from that raw text, so tightening these rules does NOT
+    require rebuilding the index.
+
+    Pipeline (order matters):
+      1. Strip subject-line prefixes ("FWD:", "URGENT:", "Action item:").
+      2. Lowercase + trim whitespace.
+      3. Iteratively strip leading stop-phrases ("the ", "check if ",
+         "log a note that ", "schedule a ", "invoice ", "follow up with ",
+         "we need to ", "can you pull up the account for ", …) so combos
+         like "Could you please pull up the account for X" reduce
+         step-by-step to "X".
+      4. SKU PATH ONLY — strip leading quantity prefix.  Mass-unit form
+         ("100 lb of winter fondant") drops the whole "100 lb of " span.
+         Bare-digit form ("10 Carniolan mated queens") drops only the
+         "10 " digit, preserving packaging units ("drums", "pails",
+         "jars", "frames", "cases") so Stage B keeps the size cue.
+      5. Strip trailing colloquial suffix nouns ("folks", "guys",
+         "people", "team", "crew", "account").
+      6. Strip possessive markers, ASCII punctuation, repeat whitespace.
+      7. Truncate at the LAST company-suffix token ("co", "inc", "llc",
+         …) when at least one token precedes it ("Heartland Apiary
+         Trading Co. spring contract" → "heartland apiary trading"),
+         THEN pop any remaining trailing suffix tokens — preserves the
+         v4 behaviour for queries like "the co." → "" (empty).
 
     Parameters:
         s: Raw input string.
+        kind: "customer" or "sku" — enables path-specific rules.  Quantity
+            stripping is SKU-only because customer aliases like
+            "7 Acres Farms" would otherwise lose their identifier digit.
+            None (default) skips path-specific rules — safe for callers
+            that just need a cache key.
 
     Returns:
-        Normalized string safe for FTS and embedding.
+        Normalized string safe for FTS and embedding; empty string when
+        the input is empty.
 
     Side effects: none.
     """
-    s = (s or "").lower().strip()
-    # Strip trailing possessive markers BEFORE general punct-strip
-    # (otherwise "o'reilly's" becomes "o reilly s" with a stray 's')
+    s = (s or "").strip()
+    if not s:
+        return ""
+
+    s = _SUBJECT_LINE_PREFIX_RE.sub("", s)
+    s = s.lower().strip()
+
+    prev = None
+    while prev != s:
+        prev = s
+        s = _LEADING_STOP_PHRASE_RE.sub("", s, count=1)
+
+    if kind == "sku":
+        # Mass-unit form first: needs both a digit and a recognized unit.
+        s = _QTY_MASS_PREFIX_RE.sub("", s)
+        # Bare-digit form: only when no mass-unit prefix already matched.
+        # Safe because no SKU canonical name starts with a digit.
+        s = _QTY_BARE_PREFIX_RE.sub("", s)
+
+    # Expand verbose business-suffix forms ("Limited Partnership" → "lp",
+    # "Incorporated" → "inc") so they match the abbreviated index entries.
+    for pattern, replacement in _BUSINESS_ABBREVIATION_SUBS:
+        s = pattern.sub(replacement, s)
+
+    s = _CASUAL_SUFFIX_RE.sub("", s)
+
     s = s.replace("'s ", " ").replace("'s\n", "\n").replace("'s\t", "\t")
     if s.endswith("'s"):
         s = s[:-2]
-    # Now strip general punctuation
     for ch in [",", ".", "'", '"', "(", ")", "/", "&", "!", "?", ":", ";"]:
         s = s.replace(ch, " ")
-    # Collapse multiple spaces
     s = " ".join(s.split())
-    # Strip common company suffix tokens AFTER lowercasing/punct-stripping
-    # (so "Co.", "Inc.", "LLC" all reduce to bare-name FTS targets)
+
     suffix_tokens = {"co", "inc", "llc", "ltd", "company", "corp", "corporation"}
     tokens = s.split()
+    # Truncate at the LAST company-suffix token when at least one token
+    # precedes it ("Cascadia Honey Co. spring contract" → "cascadia
+    # honey").  Skip when the suffix is at index 0 — that case falls
+    # through to the v4 trailing-pop below.
+    suffix_positions = [i for i, t in enumerate(tokens) if t in suffix_tokens and i >= 1]
+    if suffix_positions:
+        cut = max(suffix_positions)
+        tokens = tokens[:cut]
+    # v4 fallback: also pop any remaining trailing suffix tokens.  Keeps
+    # "the co." → "" (single-suffix-token query becomes empty) and is a
+    # no-op for queries already handled by the truncate-at-last branch.
     while tokens and tokens[-1] in suffix_tokens:
         tokens.pop()
     return " ".join(tokens)
@@ -185,7 +331,10 @@ def _hybrid_retrieve(
     Side effects: DB reads (SET LOCAL + one CTE query within the current
         transaction).
     """
-    normalized = _normalize_for_index_and_query(query)
+    kind: Literal["customer", "sku"] = (
+        "customer" if table == "customer_search_entries" else "sku"
+    )
+    normalized = _normalize_for_index_and_query(query, kind=kind)
     if not normalized:
         return []
 
@@ -237,16 +386,28 @@ def _hybrid_retrieve(
         COALESCE(1.0 / ({RRF_K} + fts.fts_rank), 0) AS rrf_score
       FROM dense
       FULL OUTER JOIN fts USING (id)
+    ),
+    ranked AS (
+      -- Pick one row per target (customer / product / service): the entry
+      -- with the highest RRF score for that target.  Previously the query
+      -- used a SUM-over-partition boost — but that over-favoured targets
+      -- with many alias / site entries even when the query didn't really
+      -- match them, drowning out the right target's single high-RRF entry.
+      -- MAX semantics (via per_target_rank = 1) keeps the strongest signal
+      -- per target so noisy queries don't get hijacked.
+      SELECT
+        id, customer_id, product_id, service_id, entry_text, source,
+        dense_rank, fts_rank, dense_score, fts_score, rrf_score,
+        ROW_NUMBER() OVER (PARTITION BY {group_col} ORDER BY rrf_score DESC) AS per_target_rank
+      FROM fused
     )
     SELECT
       id, customer_id, product_id, service_id, entry_text, source,
       dense_rank, fts_rank, dense_score, fts_score,
-      rrf_score + COALESCE(
-        SUM(rrf_score) OVER (PARTITION BY {group_col})
-          - rrf_score, 0
-      ) AS boosted_score
-    FROM fused
-    ORDER BY boosted_score DESC
+      rrf_score AS boosted_score
+    FROM ranked
+    WHERE per_target_rank = 1
+    ORDER BY rrf_score DESC
     LIMIT :top_k
     """
 
@@ -352,11 +513,10 @@ def _format_customer_candidate_block(
     )
     id_to_name = {r["id"]: r["name"] for r in name_rows}
 
-    # De-duplicate by customer_id: keep the representative entry with the
-    # highest fused_score per customer, preserving sorted order.  The
-    # multi-source boost in Stage A causes all entries for the same customer
-    # to share an identical score, so we take the first occurrence (which is
-    # also the highest after ORDER BY boosted_score DESC).
+    # Safety dedupe: Stage A already returns one row per customer (cycle
+    # 1.5 ROW_NUMBER partition), but the active_account injection in
+    # match_customer may append a duplicate when the active account also
+    # surfaced naturally.  This loop is the safety net for that case.
     seen_ids: set[uuid.UUID] = set()
     deduped: list[Candidate] = []
     for c in candidates:
@@ -545,20 +705,48 @@ def _llm_disambiguate(
             # from alternatives; drop any entry that would fail validation so
             # the primary match still comes through.
             if kind == "customer" and isinstance(parsed.get("alternatives"), list):
+                # Build a customer_id → canonical-name fallback map from the
+                # shortlist so we can repair alternatives that picked the
+                # right id but forgot to echo the name.
+                id_to_name: dict[str, str] = {}
+                for c in candidates:
+                    if c.customer_id is None:
+                        continue
+                    row = db.execute(
+                        text("SELECT name FROM customers WHERE id = :id"),
+                        {"id": c.customer_id},
+                    ).first()
+                    if row:
+                        id_to_name[str(c.customer_id)] = row.name
+
                 remapped: list[dict[str, Any]] = []
                 for alt in parsed["alternatives"]:
                     if not isinstance(alt, dict):
                         continue
                     # Remap plausibility_score → confidence when the LLM uses
-                    # the wrong field name (happens with gpt-5.4-nano + json_schema
-                    # mode that returns fused_score echoed as plausibility_score).
+                    # the wrong field name (gpt-5.4-nano + json_schema mode
+                    # echoes fused_score as plausibility_score sometimes).
                     if "confidence" not in alt and "plausibility_score" in alt:
                         alt = dict(alt)
                         alt["confidence"] = alt.pop("plausibility_score")
-                    if "source" not in alt:
+                    # Drop alternatives missing the always-required fields.
+                    if "customer_id" not in alt or "confidence" not in alt:
                         continue
-                    # Normalise source to the Literal values the schema requires.
-                    if alt.get("source") not in ("name", "alias", "site", "active_account"):
+                    # Backfill customer_name from the shortlist when the LLM
+                    # omits it (frequent failure mode that caused the whole
+                    # validation to abort before this guard).
+                    if "customer_name" not in alt or alt.get("customer_name") in (None, ""):
+                        canonical = id_to_name.get(str(alt.get("customer_id")))
+                        if not canonical:
+                            continue
+                        alt = dict(alt)
+                        alt["customer_name"] = canonical
+                    # Backfill / normalise source to one of the schema literals.
+                    if "source" not in alt or alt.get("source") not in (
+                        "name",
+                        "alias",
+                        "site",
+                    ):
                         alt = dict(alt)
                         alt["source"] = "name"
                     remapped.append(alt)
@@ -771,7 +959,10 @@ def match_customer(
     _check_index_populated("customer_search_entries", db)
 
     cache = _cache_for(conversation_id)
-    cache_key = (_normalize_for_index_and_query(hint), _ctx_key(conversation_ctx))
+    cache_key = (
+        _normalize_for_index_and_query(hint, kind="customer"),
+        _ctx_key(conversation_ctx),
+    )
     if cache_key in cache:
         cache.move_to_end(cache_key)
         return cache[cache_key]
@@ -916,7 +1107,11 @@ def match_sku(
         )
 
     cache = _cache_for(conversation_id)
-    cache_key = ("sku", _normalize_for_index_and_query(query), _ctx_key(sku_context))
+    cache_key = (
+        "sku",
+        _normalize_for_index_and_query(query, kind="sku"),
+        _ctx_key(sku_context),
+    )
     if cache_key in cache:
         cache.move_to_end(cache_key)
         return cache[cache_key]

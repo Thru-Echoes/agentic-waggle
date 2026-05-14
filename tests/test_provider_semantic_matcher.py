@@ -24,6 +24,177 @@ def seeded_customer_entries(db_session_with_search_entries):
     return db_session_with_search_entries
 
 
+# ---------------------------------------------------------------------------
+# Stage A — query-time normalization (v5)
+# ---------------------------------------------------------------------------
+#
+# _normalize_for_index_and_query runs on every query before Stage A retrieval.
+# v5 cycle 1 added noise-stripping for the most common real-text artifacts:
+# subject-line prefixes, polite/scheduling wrappers, casual colloquial
+# suffixes, and SKU quantity prefixes.  These tests pin the contract so
+# future regex tweaks don't silently drop a pattern that the eval corpus
+# depends on.
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        # v4 carry-overs that must keep working.
+        ("O'Reilly Family Orchards", "o reilly family orchards"),
+        ("Martinez & Sons Orchards", "martinez sons orchards"),
+        ("Haley's", "haley"),
+        ("Heartland Apiary Trading Co.", "heartland apiary trading"),
+        # v5: subject-line prefixes + suffix-truncate cuts mid-query "Co.".
+        (
+            "FWD: Heartland Apiary Trading Co. spring contract",
+            "heartland apiary trading",
+        ),
+        # No verb-clause strip (reverted) — trailing noise stays past "co".
+        # That's fine because dense+FTS find the entity from "Cascadia Honey Co.".
+        (
+            "URGENT: Cascadia Honey Co. needs a callback today",
+            "cascadia honey",
+        ),
+        # "Action item:" subject-line strip + suffix-truncate at the mid-query "co".
+        (
+            "Action item: follow up with Juniper Bee Co. by Thursday",
+            "juniper bee",
+        ),
+        # v5: leading "the " + trailing colloquial noun.
+        ("the Martinez folks", "martinez"),
+        ("Drakestone guys", "drakestone"),
+        ("the Stormchaser mead people", "stormchaser mead"),
+        ("those folks at Cobblestone", "cobblestone"),
+        ("the Sierra Crest people", "sierra crest"),
+        # v5: leading sentence wrappers strip via stop-phrase + casual suffix.
+        # Trailing verb/prep clauses are NOT stripped (revert) — these strings
+        # are slightly noisy but Stage A handles them via dense retrieval.
+        (
+            "The Foothill Orchards site needs a full hive inspection.",
+            "foothill orchards site needs a full hive inspection",
+        ),
+        (
+            "Check if Urban Hive Pantry has any open orders.",
+            "urban hive pantry has any open orders",
+        ),
+        (
+            "Log a note that Old Mission Farm confirmed the pollination quote.",
+            "old mission farm confirmed the pollination quote",
+        ),
+        (
+            "We need to invoice Haley Family Orchards for the spring pollination run.",
+            "haley family orchards for the spring pollination run",
+        ),
+        # Casual "account" suffix only strips at END of string — when
+        # followed by more text, it stays.
+        (
+            "The Drakestone Mead account needs a follow-up call.",
+            "drakestone mead account needs a follow-up call",
+        ),
+        # When "account" IS at the end, it's stripped.
+        (
+            "the Drakestone Mead account",
+            "drakestone mead",
+        ),
+        # Generic-words: "the co." → empty after suffix-token trailing-pop.
+        ("the co.", ""),
+        # Empty / whitespace handling.
+        ("", ""),
+        ("   ", ""),
+        # Idempotency on already-clean canonical names.
+        ("Five Rivers Apiaries", "five rivers apiaries"),
+        # Customer-path safety: digit-led aliases must survive unchanged
+        # because qty stripping only fires when kind="sku".
+        ("7 Acres Farms", "7 acres farms"),
+    ],
+)
+def test_normalize_query(raw: str, expected: str) -> None:
+    """v5 normalization strips noise without dropping the entity tokens.
+
+    Default kind=None reproduces what callers see from caches when no
+    path-specific stripping is needed (e.g., generic cache key building).
+    """
+    got = semantic_matcher._normalize_for_index_and_query(raw)
+    assert got == expected, f"normalize({raw!r}) -> {got!r}, expected {expected!r}"
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        # Bare digit: strip just the digit, keep packaging units so the
+        # LLM can pick the right size variant.
+        ("10 Carniolan mated queens", "carniolan mated queens"),
+        ("5 drums of clover honey Grade A", "drums of clover honey grade a"),
+        ("2 pails of orange blossom honey", "pails of orange blossom honey"),
+        ("20 frames of clover honey", "frames of clover honey"),
+        ("3 cases of medium frames", "cases of medium frames"),
+        # Mass unit ("100 lb of X"): drop the whole "100 lb of " span.
+        ("100 lb of winter fondant", "winter fondant"),
+        ("50 lbs of clover honey", "clover honey"),
+        ("10 oz of royal jelly", "royal jelly"),
+    ],
+)
+def test_normalize_sku_query(raw: str, expected: str) -> None:
+    """SKU-path normalization keeps packaging-unit cues for size variants."""
+    got = semantic_matcher._normalize_for_index_and_query(raw, kind="sku")
+    assert got == expected, f"normalize({raw!r}, sku) -> {got!r}, expected {expected!r}"
+
+
+def test_normalize_customer_path_preserves_alias_digits() -> None:
+    """Customer-path normalization must not strip digit prefixes from aliases."""
+    got = semantic_matcher._normalize_for_index_and_query("7 Acres Farms", kind="customer")
+    assert got == "7 acres farms"
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        # "Limited Partnership" → "lp" but "lp" is NOT in suffix_tokens,
+        # so it stays in the normalized form — and that's fine because
+        # the indexed canonical "Haley Farms LP" entry has the same "lp"
+        # token in its FTS tsv.
+        ("Haley Farms Limited Partnership", "haley farms lp"),
+        # "Limited Liability Company" → "llc"; "llc" IS in suffix_tokens
+        # and gets popped trailing.
+        ("ACME Limited Liability Company", "acme"),
+        # "Incorporated" → "inc"; "inc" IS in suffix_tokens → popped.
+        ("Foothill Incorporated", "foothill"),
+        # "Corporation" → "corp"; popped.
+        ("Mountain Comb Corporation", "mountain comb"),
+        # "Company" → "co"; popped.
+        ("North Wind Mead Company", "north wind mead"),
+    ],
+)
+def test_normalize_expands_business_abbreviations(raw: str, expected: str) -> None:
+    """Verbose business-suffix forms ('Limited Partnership', 'Incorporated',
+    'Corporation', 'Company') get expanded to their abbreviations so they
+    match the abbreviated index entries.  Whether the resulting short form
+    then gets popped depends on whether it's in the existing suffix_tokens
+    set ({co, inc, llc, ltd, company, corp, corporation})."""
+    got = semantic_matcher._normalize_for_index_and_query(raw, kind="customer")
+    assert got == expected
+
+
+def test_normalize_preserves_canonical_when_no_noise() -> None:
+    """Canonical names with no noise pass through unchanged (after lowercasing)."""
+    for canonical in [
+        "Foothill Orchards",
+        "Blue Ridge Family Orchards",
+        "Cascade Orchard Partners",
+        "Stormchaser Meadery",
+    ]:
+        got = semantic_matcher._normalize_for_index_and_query(canonical)
+        assert got == canonical.lower()
+
+
+def test_normalize_iterative_stop_phrase_stripping() -> None:
+    """Combos like 'could you please pull up the X' reduce step-by-step."""
+    got = semantic_matcher._normalize_for_index_and_query(
+        "Could you please pull up the account for Cobblestone Hives"
+    )
+    assert got == "cobblestone hives"
+
+
 def test_hybrid_retrieve_returns_canonical_name_for_exact_query(
     seeded_customer_entries,
 ):
@@ -88,11 +259,16 @@ def test_hybrid_retrieve_limit_is_top_5(seeded_customer_entries):
     assert scores == sorted(scores, reverse=True)
 
 
-def test_hybrid_retrieve_multi_source_boost(seeded_customer_entries):
-    """When 2+ entries from the same customer rank in the shortlist
-    (e.g., canonical name AND the alias 'OReillys Back 40' both match
-    'O'Reilly Back 40'), the customer_id must appear more than once in the
-    raw per-entry results, reflecting the multi-source boost.
+def test_hybrid_retrieve_best_entry_per_target(seeded_customer_entries):
+    """The hybrid retrieve returns at most ONE row per target customer —
+    the entry with the highest RRF score for that target.
+
+    The v5 cycle 1.5 SQL switched from "rrf_score + SUM(other entries)"
+    (which over-favoured customers with many alias/site entries even
+    when they didn't really match the query) to a strict
+    `ROW_NUMBER() PARTITION BY target ORDER BY rrf_score DESC, keep=1`
+    so each customer's BEST entry represents them.  This invariant is
+    important for ambiguity detection and for noisy long-form queries.
     """
     candidates = semantic_matcher._hybrid_retrieve(
         "O'Reilly Back 40",
@@ -103,8 +279,14 @@ def test_hybrid_retrieve_multi_source_boost(seeded_customer_entries):
     by_customer: dict[uuid.UUID | None, list[Candidate]] = {}
     for c in candidates:
         by_customer.setdefault(c.customer_id, []).append(c)
-    top_customer_id = candidates[0].customer_id
-    assert len(by_customer[top_customer_id]) >= 2
+    # Each customer appears at most once now (best-entry-per-target).
+    for cust_id, entries in by_customer.items():
+        if cust_id is None:
+            continue
+        assert len(entries) == 1, (
+            f"customer {cust_id} appears {len(entries)} times; expected 1 "
+            f"(per_target_rank=1 dedupe)"
+        )
 
 
 # ---------------------------------------------------------------------------
