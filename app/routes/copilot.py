@@ -43,6 +43,7 @@ from typing import AsyncIterator
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import ValidationError
 from sqlalchemy import desc, func, select, text
 from sqlmodel import Session
 
@@ -405,10 +406,28 @@ def _turn_view_for_template(turn: ChatTurn) -> dict[str, Any]:
     )
     pending_order: OrderDraft | None = None
     if pending_order_data is not None:
-        pending_order = OrderDraft.model_validate(pending_order_data)
+        try:
+            pending_order = OrderDraft.model_validate(pending_order_data)
+        except ValidationError as exc:
+            log.warning(
+                "Skipping legacy pending_order_draft on turn %s "
+                "(schema evolved; draft not re-actionable from history): %s",
+                turn.id,
+                exc,
+            )
     pending_report: CustomerReportDraft | None = None
     if pending_report_data is not None:
-        pending_report = CustomerReportDraft.model_validate(pending_report_data)
+        try:
+            pending_report = CustomerReportDraft.model_validate(
+                pending_report_data
+            )
+        except ValidationError as exc:
+            log.warning(
+                "Skipping legacy pending_report_draft on turn %s "
+                "(schema evolved; draft not re-actionable from history): %s",
+                turn.id,
+                exc,
+            )
     return {
         "id": turn.id,
         "role": turn.role,
