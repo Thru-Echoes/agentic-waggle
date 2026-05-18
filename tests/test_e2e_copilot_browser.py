@@ -120,6 +120,11 @@ def live_server_url() -> Iterator[str]:
         products_gen.persist(session, products_gen.generate(fk))
         services_gen.persist(session, services_gen.generate())
         embeddings_gen.run(session)
+        # Backfill the matcher search-entry tables so any test that
+        # routes through Stage A retrieval hits a populated index
+        # rather than MatcherIndexEmpty.
+        from providers.semantic_matcher import backfill_all
+        backfill_all(session)
         session.commit()
     finally:
         session.close()

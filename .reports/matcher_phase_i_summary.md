@@ -99,8 +99,8 @@ retry path handles it cleanly.
 | 13 | Order extractor integration | shipped |
 | 14 | Sweep call sites (routes, MCP, demo, inbox-confirm tests) | shipped |
 | 15 | Delete legacy resolver/matcher + remove `rapidfuzz` | shipped |
-| 16 | Playwright UX tests | scaffolded; Layer 1 + Layer 2 verification before merge |
-| 17 | Full eval + fly deploy | eval ✓; deploy pending merge |
+| 16 | Playwright UX tests | partial — fixture matcher-index backfill fixed; SSE-timeout deferred (see below) |
+| 17 | Full eval + fly deploy | eval ✓; deployed at v5.1 |
 
 ## Deferred items (post-merge follow-ups)
 
@@ -126,6 +126,20 @@ retry path handles it cleanly.
   asserts customer-OR-sku, not both. Schema extension would enable
   testing the canonical "20 Italian queens for Martinez" utterance
   end-to-end.
+- **Layer 2 Playwright SSE-timeout (blocker for full Layer 2)** — the
+  browser-test fixtures now backfill `customer_search_entries` /
+  `sku_search_entries` (fixed in this PR), but `test_e2e_copilot_browser`
+  still times out waiting for `.turn.assistant` to render within 60s
+  after a turn submission. The shell tests pass (page load, empty state,
+  rail); the failure is in the SSE/orchestrator chain (router + main +
+  matcher = 3 sequential LLM calls/turn) — not a v5.1 regression (these
+  tests were scaffolded in Phase I Task 16 and never executed to green).
+  `make test` (318 passed) covers the non-Playwright integration paths;
+  the matcher is validated by the full eval harness (95.2% / 100%).
+  Follow-up fix candidates: (a) raise the wait threshold + warm the LLM
+  client at app startup, (b) verify `OPENAI_API_KEY` propagates to the
+  uvicorn subprocess env, (c) instrument the SSE handler for per-stage
+  timing.
 
 ## Audio dictation spec
 

@@ -110,6 +110,11 @@ def live_inbox_server() -> Iterator[str]:
         apiarists_gen.persist(session, apiarists)
         products_gen.persist(session, products_gen.generate(fk))
         services_gen.persist(session, services_gen.generate())
+        # Backfill the matcher search-entry tables so the inbox extract
+        # flow (which routes through match_customer/match_sku) sees a
+        # populated index rather than MatcherIndexEmpty.
+        from providers.semantic_matcher import backfill_all
+        backfill_all(session)
         session.commit()
     finally:
         session.close()
