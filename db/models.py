@@ -30,9 +30,9 @@ from typing import Any, ClassVar, Optional
 from enum import Enum as PyEnum
 
 from pgvector.sqlalchemy import Vector  # type: ignore[import-not-found]
-from sqlalchemy import CheckConstraint, Column, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, ForeignKey, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -515,6 +515,137 @@ class ChatTurn(SQLModel, table=True):
     conversation: Mapped[Optional["Conversation"]] = Relationship(back_populates="turns")
 
 
+# ---------------------------------------------------------------------------
+# Semantic matcher: customer_search_entries + sku_search_entries
+# ---------------------------------------------------------------------------
+
+
+class CustomerSearchEntry(SQLModel, table=True):
+    """One indexed search entry — a customer name, alias, or site name.
+
+    Hybrid retrieval (pgvector cosine + Postgres FTS) ranks rows; LLM
+    disambiguator picks one. Many entries point to one customer.
+
+    Source values: 'name' | 'alias' | 'site' (CHECK-constrained at the DB).
+
+    The `embedding` and `tsv` columns are managed by raw DDL in the migration
+    (pgvector VECTOR(384) and GENERATED ALWAYS AS tsvector). They are not
+    declared here to avoid SQLModel trying to re-create them via the ORM.
+
+    Note: Customer.search_entries is intentionally NOT declared — search
+    entries are a provider-layer concern; the Customer model never navigates
+    to its entries (entries are queried directly via match_customer).
+    """
+
+    __tablename__: ClassVar[str] = "customer_search_entries"
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('name', 'alias', 'site')",
+            name="customer_search_entries_source_check",
+        ),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    customer_id: uuid.UUID = Field(
+        sa_column=Column(
+            "customer_id",
+            PGUUID(as_uuid=True),
+            ForeignKey("customers.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
+    )
+    entry_text: str = Field(
+        ...,
+        nullable=False,
+        description="The text surface form indexed for hybrid retrieval (FTS + pgvector cosine).",
+    )
+    # NOTE: Literal["name", "alias", "site"] is the correct Python type but
+    # SQLModel's mapper cannot introspect Literal for table models (issubclass
+    # fails on Literal args). The DB-level CHECK constraint is the authoritative
+    # enforcement. Use Literal in the Pydantic response schemas instead.
+    source: str = Field(
+        ...,
+        nullable=False,
+        description=(
+            "Origin of this entry: customer name, alias, or site name. "
+            "Valid values: 'name' | 'alias' | 'site' (enforced by DB CHECK constraint)."
+        ),
+    )
+    # pgvector embedding + generated tsv handled by raw DDL — not modeled on
+    # the Python side to avoid SQLModel re-declaring them with wrong types.
+    created_at: datetime = Field(default_factory=utc_now, nullable=False)
+
+    customer: Mapped[Optional["Customer"]] = Relationship()
+
+
+class SkuSearchEntry(SQLModel, table=True):
+    """One indexed search entry for a product or service.
+
+    Exactly one of product_id / service_id is non-null (enforced by a CHECK
+    constraint at the DB level: (product_id IS NULL) <> (service_id IS NULL)).
+
+    Source values: 'product_name' | 'product_code' | 'product_alias' |
+                   'service_name' | 'service_code' | 'service_alias'
+                   (CHECK-constrained at the DB).
+
+    The `embedding` and `tsv` columns are managed by raw DDL in the migration
+    (pgvector VECTOR(384) and GENERATED ALWAYS AS tsvector). They are not
+    declared here to avoid SQLModel trying to re-create them via the ORM.
+    """
+
+    __tablename__: ClassVar[str] = "sku_search_entries"
+    __table_args__ = (
+        CheckConstraint(
+            "source IN ('product_name','product_code','product_alias',"
+            "'service_name','service_code','service_alias')",
+            name="sku_search_entries_source_check",
+        ),
+        CheckConstraint(
+            "(product_id IS NULL) <> (service_id IS NULL)",
+            name="sku_search_entries_exactly_one_target",
+        ),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    product_id: Optional[uuid.UUID] = Field(
+        default=None,
+        sa_column=Column(
+            "product_id",
+            PGUUID(as_uuid=True),
+            ForeignKey("products.id", ondelete="CASCADE"),
+            nullable=True,
+        ),
+    )
+    service_id: Optional[uuid.UUID] = Field(
+        default=None,
+        sa_column=Column(
+            "service_id",
+            PGUUID(as_uuid=True),
+            ForeignKey("services.id", ondelete="CASCADE"),
+            nullable=True,
+        ),
+    )
+    entry_text: str = Field(
+        ...,
+        nullable=False,
+        description="The text surface form indexed for hybrid retrieval (FTS + pgvector cosine).",
+    )
+    # NOTE: Literal[...] is the correct Python type but SQLModel's mapper
+    # cannot introspect Literal for table models. DB-level CHECK constraint
+    # is the authoritative enforcement. Use Literal in Pydantic response schemas.
+    source: str = Field(
+        ...,
+        nullable=False,
+        description=(
+            "Origin of this entry: product name/code/alias or service name/code/alias. "
+            "Valid values: 'product_name' | 'product_code' | 'product_alias' | "
+            "'service_name' | 'service_code' | 'service_alias' "
+            "(enforced by DB CHECK constraint)."
+        ),
+    )
+    created_at: datetime = Field(default_factory=utc_now, nullable=False)
+
+
 __all__ = [
     "utc_now",
     "Territory",
@@ -536,4 +667,6 @@ __all__ = [
     "OrderStateTransition",
     "Conversation",
     "ChatTurn",
+    "CustomerSearchEntry",
+    "SkuSearchEntry",
 ]

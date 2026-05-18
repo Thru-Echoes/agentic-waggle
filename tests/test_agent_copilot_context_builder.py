@@ -19,9 +19,6 @@ from agents.copilot.context_builder import (
     build_context,
     DEFAULT_TOKEN_BUDGET,
 )
-from agents.copilot.account_resolver import build_account_index
-
-
 def _seed_full(db, faker_instance) -> None:
     """Seed enough for embeddings + customer reports to exist."""
     from seed import (

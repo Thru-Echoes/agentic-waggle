@@ -183,3 +183,72 @@ def clean_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Strip API keys from the environment, so the provider's init raises."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+
+# ---------------------------------------------------------------------------
+# Semantic matcher fixtures (Tasks 3-7)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def db_session_with_seed(db: Session) -> Session:
+    """Provides a SQLAlchemy Session against a fresh schema seeded with
+    customers, regions, and sites using the real seed generators.
+
+    Uses `db` (per-test fresh-schema fixture) so test isolation is preserved.
+    Calls seed generators directly with the test DB session rather than
+    `generate.run()`, which opens its own connection internally.
+
+    Side effects: inserts rows into regions, customers, customer_sites.
+    """
+    from faker import Faker
+
+    from seed import (
+        customers as customers_gen,
+        regions as regions_gen,
+        sites as sites_gen,
+    )
+    from seed.faker_providers import BeekeepingProvider
+
+    SEED_VALUE = 42
+    faker = Faker(locale="en_US")
+    Faker.seed(SEED_VALUE)
+    faker.add_provider(BeekeepingProvider)
+
+    regions = regions_gen.generate()
+    regions_gen.persist(db, regions)
+
+    customers = customers_gen.generate(faker)
+    customers_gen.persist(db, customers)
+
+    sites = sites_gen.generate(faker, customers, regions)
+    sites_gen.persist(db, sites)
+
+    db.commit()
+    return db
+
+
+@pytest.fixture
+def db_session_with_search_entries(db_session_with_seed: Session) -> Session:
+    """Seed search-entry tables via backfill_all so Stage-A tests can run.
+
+    Replaced in Task 6: instead of manually inserting rows, this fixture
+    calls providers.semantic_matcher.backfill_all which TRUNCATE-and-rebuilds
+    both customer_search_entries and sku_search_entries from the live seed data.
+    The explicit call here is a safety belt — backfill_all is idempotent.
+
+    Source of truth for aliases is now customers.aliases (JSONB), which
+    includes curated aliases from EDGE_CASE_CUSTOMERS in seed/faker_providers.py
+    (e.g., "OReilly Orchard", "O'Reilly's Almonds" for O'Reilly Family Orchards).
+    The old test-only alias "OReillys Back 40" is retired; tests that queried
+    it have been updated to use real seed aliases.
+
+    Uses real pgvector + sentence-transformers. No mocks.
+
+    Side effects: calls backfill_all (TRUNCATE + INSERT + commit) on the
+        db_session_with_seed session.
+    """
+    from providers import semantic_matcher
+
+    semantic_matcher.backfill_all(db_session_with_seed)
+    return db_session_with_seed

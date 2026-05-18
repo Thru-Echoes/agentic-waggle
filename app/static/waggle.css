@@ -652,3 +652,22 @@ details.evidence ul { margin: 0.35rem 0 0 1.1rem; padding: 0; }
   50%  { transform: scale(1.0); box-shadow: 0 0 0 6px rgba(232, 159, 42, 0); }
   100% { transform: scale(0.7); box-shadow: 0 0 0 0 rgba(232, 159, 42, 0); }
 }
+
+/* Matcher partials — confirm + pick-match */
+.match-confirm-card, .match-pick-card {
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: var(--honey-50, #fff8e7);
+  border: 1px solid var(--honey-300, #f0d088);
+  border-radius: 8px;
+}
+.match-confirm-prompt, .match-pick-prompt {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.match-confirm-form { display: flex; gap: 8px; }
+.match-pick-list { list-style: none; padding: 0; margin: 0; }
+.match-pick-list li { margin: 4px 0; }
+.match-pick-list button { width: 100%; text-align: left; }
+.match-pick-rephrase { margin-top: 8px; font-size: 12px; }

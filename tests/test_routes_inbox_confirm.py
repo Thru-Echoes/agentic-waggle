@@ -79,7 +79,7 @@ def _build_matched_draft(db) -> OrderDraft:
     just to exercise the persist path.
     """
     cust_row = db.execute(
-        text("SELECT id, name, erp_customer_no FROM customers LIMIT 1")
+        text("SELECT id, name FROM customers LIMIT 1")
     ).mappings().first()
     prod_row = db.execute(
         text("SELECT id, sku, price_usd FROM products LIMIT 1")
@@ -89,11 +89,9 @@ def _build_matched_draft(db) -> OrderDraft:
         customer=CustomerMatch(
             customer_id=cust_row["id"],
             customer_name=cust_row["name"],
-            erp_customer_no=cust_row["erp_customer_no"],
-            score=100.0,
             confidence=1.0,
-            ambiguous=False,
-            candidates_considered=[cust_row["name"]],
+            evidence=[cust_row["name"]],
+            alternatives=[],
         ),
         line_items=[
             ResolvedLineItem(
@@ -123,11 +121,9 @@ def _build_unmatched_draft() -> OrderDraft:
         customer=CustomerMatch(
             customer_id=None,
             customer_name=None,
-            erp_customer_no=None,
-            score=0.0,
             confidence=0.0,
-            ambiguous=False,
-            candidates_considered=[],
+            evidence=[],
+            alternatives=[],
         ),
         line_items=[
             ResolvedLineItem(

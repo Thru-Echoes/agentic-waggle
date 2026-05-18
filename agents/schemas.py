@@ -22,7 +22,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from db.enums import OrderState
 
@@ -136,44 +136,138 @@ class RequestedLineItem(Grounded):
 
 
 # ---------------------------------------------------------------------------
-# Deterministic match output (carries confidence for aggregation; no evidence)
+# Semantic matcher schemas — Grounded results with evidence + confidence
 # ---------------------------------------------------------------------------
 
 
-class CustomerMatch(BaseModel):
-    """Result of matching ``CustomerReference.mentioned_name`` against the DB.
+class ConversationContext(BaseModel):
+    """Per-turn context passed to match_customer.
 
-    Deterministic — does not inherit Grounded (no verbatim source quote
-    is available from a fuzzy-score lookup). Carries ``confidence``
-    derived from the score band so OrderDraft.overall_confidence can
-    fold it in alongside LLM-filled steps' confidences.
+    Lets the LLM disambiguator resolve pronouns ("they"), prefer the
+    active account on ambiguous ties, and weigh recent customers higher.
+
+    No side effects — pure data container.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    active_account_id: uuid.UUID | None = Field(
+        default=None,
+        description="Customer currently active in the conversation, if any.",
+    )
+    last_3_customer_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        max_length=3,
+        description="Recent customer IDs referenced in this conversation (most recent first, max 3).",
+    )
+
+
+class SkuContext(BaseModel):
+    """Placeholder context for SKU matching (Phase II will populate).
+
+    No side effects — pure data container.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+
+class CustomerCandidate(BaseModel):
+    """One alternative customer surfaced by the matcher.
+
+    No side effects — pure data container.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    customer_id: uuid.UUID
+    customer_name: str
+    confidence: float = Field(..., ge=0.0, le=1.0)
+    source: Literal["name", "alias", "site"] = Field(
+        ..., description="Which kind of entry matched (name/alias/site)."
+    )
+
+
+class CustomerMatch(Grounded):
+    """Result of resolving a free-text customer reference to a row.
+
+    Grounded — evidence quotes the user's text that justified the match.
+    customer_id is None iff the matcher could not pick confidently
+    (caller decides whether to ask the user or to fall through).
+
+    Inherits ``evidence`` and ``confidence`` from Grounded.
+    No side effects — pure data container.
     """
 
     model_config = ConfigDict(frozen=True)
 
     customer_id: uuid.UUID | None = None
     customer_name: str | None = None
-    erp_customer_no: str | None = None
-    score: float = Field(
-        ..., ge=0.0, le=100.0, description="rapidfuzz 0-100 similarity."
-    )
-    confidence: float = Field(
-        ...,
-        ge=0.0,
-        le=1.0,
-        description=(
-            "Confidence in [0,1] derived from the fuzzy score band. "
-            "Backend-only — used to aggregate OrderDraft.overall_confidence."
-        ),
-    )
-    ambiguous: bool = Field(
-        default=False,
-        description="True if 2+ candidates tied above the ambiguity threshold.",
-    )
-    candidates_considered: list[str] = Field(
-        default_factory=list,
-        description="Top-5 candidate names inspected during matching.",
-    )
+    alternatives: list[CustomerCandidate] = Field(default_factory=list)
+
+
+class SkuCandidate(BaseModel):
+    """One alternative SKU surfaced by the matcher.
+
+    No side effects — pure data container.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    sku_kind: Literal["product", "service"]
+    product_id: uuid.UUID | None = None
+    service_id: uuid.UUID | None = None
+    sku_code: str
+    name: str
+    confidence: float = Field(..., ge=0.0, le=1.0)
+
+
+class SkuMatch(Grounded):
+    """Result of resolving a free-text product/service reference.
+
+    Exactly one of product_id / service_id is non-null when sku_kind is
+    not None. When sku_kind is None the matcher could not resolve.
+
+    Inherits ``evidence`` and ``confidence`` from Grounded.
+    No side effects — pure data container.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    sku_kind: Literal["product", "service"] | None = None
+    product_id: uuid.UUID | None = None
+    service_id: uuid.UUID | None = None
+    sku_code: str | None = None
+    name: str | None = None
+    alternatives: list[SkuCandidate] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _exactly_one_id(self) -> "SkuMatch":
+        """Enforce exactly one of product_id/service_id when sku_kind is set.
+
+        Also enforces that the non-null ID matches the declared sku_kind —
+        prevents silent cross-kind mismatches (e.g. sku_kind='product' with
+        only service_id set).
+        """
+        if self.sku_kind is None:
+            if self.product_id is not None or self.service_id is not None:
+                raise ValueError("sku_kind None requires both IDs null")
+            return self
+        # sku_kind is "product" or "service" — exactly one ID must be set
+        if (self.product_id is None) == (self.service_id is None):
+            raise ValueError(
+                "SkuMatch must set exactly one of product_id/service_id "
+                "when sku_kind is not None"
+            )
+        # The non-null ID must match the declared kind
+        if self.sku_kind == "product" and self.product_id is None:
+            raise ValueError(
+                "SkuMatch: sku_kind='product' requires product_id to be set (got service_id only)"
+            )
+        if self.sku_kind == "service" and self.service_id is None:
+            raise ValueError(
+                "SkuMatch: sku_kind='service' requires service_id to be set (got product_id only)"
+            )
+        return self
 
 
 # ---------------------------------------------------------------------------

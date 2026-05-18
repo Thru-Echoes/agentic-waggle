@@ -1,0 +1,1323 @@
+# Semantic-matcher eval corpus.
+#
+# Each case:
+#   input: the user's free-text reference (typed or dictated)
+#   expected_customer_name: canonical name from seed/customers.py — OR null
+#   expected_alternatives_min: optional, int — for ambiguous cases
+#   expected_sku_kind: "product" | "service" | null — SKU cases only
+#   expected_sku_code: SKU code string — SKU cases only
+#   category: one of the 24 spec categories
+#   context: optional dict with active_account_name, last_3_customer_names
+#
+# Categories and minimum case counts:
+#   canonical(10), abbreviation(10), possessive(8), alias(10),
+#   apostrophe_variant(6), site_reference(12), site_shortform(8),
+#   typo_resolvable(10), long_form_sentence(15), pronoun_resolution(10),
+#   cross_customer_collision(10), ambiguous_reference(10), negative_case(10),
+#   generic_words(8), compound_reference(8), casual_colloquial(8),
+#   partial_match_noise(6), sku_canonical_code(10), sku_product_name(10),
+#   sku_qty_plus_product(10), sku_service(6), sku_colloquial(8),
+#   sku_ambiguous(6), sku_negative(6)
+# Total: ~246 cases.
+
+cases:
+
+  # ----------- canonical (10) -----------
+  - input: "O'Reilly Family Orchards"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: canonical
+
+  - input: "Martinez & Sons Orchards"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: canonical
+
+  - input: "Blue Ridge Family Orchards"
+    expected_customer_name: "Blue Ridge Family Orchards"
+    category: canonical
+
+  - input: "Five Rivers Apiaries"
+    expected_customer_name: "Five Rivers Apiaries"
+    category: canonical
+
+  - input: "Heartland Apiary Trading Co."
+    expected_customer_name: "Heartland Apiary Trading Co."
+    category: canonical
+
+  - input: "Haley Family Orchards"
+    expected_customer_name: "Haley Family Orchards"
+    category: canonical
+
+  - input: "Cascade Orchard Partners"
+    expected_customer_name: "Cascade Orchard Partners"
+    category: canonical
+
+  - input: "Sierra Crest Orchard Partners"
+    expected_customer_name: "Sierra Crest Orchard Partners"
+    category: canonical
+
+  - input: "St. Agnes Pollination"
+    expected_customer_name: "St. Agnes Pollination"
+    category: canonical
+
+  - input: "Goldenridge Fruit Co."
+    expected_customer_name: "Goldenridge Fruit Co."
+    category: canonical
+
+  - input: "Artisan Ferment & Food"
+    expected_customer_name: "Artisan Ferment & Food"
+    category: canonical
+
+  # ----------- abbreviation (10) -----------
+  - input: "O'Reilly"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: abbreviation
+
+  - input: "Martinez"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: abbreviation
+
+  - input: "Foothill"
+    expected_customer_name: "Foothill Orchards"
+    category: abbreviation
+
+  - input: "Goldenridge"
+    expected_customer_name: "Goldenridge Fruit Co."
+    category: abbreviation
+
+  - input: "Stormchaser"
+    expected_customer_name: "Stormchaser Meadery"
+    category: abbreviation
+
+  - input: "Drakestone"
+    expected_customer_name: "Drakestone Mead"
+    category: abbreviation
+
+  - input: "Hivecraft"
+    expected_customer_name: "Hivecraft Provisions"
+    category: abbreviation
+
+  - input: "Cobblestone"
+    expected_customer_name: "Cobblestone Hives"
+    category: abbreviation
+
+  - input: "Pacific Honey"
+    expected_customer_name: "Pacific Honey Wholesale"
+    category: abbreviation
+
+  - input: "North Wind"
+    expected_customer_name: "North Wind Mead Co."
+    category: abbreviation
+
+  - input: "Urban Hive"
+    expected_customer_name: "Urban Hive Pantry"
+    category: abbreviation
+
+  # ----------- possessive (8) -----------
+  - input: "O'Reilly's"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: possessive
+
+  - input: "Martinez's"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: possessive
+
+  - input: "Haley's"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: possessive
+
+  - input: "Foothill's"
+    expected_customer_name: "Foothill Orchards"
+    category: possessive
+
+  - input: "Stormchaser's"
+    expected_customer_name: "Stormchaser Meadery"
+    category: possessive
+
+  - input: "Cobblestone's"
+    expected_customer_name: "Cobblestone Hives"
+    category: possessive
+
+  - input: "Drakestone's"
+    expected_customer_name: "Drakestone Mead"
+    category: possessive
+
+  - input: "Goldenridge's"
+    expected_customer_name: "Goldenridge Fruit Co."
+    category: possessive
+
+  # ----------- alias (10) -----------
+  - input: "Artisan Ferment and Food"
+    expected_customer_name: "Artisan Ferment & Food"
+    category: alias
+
+  - input: "Beelore & Company"
+    expected_customer_name: "Beelore & Co."
+    category: alias
+
+  - input: "Blue Ridge Family"
+    expected_customer_name: "Blue Ridge Family Orchards"
+    category: alias
+
+  - input: "5 Rivers Apiaries"
+    expected_customer_name: "Five Rivers Apiaries"
+    category: alias
+
+  - input: "Five Rivers Bee Co."
+    expected_customer_name: "Five Rivers Apiaries"
+    category: alias
+
+  - input: "Haley Farms Limited Partnership"
+    expected_customer_name: "Haley Farms LP"
+    category: alias
+
+  - input: "7 Acres Farms"
+    expected_customer_name: "Seven Acres Farms"
+    category: alias
+
+  - input: "Cascadia Honey Company"
+    expected_customer_name: "Cascadia Honey Co."
+    category: alias
+
+  - input: "Saint Agnes Pollination"
+    expected_customer_name: "St. Agnes Pollination"
+    category: alias
+
+  - input: "OReilly Orchard"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: alias
+
+  - input: "O'Reilly Family Farm LLC"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: alias
+
+  # ----------- apostrophe_variant (6) -----------
+  - input: "OReilly Family Orchards"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: apostrophe_variant
+
+  - input: "O Reilly Family Orchards"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: apostrophe_variant
+
+  - input: "Martinez and Sons Orchards"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: apostrophe_variant
+
+  - input: "St Agnes Pollination"
+    expected_customer_name: "St. Agnes Pollination"
+    category: apostrophe_variant
+
+  - input: "Beelore and Co."
+    expected_customer_name: "Beelore & Co."
+    category: apostrophe_variant
+
+  - input: "Heartland Apiary Trading Company"
+    expected_customer_name: "Heartland Apiary Trading Co."
+    category: apostrophe_variant
+
+  - input: "Golden West Company"
+    expected_customer_name: "Golden West Co."
+    category: apostrophe_variant
+
+  # ----------- site_reference (12) -----------
+  - input: "Highway Block 2"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: site_reference
+
+  - input: "Hilltop 1"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: site_reference
+
+  - input: "Orchard Rd 2"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: site_reference
+
+  - input: "Cobblestone Main Warehouse"
+    expected_customer_name: "Cobblestone Hives"
+    category: site_reference
+
+  - input: "Drakestone Main Warehouse"
+    expected_customer_name: "Drakestone Mead"
+    category: site_reference
+
+  - input: "Urban Hive Pantry Main Warehouse"
+    expected_customer_name: "Urban Hive Pantry"
+    category: site_reference
+
+  - input: "Mountain Comb Co. Warehouse 2"
+    expected_customer_name: "Mountain Comb Co."
+    category: site_reference
+
+  - input: "Heartland Apiary Warehouse 2"
+    expected_customer_name: "Heartland Apiary Trading Co."
+    category: site_reference
+
+  - input: "O'Reilly Highway Block 2"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: site_reference
+
+  - input: "O'Reilly West Block 1"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: site_reference
+
+  - input: "Martinez North Block 3"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: site_reference
+
+  - input: "Five Rivers Warehouse 2"
+    expected_customer_name: "Five Rivers Apiaries"
+    category: site_reference
+
+  # ----------- site_shortform (8) -----------
+  - input: "the O'Reilly highway block"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: site_shortform
+
+  - input: "O'Reilly west block"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: site_shortform
+
+  - input: "Martinez hilltop"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: site_shortform
+
+  - input: "Foothill river block"
+    expected_customer_name: "Foothill Orchards"
+    category: site_shortform
+
+  - input: "Riverbend hilltop"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: site_shortform
+
+  - input: "Cobblestone warehouse"
+    expected_customer_name: "Cobblestone Hives"
+    category: site_shortform
+
+  - input: "Haley orchard road site"
+    expected_customer_name: "Haley Orchard Co."
+    category: site_shortform
+
+  - input: "Old Mission orchard road"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: site_shortform
+
+  # ----------- typo_resolvable (10) -----------
+  - input: "Riverbnd Family Orchards"
+    expected_customer_name: "Riverbend Family Orchards"
+    category: typo_resolvable
+
+  - input: "Martines & Sons Orchards"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: typo_resolvable
+
+  - input: "Foothill Orchads"
+    expected_customer_name: "Foothill Orchards"
+    category: typo_resolvable
+
+  - input: "Goldenrige Fruit Co."
+    expected_customer_name: "Goldenridge Fruit Co."
+    category: typo_resolvable
+
+  - input: "Casdaia Honey Co."
+    expected_customer_name: "Cascadia Honey Co."
+    category: typo_resolvable
+
+  - input: "Hivecraf Provisions"
+    expected_customer_name: "Hivecraft Provisions"
+    category: typo_resolvable
+
+  - input: "Storchaser Meadery"
+    expected_customer_name: "Stormchaser Meadery"
+    category: typo_resolvable
+
+  - input: "Cobblstone Hives"
+    expected_customer_name: "Cobblestone Hives"
+    category: typo_resolvable
+
+  - input: "Wenatchee Orcard Partners"
+    expected_customer_name: "Wenatchee Orchard Partners"
+    category: typo_resolvable
+
+  - input: "Sierra Crest Orchard Partnrs"
+    expected_customer_name: "Sierra Crest Orchard Partners"
+    category: typo_resolvable
+
+  # ----------- long_form_sentence (15) -----------
+  - input: "Can you pull up the account for O'Reilly Family Orchards?"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: long_form_sentence
+
+  - input: "I need to check on the Martinez & Sons Orchards order from last week."
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: long_form_sentence
+
+  - input: "What's the varroa trend at Heartland Apiary Trading Co.?"
+    expected_customer_name: "Heartland Apiary Trading Co."
+    category: long_form_sentence
+
+  - input: "Please schedule a delivery for Five Rivers Apiaries next Tuesday."
+    expected_customer_name: "Five Rivers Apiaries"
+    category: long_form_sentence
+
+  - input: "The Foothill Orchards site needs a full hive inspection."
+    expected_customer_name: "Foothill Orchards"
+    category: long_form_sentence
+
+  - input: "I'm calling about an order for Blue Ridge Family Orchards on Hilltop block."
+    expected_customer_name: "Blue Ridge Family Orchards"
+    category: long_form_sentence
+
+  - input: "Can we check in with Cascadia Honey Co. about their renewal this season?"
+    expected_customer_name: "Cascadia Honey Co."
+    category: long_form_sentence
+
+  - input: "We need to invoice Haley Family Orchards for the spring pollination run."
+    expected_customer_name: "Haley Family Orchards"
+    category: long_form_sentence
+
+  - input: "What queens did we ship to Goldenridge Fruit Co. last month?"
+    expected_customer_name: "Goldenridge Fruit Co."
+    category: long_form_sentence
+
+  - input: "The Drakestone Mead account needs a follow-up call."
+    expected_customer_name: "Drakestone Mead"
+    category: long_form_sentence
+
+  - input: "How many hives are placed at St. Agnes Pollination right now?"
+    expected_customer_name: "St. Agnes Pollination"
+    category: long_form_sentence
+
+  - input: "Let's log a site visit for Riverbend Family Orchards' north block."
+    expected_customer_name: "Riverbend Family Orchards"
+    category: long_form_sentence
+
+  - input: "Pull the inspection history for Mountain Valley Farms please."
+    expected_customer_name: "Mountain Valley Farms"
+    category: long_form_sentence
+
+  - input: "Stormchaser Meadery wants to expand their hive count going into summer."
+    expected_customer_name: "Stormchaser Meadery"
+    category: long_form_sentence
+
+  - input: "Can you log a note on the Wenatchee Family Orchards account?"
+    expected_customer_name: "Wenatchee Family Orchards"
+    category: long_form_sentence
+
+  - input: "Check if Urban Hive Pantry has any open orders."
+    expected_customer_name: "Urban Hive Pantry"
+    category: long_form_sentence
+
+  # ----------- pronoun_resolution (10) -----------
+  - input: "What did they order last week?"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: pronoun_resolution
+    context:
+      active_account_name: "O'Reilly Family Orchards"
+
+  - input: "Can you pull up their inspection records?"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: pronoun_resolution
+    context:
+      active_account_name: "Martinez & Sons Orchards"
+
+  - input: "How many hives do they have?"
+    expected_customer_name: "Five Rivers Apiaries"
+    category: pronoun_resolution
+    context:
+      active_account_name: "Five Rivers Apiaries"
+
+  - input: "Send them the invoice."
+    expected_customer_name: "Heartland Apiary Trading Co."
+    category: pronoun_resolution
+    context:
+      active_account_name: "Heartland Apiary Trading Co."
+
+  - input: "The customer wants to change their delivery window."
+    expected_customer_name: "Cascadia Honey Co."
+    category: pronoun_resolution
+    context:
+      active_account_name: "Cascadia Honey Co."
+
+  - input: "They called this morning asking about the queen shipment."
+    expected_customer_name: "Haley Family Orchards"
+    category: pronoun_resolution
+    context:
+      active_account_name: "Haley Family Orchards"
+
+  - input: "Log a note that they confirmed the spring pollination contract."
+    expected_customer_name: "St. Agnes Pollination"
+    category: pronoun_resolution
+    context:
+      active_account_name: "St. Agnes Pollination"
+
+  - input: "What's their mite count looking like?"
+    expected_customer_name: "Goldenridge Fruit Co."
+    category: pronoun_resolution
+    context:
+      active_account_name: "Goldenridge Fruit Co."
+
+  - input: "Can we schedule a call with them for Friday?"
+    expected_customer_name: "Riverbend Family Orchards"
+    category: pronoun_resolution
+    context:
+      active_account_name: "Riverbend Family Orchards"
+
+  - input: "Update the account — they're moving to a new site this season."
+    expected_customer_name: "Foothill Orchards"
+    category: pronoun_resolution
+    context:
+      active_account_name: "Foothill Orchards"
+
+  # ----------- cross_customer_collision (10) -----------
+  - input: "Blue Ridge"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: cross_customer_collision
+
+  - input: "Mountain Valley"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: cross_customer_collision
+
+  - input: "Seven Acres"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: cross_customer_collision
+
+  - input: "Riverbend"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: cross_customer_collision
+
+  - input: "Mountain Comb"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: cross_customer_collision
+
+  - input: "Old Mission"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: cross_customer_collision
+
+  - input: "Wenatchee"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: cross_customer_collision
+
+  - input: "Seven Acres Farms"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: cross_customer_collision
+
+  - input: "Haley Farms"
+    expected_customer_name: "Haley Farms LP"
+    category: cross_customer_collision
+    context:
+      active_account_name: "Haley Farms LP"
+
+  - input: "Juniper"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: cross_customer_collision
+
+  # ----------- ambiguous_reference (10) -----------
+  - input: "the orchard partners"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference
+
+  - input: "the family orchards"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference
+
+  - input: "Haley"
+    expected_customer_name: null
+    expected_alternatives_min: 3
+    category: ambiguous_reference
+
+  - input: "Mountain"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference
+
+  - input: "the mead company"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference
+
+  - input: "Cascade"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference
+
+  - input: "the honey company"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference
+
+  - input: "the LP account"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference
+
+  - input: "family farms"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference
+
+  - input: "the farms LP"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference
+
+  # ----------- negative_case (10) -----------
+  - input: "Sunflower Apiary"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Green Valley Orchards"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Ponderosa Bee Co."
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Redwood Family Farms"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Pacific Coast Honey"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Southwest Pollination Services"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Valley Queen Farm"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Copper Basin Apiaries"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Desert Bloom Farms"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Clearwater Orchards"
+    expected_customer_name: null
+    category: negative_case
+
+  # ----------- generic_words (8) -----------
+  - input: "the orchard"
+    expected_customer_name: null
+    category: generic_words
+
+  - input: "the apiary"
+    expected_customer_name: null
+    category: generic_words
+
+  - input: "the farm"
+    expected_customer_name: null
+    category: generic_words
+
+  - input: "the warehouse"
+    expected_customer_name: null
+    category: generic_words
+
+  - input: "the meadery"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: generic_words
+
+  - input: "the honey place"
+    expected_customer_name: null
+    category: generic_words
+
+  - input: "the beekeepers"
+    expected_customer_name: null
+    category: generic_words
+
+  - input: "the partners"
+    expected_customer_name: null
+    category: generic_words
+
+  # ----------- compound_reference (8) -----------
+  - input: "Martinez north block"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: compound_reference
+
+  - input: "O'Reilly's west block"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: compound_reference
+
+  - input: "Foothill south block"
+    expected_customer_name: "Foothill Orchards"
+    category: compound_reference
+
+  - input: "Blue Ridge Family Orchards south block"
+    expected_customer_name: "Blue Ridge Family Orchards"
+    category: compound_reference
+
+  - input: "Goldenridge east block"
+    expected_customer_name: "Goldenridge Fruit Co."
+    category: compound_reference
+
+  - input: "Five Rivers main warehouse"
+    expected_customer_name: "Five Rivers Apiaries"
+    category: compound_reference
+
+  - input: "St. Agnes highway block"
+    expected_customer_name: "St. Agnes Pollination"
+    category: compound_reference
+
+  - input: "Juniper Hill north block"
+    expected_customer_name: "Juniper Hill Orchard Partners"
+    category: compound_reference
+
+  # ----------- casual_colloquial (8) -----------
+  - input: "the Martinez folks"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: casual_colloquial
+
+  - input: "the O'Reilly people"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: casual_colloquial
+
+  - input: "that Five Rivers bee crew"
+    expected_customer_name: "Five Rivers Apiaries"
+    category: casual_colloquial
+
+  - input: "Drakestone guys"
+    expected_customer_name: "Drakestone Mead"
+    category: casual_colloquial
+
+  - input: "the Stormchaser mead people"
+    expected_customer_name: "Stormchaser Meadery"
+    category: casual_colloquial
+
+  - input: "those folks at Cobblestone"
+    expected_customer_name: "Cobblestone Hives"
+    category: casual_colloquial
+
+  - input: "Heartland apiary guys"
+    expected_customer_name: "Heartland Apiary Trading Co."
+    category: casual_colloquial
+
+  - input: "the Cascadia honey crew"
+    expected_customer_name: "Cascadia Honey Co."
+    category: casual_colloquial
+
+  # ----------- partial_match_noise (6) -----------
+  - input: "yeah so this is for O'Reilly Family Orchards, the big one"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: partial_match_noise
+
+  - input: "re: Martinez & Sons Orchards — urgent"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: partial_match_noise
+
+  - input: "question about Five Rivers Apiaries order #4892"
+    expected_customer_name: "Five Rivers Apiaries"
+    category: partial_match_noise
+
+  - input: "FWD: Heartland Apiary Trading Co. spring contract"
+    expected_customer_name: "Heartland Apiary Trading Co."
+    category: partial_match_noise
+
+  - input: "site visit notes — Foothill Orchards, south block, 4/12"
+    expected_customer_name: "Foothill Orchards"
+    category: partial_match_noise
+
+  - input: "URGENT: Cascadia Honey Co. needs a callback today"
+    expected_customer_name: "Cascadia Honey Co."
+    category: partial_match_noise
+
+  # ----------- sku_canonical_code (10) -----------
+  - input: "QUEEN-ITA-MATED"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-ITA-MATED"
+    category: sku_canonical_code
+
+  - input: "HONEY-CLV-A-DRUM"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-CLV-A-DRUM"
+    category: sku_canonical_code
+
+  - input: "PKG-BEES-3LB-ITA"
+    expected_sku_kind: "product"
+    expected_sku_code: "PKG-BEES-3LB-ITA"
+    category: sku_canonical_code
+
+  - input: "NUC-5F-ITA"
+    expected_sku_kind: "product"
+    expected_sku_code: "NUC-5F-ITA"
+    category: sku_canonical_code
+
+  - input: "TRT-OXALIC-R"
+    expected_sku_kind: "product"
+    expected_sku_code: "TRT-OXALIC-R"
+    category: sku_canonical_code
+
+  - input: "EQ-SUIT-FULL"
+    expected_sku_kind: "product"
+    expected_sku_code: "EQ-SUIT-FULL"
+    category: sku_canonical_code
+
+  - input: "FEED-SYR-50"
+    expected_sku_kind: "product"
+    expected_sku_code: "FEED-SYR-50"
+    category: sku_canonical_code
+
+  - input: "POL_ALMOND_PREMIUM"
+    expected_sku_kind: "service"
+    expected_sku_code: "POL_ALMOND_PREMIUM"
+    category: sku_canonical_code
+
+  - input: "POL_BERRY"
+    expected_sku_kind: "service"
+    expected_sku_code: "POL_BERRY"
+    category: sku_canonical_code
+
+  - input: "HIVE-LANG-10F-FULL"
+    expected_sku_kind: "product"
+    expected_sku_code: "HIVE-LANG-10F-FULL"
+    category: sku_canonical_code
+
+  # ----------- sku_product_name (10) -----------
+  - input: "Italian mated queen"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-ITA-MATED"
+    category: sku_product_name
+
+  - input: "Clover Grade A drum"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-CLV-A-DRUM"
+    category: sku_product_name
+
+  - input: "full Langstroth 10-frame hive"
+    expected_sku_kind: "product"
+    expected_sku_code: "HIVE-LANG-10F-FULL"
+    category: sku_product_name
+
+  - input: "oxalic acid"
+    expected_sku_kind: "product"
+    expected_sku_code: "TRT-OXALIC-R"
+    category: sku_product_name
+
+  - input: "winter fondant 50 lb"
+    expected_sku_kind: "product"
+    expected_sku_code: "FEED-FON-50"
+    category: sku_product_name
+
+  - input: "pollen substitute patty"
+    expected_sku_kind: "product"
+    expected_sku_code: "FEED-POL-10"
+    category: sku_product_name
+
+  - input: "Carniolan mated queen"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-CAR-MATED"
+    category: sku_product_name
+
+  - input: "full bee suit with veil"
+    expected_sku_kind: "product"
+    expected_sku_code: "EQ-SUIT-FULL"
+    category: sku_product_name
+
+  - input: "Wildflower Grade A pail"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-WLD-A-PAIL"
+    category: sku_product_name
+
+  - input: "5 lb package bees with Italian queen"
+    expected_sku_kind: "product"
+    expected_sku_code: "PKG-BEES-5LB-ITA"
+    category: sku_product_name
+
+  # ----------- sku_qty_plus_product (10) -----------
+  - input: "20 Italian mated queens"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-ITA-MATED"
+    category: sku_qty_plus_product
+
+  - input: "5 drums of clover honey Grade A"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-CLV-A-DRUM"
+    category: sku_qty_plus_product
+
+  - input: "3 packages of 3 lb Italian bees"
+    expected_sku_kind: "product"
+    expected_sku_code: "PKG-BEES-3LB-ITA"
+    category: sku_qty_plus_product
+
+  - input: "2 full 10-frame Langstroth hives"
+    expected_sku_kind: "product"
+    expected_sku_code: "HIVE-LANG-10F-FULL"
+    category: sku_qty_plus_product
+
+  - input: "10 Carniolan mated queens"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-CAR-MATED"
+    category: sku_qty_plus_product
+
+  - input: "4 pails wildflower honey"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-WLD-A-PAIL"
+    category: sku_qty_plus_product
+
+  - input: "100 lb of winter fondant"
+    expected_sku_kind: "product"
+    expected_sku_code: "FEED-FON-50"
+    category: sku_qty_plus_product
+
+  - input: "6 queen cells Italian"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-ITA-CELL"
+    category: sku_qty_plus_product
+
+  - input: "1 nucleus colony 5-frame Italian"
+    expected_sku_kind: "product"
+    expected_sku_code: "NUC-5F-ITA"
+    category: sku_qty_plus_product
+
+  - input: "50 gal sugar syrup"
+    expected_sku_kind: "product"
+    expected_sku_code: "FEED-SYR-50"
+    category: sku_qty_plus_product
+
+  # ----------- sku_service (6) -----------
+  - input: "almond pollination premium"
+    expected_sku_kind: "service"
+    expected_sku_code: "POL_ALMOND_PREMIUM"
+    category: sku_service
+
+  - input: "berry pollination"
+    expected_sku_kind: "service"
+    expected_sku_code: "POL_BERRY"
+    category: sku_service
+
+  - input: "tree fruit pollination"
+    expected_sku_kind: "service"
+    expected_sku_code: "POL_TREE_FRUIT"
+    category: sku_service
+
+  - input: "custom pollination contract"
+    expected_sku_kind: "service"
+    expected_sku_code: "POL_CUSTOM"
+    category: sku_service
+
+  - input: "Almond bloom pollination — premium grade"
+    expected_sku_kind: "service"
+    expected_sku_code: "POL_ALMOND_PREMIUM"
+    category: sku_service
+
+  - input: "apple and cherry pollination"
+    expected_sku_kind: "service"
+    expected_sku_code: "POL_TREE_FRUIT"
+    category: sku_service
+
+  # ----------- sku_colloquial (8) -----------
+  - input: "Italian queens"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-ITA-MATED"
+    category: sku_colloquial
+
+  - input: "the oxalic stuff"
+    expected_sku_kind: "product"
+    expected_sku_code: "TRT-OXALIC-R"
+    category: sku_colloquial
+
+  - input: "clover honey drum"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-CLV-A-DRUM"
+    category: sku_colloquial
+
+  - input: "bee package 3lb"
+    expected_sku_kind: "product"
+    expected_sku_code: "PKG-BEES-3LB-ITA"
+    category: sku_colloquial
+
+  - input: "full suit"
+    expected_sku_kind: "product"
+    expected_sku_code: "EQ-SUIT-FULL"
+    category: sku_colloquial
+
+  - input: "fondant for winter feeding"
+    expected_sku_kind: "product"
+    expected_sku_code: "FEED-FON-50"
+    category: sku_colloquial
+
+  - input: "almond bloom contract"
+    expected_sku_kind: "service"
+    expected_sku_code: "POL_ALMOND_PREMIUM"
+    category: sku_colloquial
+
+  # ----------- sku_ambiguous (6) -----------
+  - input: "varroa treatment"
+    expected_sku_kind: null
+    expected_alternatives_min: 2
+    category: sku_ambiguous
+
+  - input: "queen"
+    expected_sku_kind: null
+    expected_sku_code: null
+    expected_alternatives_min: 2
+    category: sku_ambiguous
+
+  - input: "honey pail"
+    expected_sku_kind: null
+    expected_sku_code: null
+    expected_alternatives_min: 2
+    category: sku_ambiguous
+
+  - input: "honey drum"
+    expected_sku_kind: null
+    expected_sku_code: null
+    expected_alternatives_min: 2
+    category: sku_ambiguous
+
+  - input: "raw honey jar"
+    expected_sku_kind: null
+    expected_sku_code: null
+    expected_alternatives_min: 2
+    category: sku_ambiguous
+
+  - input: "queen excluder"
+    expected_sku_kind: null
+    expected_sku_code: null
+    expected_alternatives_min: 2
+    category: sku_ambiguous
+
+  - input: "bottom board"
+    expected_sku_kind: null
+    expected_sku_code: null
+    expected_alternatives_min: 2
+    category: sku_ambiguous
+
+  # ----------- sku_negative (6) -----------
+  - input: "lavender honey"
+    expected_sku_kind: null
+    expected_sku_code: null
+    category: sku_negative
+
+  - input: "varroa mite strips"
+    expected_sku_kind: null
+    expected_sku_code: null
+    category: sku_negative
+
+  - input: "drone comb frame"
+    expected_sku_kind: null
+    expected_sku_code: null
+    category: sku_negative
+
+  - input: "hive scale"
+    expected_sku_kind: null
+    expected_sku_code: null
+    category: sku_negative
+
+  - input: "smoker fuel"
+    expected_sku_kind: null
+    expected_sku_code: null
+    category: sku_negative
+
+  - input: "bee brush"
+    expected_sku_kind: null
+    expected_sku_code: null
+    category: sku_negative
+
+  # ----------- additional typo_resolvable -----------
+  - input: "Heartland Apary Trading Co."
+    expected_customer_name: "Heartland Apiary Trading Co."
+    category: typo_resolvable
+
+  - input: "Juniper Bee Co"
+    expected_customer_name: "Juniper Bee Co."
+    category: typo_resolvable
+
+  - input: "St Agns Pollination"
+    expected_customer_name: "St. Agnes Pollination"
+    category: typo_resolvable
+
+  - input: "Pacfic Honey Wholesale"
+    expected_customer_name: "Pacific Honey Wholesale"
+    category: typo_resolvable
+
+  - input: "Artisan Ferment & Fod"
+    expected_customer_name: "Artisan Ferment & Food"
+    category: typo_resolvable
+
+  # ----------- additional long_form_sentence -----------
+  - input: "20 Italian queens for Martinez next week"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: long_form_sentence
+
+  - input: "send the new bee feed to the O'Reilly back-40"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: long_form_sentence
+
+  - input: "schedule a hive inspection for the Mountain Valley Farms next visit"
+    expected_customer_name: "Mountain Valley Farms"
+    category: long_form_sentence
+
+  - input: "We just got off the phone with Beelore & Co. and they want to reorder."
+    expected_customer_name: "Beelore & Co."
+    category: long_form_sentence
+
+  - input: "Log a note that Old Mission Farm confirmed the pollination quote."
+    expected_customer_name: "Old Mission Farm"
+    category: long_form_sentence
+
+  - input: "Seven Acres Farms LP called about their fall honey harvest schedule."
+    expected_customer_name: "Seven Acres Farms LP"
+    category: long_form_sentence
+
+  - input: "Juniper Hill Orchard Partners want to expand hive placement next season."
+    expected_customer_name: "Juniper Hill Orchard Partners"
+    category: long_form_sentence
+
+  - input: "I just got an email from North Wind Mead Co. about the wax order."
+    expected_customer_name: "North Wind Mead Co."
+    category: long_form_sentence
+
+  # ----------- additional compound_reference -----------
+  - input: "Cascade Orchard Partners west block"
+    expected_customer_name: "Cascade Orchard Partners"
+    category: compound_reference
+
+  - input: "Wenatchee Family Orchards river block"
+    expected_customer_name: "Wenatchee Family Orchards"
+    category: compound_reference
+
+  # ----------- additional site_reference -----------
+  - input: "Juniper Hill North Block 1"
+    expected_customer_name: "Juniper Hill Orchard Partners"
+    category: site_reference
+
+  - input: "Sierra Crest Hilltop 2"
+    expected_customer_name: "Sierra Crest Orchard Partners"
+    category: site_reference
+
+  - input: "Wenatchee Family River Block 1"
+    expected_customer_name: "Wenatchee Family Orchards"
+    category: site_reference
+
+  # ----------- additional sku_colloquial -----------
+  - input: "Buckfast queen"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-BKF-MATED"
+    category: sku_colloquial
+
+  - input: "Russian queen"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-RUS-MATED"
+    category: sku_colloquial
+
+  - input: "formic acid treatment"
+    expected_sku_kind: "product"
+    expected_sku_code: "TRT-FORMIC-R"
+    category: sku_colloquial
+
+  - input: "top feeder"
+    expected_sku_kind: "product"
+    expected_sku_code: "EQ-FEED-TOP"
+    category: sku_colloquial
+
+  # ----------- additional sku_product_name -----------
+  - input: "Buckfast mated queen"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-BKF-MATED"
+    category: sku_product_name
+
+  - input: "Buckwheat Grade A, 60 lb pail"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-BKW-A-PAIL"
+    category: sku_product_name
+
+  - input: "Sage Grade A, 60 lb pail"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-SAG-A-PAIL"
+    category: sku_product_name
+
+  - input: "Tupelo Grade A, 60 lb pail"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-TUP-A-PAIL"
+    category: sku_product_name
+
+  - input: "orange blossom honey Grade A pail"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-ORG-A-PAIL"
+    category: sku_product_name
+
+  - input: "formic acid registered"
+    expected_sku_kind: "product"
+    expected_sku_code: "TRT-FORMIC-R"
+    category: sku_product_name
+
+  - input: "wildflower honey drum Grade A"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-WLD-A-DRUM"
+    category: sku_product_name
+
+  # ----------- additional sku_qty_plus_product -----------
+  - input: "4 Buckfast mated queens"
+    expected_sku_kind: "product"
+    expected_sku_code: "QUEEN-BKF-MATED"
+    category: sku_qty_plus_product
+
+  - input: "2 pails of orange blossom honey"
+    expected_sku_kind: "product"
+    expected_sku_code: "HONEY-ORG-A-PAIL"
+    category: sku_qty_plus_product
+
+  # ----------- additional negative_case -----------
+  - input: "Willow Creek Apiaries"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "High Desert Honey Farm"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Summit Bee Ranch"
+    expected_customer_name: null
+    category: negative_case
+
+  # Near-miss negatives constructed from real-seed tokens
+  # (per .reports/matcher_corpus_review.md §a Gap 4)
+  - input: "Mountain Comb Partners"
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Blue Ridge Bee Co."
+    expected_customer_name: null
+    category: negative_case
+
+  - input: "Seven Acres Orchards"
+    expected_customer_name: null
+    category: negative_case
+
+  # ----------- additional sku_negative -----------
+  - input: "entrance reducer"
+    expected_sku_kind: null
+    expected_sku_code: null
+    category: sku_negative
+
+  - input: "wax moth trap"
+    expected_sku_kind: null
+    expected_sku_code: null
+    category: sku_negative
+
+  # ----------- additional possessive -----------
+  - input: "Heartland's"
+    expected_customer_name: "Heartland Apiary Trading Co."
+    category: possessive
+
+  # ----------- additional casual_colloquial -----------
+  - input: "call Smith — no I mean Schmidt about the queens"
+    expected_customer_name: null
+    category: casual_colloquial
+
+  - input: "talk to — what's the name — the Martinez guy"
+    expected_customer_name: "Martinez & Sons Orchards"
+    category: casual_colloquial
+
+  - input: "the O'Reilly — well, O'Reilly Family — folks"
+    expected_customer_name: "O'Reilly Family Orchards"
+    category: casual_colloquial
+
+  - input: "the Sierra Crest people"
+    expected_customer_name: "Sierra Crest Orchard Partners"
+    category: casual_colloquial
+
+  - input: "Wenatchee family guys"
+    expected_customer_name: "Wenatchee Family Orchards"
+    category: casual_colloquial
+
+  # ----------- additional partial_match_noise -----------
+  - input: "Notes for Goldenridge Fruit Co. — river block site visit 5/2"
+    expected_customer_name: "Goldenridge Fruit Co."
+    category: partial_match_noise
+
+  - input: "Action item: follow up with Juniper Bee Co. by Thursday"
+    expected_customer_name: "Juniper Bee Co."
+    category: partial_match_noise
+
+  # ----------- additional pronoun_resolution -----------
+  - input: "They confirmed the new contract."
+    expected_customer_name: "Sierra Crest Orchard Partners"
+    category: pronoun_resolution
+    context:
+      active_account_name: "Sierra Crest Orchard Partners"
+
+  # ----------- additional alias -----------
+  - input: "Cascade Orch. Partners"
+    expected_customer_name: "Cascade Orchard Partners"
+    category: alias
+
+  - input: "Riverbend Family"
+    expected_customer_name: "Riverbend Family Orchards"
+    category: alias
+
+  # ----------- additional abbreviation -----------
+  - input: "Beelore"
+    expected_customer_name: "Beelore & Co."
+    category: abbreviation
+
+  - input: "Mountain Comb Wholesale"
+    expected_customer_name: "Mountain Comb Wholesale"
+    category: canonical
+
+  # ----------- additional canonical -----------
+  - input: "Riverbend Farms LP"
+    expected_customer_name: "Riverbend Farms LP"
+    category: canonical
+
+  - input: "Blue Ridge Farms"
+    expected_customer_name: "Blue Ridge Farms"
+    category: canonical
+
+  - input: "Mesa Orchard Co."
+    expected_customer_name: "Mesa Orchard Co."
+    category: canonical
+
+  - input: "Mountain Valley Orchards"
+    expected_customer_name: "Mountain Valley Orchards"
+    category: canonical
+
+  # ----------- additional apostrophe_variant -----------
+  - input: "Mountain Comb Company"
+    expected_customer_name: "Mountain Comb Co."
+    category: apostrophe_variant
+
+  - input: "Juniper Bee Company"
+    expected_customer_name: "Juniper Bee Co."
+    category: apostrophe_variant
+
+  # ----------- additional cross_customer_collision -----------
+  - input: "Old Mission Growers"
+    expected_customer_name: "Old Mission Growers"
+    category: cross_customer_collision
+    context:
+      active_account_name: "Old Mission Growers"
+
+  # ----------- additional generic_words -----------
+  - input: "the co."
+    expected_customer_name: null
+    category: generic_words
+
+  # ----------- additional ambiguous_reference -----------
+  - input: "orchard LP"
+    expected_customer_name: null
+    expected_alternatives_min: 2
+    category: ambiguous_reference

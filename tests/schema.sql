@@ -11,6 +11,8 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Drop order (for reruns)
+DROP TABLE IF EXISTS sku_search_entries CASCADE;
+DROP TABLE IF EXISTS customer_search_entries CASCADE;
 DROP TABLE IF EXISTS chat_turns CASCADE;
 DROP TABLE IF EXISTS conversations CASCADE;
 DROP TABLE IF EXISTS order_state_transitions CASCADE;
@@ -228,4 +230,54 @@ CREATE TABLE chat_turns (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (role IN ('user', 'assistant', 'system', 'tool'))
 );
+
+-- Semantic matcher — customer_search_entries + sku_search_entries. Mirrors
+-- alembic migration 004_semantic_matcher. Server defaults kept so tests can
+-- INSERT without specifying timestamps.
+CREATE TABLE customer_search_entries (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    entry_text  TEXT NOT NULL,
+    source      TEXT NOT NULL,
+    embedding   VECTOR(384) NOT NULL,
+    tsv         TSVECTOR GENERATED ALWAYS AS
+                  (to_tsvector('english', entry_text)) STORED NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT customer_search_entries_source_check
+        CHECK (source IN ('name', 'alias', 'site'))
+);
+CREATE INDEX customer_search_entries_embedding_ivfflat
+    ON customer_search_entries USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 32);
+CREATE INDEX customer_search_entries_tsv_gin
+    ON customer_search_entries USING gin (tsv);
+CREATE INDEX customer_search_entries_customer_id_idx
+    ON customer_search_entries (customer_id);
+
+CREATE TABLE sku_search_entries (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    product_id  UUID NULL REFERENCES products(id) ON DELETE CASCADE,
+    service_id  UUID NULL REFERENCES services(id) ON DELETE CASCADE,
+    entry_text  TEXT NOT NULL,
+    source      TEXT NOT NULL,
+    embedding   VECTOR(384) NOT NULL,
+    tsv         TSVECTOR GENERATED ALWAYS AS
+                  (to_tsvector('english', entry_text)) STORED NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT sku_search_entries_source_check
+        CHECK (source IN ('product_name','product_code','product_alias',
+                          'service_name','service_code','service_alias')),
+    CONSTRAINT sku_search_entries_exactly_one_target
+        CHECK ((product_id IS NULL) <> (service_id IS NULL))
+);
+CREATE INDEX sku_search_entries_embedding_ivfflat
+    ON sku_search_entries USING ivfflat (embedding vector_cosine_ops)
+    WITH (lists = 16);
+CREATE INDEX sku_search_entries_tsv_gin
+    ON sku_search_entries USING gin (tsv);
+CREATE INDEX sku_search_entries_product_id_idx
+    ON sku_search_entries (product_id);
+CREATE INDEX sku_search_entries_service_id_idx
+    ON sku_search_entries (service_id);
+
 CREATE INDEX ix_chat_turns_conversation_id ON chat_turns (conversation_id, created_at);

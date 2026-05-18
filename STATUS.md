@@ -310,6 +310,66 @@ Sons Orchards $8,400 / 1 item).
 | `python -m scripts.demo` (end-to-end) | 7 / 7 steps | — | Inbox → agent → FSM → ERP → RAG follow-up → chat copilot → MCP tool, all pass |
 | `pyright` on every touched file | 0 errors, 14 warnings | — | Same baseline pattern (UUID-vs-ColumnElement) as the rest of `app/routes/` |
 
+## Phase I — semantic matcher overhaul (done 2026-05-14)
+
+LLM-driven semantic matching replaces rapidfuzz/Levenshtein on every
+customer/SKU resolution path. Three-stage architecture:
+
+- **Stage A** — hybrid retrieve (pgvector cosine + Postgres FTS,
+  RRF fusion + best-entry-per-target SQL).
+- **Stage B** — LLM disambiguator with structured output
+  (gpt-5.4-mini, upgraded from nano in v5.1).
+- **Stage C** — public API (`match_customer`, `match_sku`) +
+  per-conversation LRU cache + `MatcherIndexEmpty` guard.
+
+UI ships a confidence-graduated confirmation flow
+(auto-accept / confirm / pick-from-alts) via the
+`POST /copilot/turns/{id}/confirm-match` route. Order extractor and
+copilot orchestrator both go through the public API. Legacy
+`rapidfuzz` dependency removed; `customer_search_entries` and
+`sku_search_entries` tables added in migration 004 with pgvector + FTS
++ CHECK constraints.
+
+### v5.1 eval (full mode, 281 cases)
+
+| Metric | v4 baseline | v5 | v5.1 | Delta v5→v5.1 |
+|---|---|---|---|---|
+| Customer | 76.3% (158/207) | 94.2% (195/207) | **95.2% (200/210)** | +1.0pp / +5 cases |
+| SKU | 91.4% (64/70) | 100.0% (70/70) | **100.0% (71/71)** | maintained |
+| Customer categories PASS | 5/17 | 10/17 | **13/17** | +3 |
+| SKU categories PASS | 5/7 | 7/7 | **7/7** | maintained |
+
+### Cycle history
+
+- v1 → v2: tighten ambiguity / pronoun / SKU-grade rules.
+- v3: clear-winner rule + score gaps + `active_account` injection.
+- v4: Stage A possessive + suffix normalization + dense fallback.
+- v5: full quality pass — noise stripping, best-entry-per-target SQL
+  (`ROW_NUMBER PARTITION BY target`), Stage B prompt rewrite,
+  post-verifier business-abbreviation expansion.
+- v5.1 (current ship): 4 corpus additions (3 near-miss negatives +
+  wildflower honey drum), Stage B disambig model upgrade
+  gpt-5.4-nano → gpt-5.4-mini.
+
+### Known-acceptable failures (v5.1 ship state)
+
+4 customer categories sit below their aspirational thresholds and are
+documented rather than gating the ship:
+
+| Category | Precision | Threshold | Note |
+|---|---|---|---|
+| `cross_customer_collision` | 72.7% | 90% | gpt-5.4-mini commits to a specific name on prefix collisions (`Riverbend`, `Wenatchee`, `Seven Acres Farms`) when null+alts is expected. |
+| `site_shortform` | 62.5% | 95% | mini under-commits to null on `Martinez hilltop`, `Foothill river block`, `Haley orchard road site` (regression from nano). |
+| `ambiguous_reference` | 90.9% | 95% | `Cascade` over-resolves to Cascade Orchard Partners. |
+| `site_reference` | 86.7% | 95% | Cobblestone/Drakestone Main Warehouse swap (Stage A FTS tokenization — open follow-up). |
+
+Trade-off: mini's gains across abbreviation / alias / casual /
+compound / pronoun outweigh the collision/shortform regressions in
+aggregate. The confidence-graduated UX surfaces alternatives in
+production even when Stage B commits incorrectly.
+
+Full details in `.reports/matcher_phase_i_summary.md`.
+
 ## Decisions open
 
 - [ ] Final fictional ERP name (placeholder: "Hive-side ERP mock").

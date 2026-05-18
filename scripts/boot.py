@@ -61,6 +61,41 @@ def seed_if_empty() -> None:
     seed_run(drop_existing=False)
 
 
+def reindex_if_empty(db) -> None:
+    """Boot step: rebuild search indexes if either table is empty.
+
+    Runs after alembic upgrade head and before uvicorn exec. Idempotent —
+    skips work when both tables already have rows. Required so first
+    deploys after migration 004 don't hit MatcherIndexEmpty on the
+    first matcher call.
+
+    Side effects:
+        * Reads counts from customer_search_entries + sku_search_entries.
+        * If either is empty, runs providers.semantic_matcher.backfill_all
+          which TRUNCATEs both tables and rebuilds them.
+        * Logs at INFO.
+
+    Parameters:
+        db: SQLAlchemy Session for DB reads and writes.
+    """
+    from providers import semantic_matcher
+
+    cust_count = db.execute(
+        text("SELECT COUNT(*) FROM customer_search_entries")
+    ).scalar_one()
+    sku_count = db.execute(
+        text("SELECT COUNT(*) FROM sku_search_entries")
+    ).scalar_one()
+    if cust_count and sku_count:
+        log.info("boot: matcher indexes already populated; skipping reindex")
+        return
+    log.info(
+        "boot: reindexing matcher (customer=%d, sku=%d)", cust_count, sku_count
+    )
+    n = semantic_matcher.backfill_all(db)
+    log.info("boot: matcher reindex complete (%d entries)", n)
+
+
 def exec_uvicorn() -> None:
     """Replace this process with uvicorn. Side effect: never returns on success."""
     from app.config import get_settings
@@ -79,8 +114,12 @@ def exec_uvicorn() -> None:
 
 
 def main() -> None:
+    from db.session import session_scope
+
     run_migrations()
     seed_if_empty()
+    with session_scope() as db:
+        reindex_if_empty(db)
     exec_uvicorn()
 
 

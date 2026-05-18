@@ -120,6 +120,11 @@ def live_server_url() -> Iterator[str]:
         products_gen.persist(session, products_gen.generate(fk))
         services_gen.persist(session, services_gen.generate())
         embeddings_gen.run(session)
+        # Backfill the matcher search-entry tables so any test that
+        # routes through Stage A retrieval hits a populated index
+        # rather than MatcherIndexEmpty.
+        from providers.semantic_matcher import backfill_all
+        backfill_all(session)
         session.commit()
     finally:
         session.close()
@@ -378,3 +383,124 @@ class TestCopilotErrorPaths:
             f".turn.user .text:has-text('{marker}')"
         ).count()
         assert count == 1
+
+
+# ---------------------------------------------------------------------------
+# Matcher UX flows — scaffolded contract tests
+#
+# NOTE: These tests are NOT run until matcher prompt iteration clears the
+# eval thresholds (77% → 95% customer, 83% → 95% SKU).  They are committed
+# as the locked-in contract for the pick-match / confirm-match UI added in
+# the semantic-matcher feature branch.  See .reports/matcher_ui_verification.md.
+# ---------------------------------------------------------------------------
+
+
+class TestMatcherPickMatchFlow:
+    """Tests for the low-confidence pick-match card UX."""
+
+    def test_low_confidence_pick_match_proceeds(
+        self, page: Page, live_server_url: str, require_llm_api_key
+    ) -> None:
+        """Send an ambiguous hint; expect pick-match card; click alternative; conversation continues.
+
+        Flow: ambiguous input → matcher returns low confidence → pick-match card
+        renders → user clicks an alternative from the list → a new assistant
+        turn appears (conversation continues with the chosen customer).
+        """
+        page.goto(f"{live_server_url}/copilot")
+        page.locator("#composer-text").fill("log a quick visit for the orchard")
+        page.locator("#send-btn").click()
+        page.wait_for_selector(".match-pick-card", timeout=60_000)
+        # Click the first alternative candidate button in the pick list.
+        page.locator(".match-pick-list button").first.click()
+        page.wait_for_selector(".turn.assistant", timeout=30_000)
+        # At least one assistant turn must be present after the pick.
+        assert page.locator(".turn.assistant").count() >= 1
+
+    def test_low_confidence_rephrase_falls_through(
+        self, page: Page, live_server_url: str, require_llm_api_key
+    ) -> None:
+        """Pick-match card appears; user rephrases in composer; new turn goes through.
+
+        Flow: ambiguous input → pick-match card renders → user ignores the card
+        and types a clearer follow-up message → second assistant turn appears
+        (conversation continues without forcing a pick).
+        """
+        page.goto(f"{live_server_url}/copilot")
+        page.locator("#composer-text").fill("log a quick visit for the orchard")
+        page.locator("#send-btn").click()
+        page.wait_for_selector(".match-pick-card", timeout=60_000)
+        # User sends a clarifying message instead of picking from the list.
+        page.locator("#composer-text").fill("actually I meant O'Reilly's place")
+        page.locator("#send-btn").click()
+        # A second assistant turn must appear — the rephrase went through.
+        page.wait_for_selector(".turn.assistant:nth-of-type(2)", timeout=30_000)
+        assert page.locator(".turn.assistant").count() >= 2
+
+
+class TestMatcherConfirmMatchFlow:
+    """Tests for the medium-confidence confirm-match card UX."""
+
+    def test_medium_confidence_confirm_yes(
+        self, page: Page, live_server_url: str, require_llm_api_key
+    ) -> None:
+        """Confirm card appears; user clicks Yes; conversation continues.
+
+        Flow: near-match input → matcher returns medium confidence →
+        confirm-match card renders → user clicks the primary confirm button →
+        a new assistant turn appears (conversation proceeds with confirmed customer).
+        """
+        page.goto(f"{live_server_url}/copilot")
+        page.locator("#composer-text").fill("log a visit for OReilly")
+        page.locator("#send-btn").click()
+        page.wait_for_selector(".match-confirm-card", timeout=60_000)
+        # Click the primary (Yes / confirm) button.
+        page.locator(".match-confirm-form button.primary").click()
+        page.wait_for_selector(".turn.assistant", timeout=30_000)
+        assert page.locator(".turn.assistant").count() >= 1
+
+    def test_medium_confidence_confirm_no_swaps_to_pick(
+        self, page: Page, live_server_url: str, require_llm_api_key
+    ) -> None:
+        """Confirm card; user clicks No; pick-match card swaps in.
+
+        Flow: near-match input → confirm-match card renders → user rejects
+        the top candidate → the confirm card is replaced by a pick-match card
+        showing the full candidate list.
+        """
+        page.goto(f"{live_server_url}/copilot")
+        page.locator("#composer-text").fill("log a visit for OReilly")
+        page.locator("#send-btn").click()
+        page.wait_for_selector(".match-confirm-card", timeout=60_000)
+        # Click the reject / No button — value attribute used to disambiguate
+        # from the primary confirm button.
+        page.locator('.match-confirm-form button[value="reject"]').click()
+        # Confirm card should be replaced by the pick-match card.
+        page.wait_for_selector(".match-pick-card", timeout=30_000)
+        assert page.locator(".match-pick-card").count() >= 1
+
+
+class TestMatcherIdempotency:
+    """Guard against double-click / double-submit on matcher interaction buttons."""
+
+    def test_double_click_alternative_button_is_idempotent(
+        self, page: Page, live_server_url: str, require_llm_api_key
+    ) -> None:
+        """Double-clicking an alternative in the pick list creates exactly one new turn.
+
+        Ensures the HTMX disabled-element guard (or equivalent) prevents a
+        second in-flight request from the double-click, so the conversation
+        thread does not end up with two assistant turns from a single pick action.
+        Expected final state: exactly 2 turns total (1 user + 1 assistant).
+        """
+        page.goto(f"{live_server_url}/copilot")
+        page.locator("#composer-text").fill("log a quick visit for the orchard")
+        page.locator("#send-btn").click()
+        page.wait_for_selector(".match-pick-card", timeout=60_000)
+        btn = page.locator(".match-pick-list button").first
+        btn.dblclick()
+        # Allow time for any duplicate request to land.
+        page.wait_for_timeout(2_000)
+        n_assistant_turns = page.locator(".turn.assistant").count()
+        # Exactly one assistant turn — the double-click must not create a second.
+        assert n_assistant_turns == 1

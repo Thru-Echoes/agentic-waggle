@@ -1,0 +1,1380 @@
+"""Semantic matcher — resolves free-text customer / SKU references.
+
+Public surface:
+
+    match_customer(hint, *, conversation_ctx, conversation_id, db) -> CustomerMatch
+    match_sku(query, *, sku_context, conversation_id, db) -> SkuMatch
+    reindex_customer(customer_id, db) -> None
+    reindex_sku(product_id=..., service_id=..., db) -> None
+    backfill_all(db) -> int
+
+Pipeline (both customer + SKU paths):
+
+    Stage A — Hybrid retrieve:
+        embed(query) -> pgvector cosine over <table>.embedding (top 20)
+        +
+        plainto_tsquery(query) -> ts_rank over <table>.tsv (top 20)
+        -> Reciprocal Rank Fusion (k=60)
+        -> best-entry-per-target (ROW_NUMBER PARTITION BY target ORDER BY
+          rrf_score DESC; keep rank-1) -> top 5 distinct targets
+
+    Stage B — LLM disambiguate (added in Task 4):
+        gpt-5.4-nano with structured output (response_format=json_schema)
+        bound to CustomerMatch / SkuMatch.
+
+    Stage C — Cache + observability (added in Task 5).
+
+Side effects:
+    * DB reads (Stage A; one SQL statement with CTE).
+    * OpenAI API call (Stage B).
+    * In-memory cache write (Stage C).
+"""
+# pyright: reportMissingImports=false
+from __future__ import annotations
+
+import json
+import logging
+import re
+import uuid
+from collections import OrderedDict
+from dataclasses import dataclass
+from threading import Lock
+from typing import TYPE_CHECKING, Any, Literal
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from providers.llm import LLMConfigurationError, get_openai_client
+from providers.semantic_matcher_prompts import (
+    CUSTOMER_DISAMBIG_SYSTEM,
+    CUSTOMER_DISAMBIG_USER_TEMPLATE,
+    SKU_DISAMBIG_SYSTEM,
+    SKU_DISAMBIG_USER_TEMPLATE,
+)
+from providers.vector_search import VectorSearchProvider
+
+if TYPE_CHECKING:
+    from agents.schemas import (
+        ConversationContext,
+        CustomerMatch,
+        SkuContext,
+        SkuMatch,
+    )
+
+logger = logging.getLogger(__name__)
+
+
+RRF_K = 60
+TOP_K = 5
+RETRIEVE_LIMIT = 20  # per-source before fusion
+PROMPT_VERSION = "v5"
+LLM_DISAMBIG_MAX_ATTEMPTS = 2
+# Multiplier applied to the top candidate's fused_score when the LLM picks an
+# id outside our shortlist and we fall back to the top Stage-A result.
+# Half-confidence signals that we are uncertain about the fallback.
+DEFENSE_CHECK_CONFIDENCE_PENALTY = 0.5
+
+# ivfflat index probe count — controls recall vs. speed trade-off.
+# Default of 1 is too low for small datasets (tests with ~140 rows).
+# 10 gives ~31% cluster coverage for lists=32; raise at the call site or
+# via environment override when the table grows past ~50k rows.
+IVFFLAT_PROBES = 10
+
+
+# ---------------------------------------------------------------------------
+# Internal data classes
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Candidate:
+    """One shortlisted entry from Stage A.
+
+    Hides the entry-row vs. target-row distinction; downstream consumers
+    care about the target (customer_id / product_id / service_id).
+    """
+
+    entry_id: uuid.UUID
+    customer_id: uuid.UUID | None
+    product_id: uuid.UUID | None
+    service_id: uuid.UUID | None
+    entry_text: str
+    source: str
+    dense_rank: int | None
+    fts_rank: int | None
+    dense_score: float | None
+    fts_score: float | None
+    fused_score: float
+
+
+# ---------------------------------------------------------------------------
+# Stage A — Hybrid retrieve
+# ---------------------------------------------------------------------------
+
+
+_vector_provider: VectorSearchProvider | None = None
+
+
+def _get_vector_provider() -> VectorSearchProvider:
+    """Return the shared sentence-transformers provider.
+
+    Lazy-init so model-free unit tests don't pay the startup cost.
+    Side effect: downloads model weights on first call (~80 MB).
+    """
+    global _vector_provider
+    if _vector_provider is None:
+        _vector_provider = VectorSearchProvider()
+    return _vector_provider
+
+
+# v5 query-time noise stripping for retrieval recall.  These patterns only
+# affect *query* normalization — indexed entries (customer names, aliases,
+# site names, product names) are stored raw in customer_search_entries /
+# sku_search_entries and the FTS tsv is computed at INSERT time from raw
+# entry_text.  Tightening these patterns does NOT require an index rebuild.
+
+_SUBJECT_LINE_PREFIX_RE = re.compile(
+    r"^\s*(?:fwd|fw|re|urgent|action\s*item|todo|note|reminder|update|alert)"
+    r"\s*[:\-—]+\s*",
+    re.IGNORECASE,
+)
+
+_LEADING_STOP_PHRASE_RE = re.compile(
+    r"^\s*(?:"
+    # Trailing colloquial reference that wraps the entity from the front.
+    r"those\s+(?:folks|guys|people)\s+at\s+|"
+    # Modal-question wrappers: "Can you …", "Could you …", "Would we …".
+    r"(?:can|could|would|will)\s+(?:you|we)\s+|"
+    r"please\s+|"
+    r"let'?s\s+|"
+    # First-person scheduling phrases.
+    r"i\s+(?:need|want|have|should|will|am\s+going)\s+to\s+|"
+    r"we\s+(?:need|want|have|should|will|are\s+going)\s+to\s+|"
+    # Speech-act verbs with a noun-phrase complement.
+    r"check\s+(?:if|on|whether)\s+|"
+    r"log\s+(?:a\s+)?(?:note|reminder|todo)\s+(?:that|on|for|to|about)\s+|"
+    r"(?:put|leave)\s+a\s+(?:note|reminder)\s+(?:that|on|for|to|about)\s+|"
+    r"follow[\s\-]+up\s+(?:with|on|about)\s+|"
+    r"schedule\s+(?:a\s+|the\s+|some\s+)?|"
+    r"pull\s+up\s+(?:the\s+)?(?:account\s+|file\s+|info(?:rmation)?\s+|details\s+)?(?:for\s+|on\s+)?|"
+    r"look\s+up\s+(?:the\s+)?|"
+    # Bare admin verbs that precede a noun phrase.  None of the seed
+    # customer names start with any of these, so stripping is safe.
+    r"(?:invoice|draft|send|post|contact|call|email|notify|alert|review|approve|find|locate)\s+|"
+    # Leading determiners — stripped only at position 0 by the ^\s* anchor.
+    r"the\s+|"
+    r"a\s+(?:note|reminder)\s+(?:for|on|about|that)\s+"
+    r")",
+    re.IGNORECASE,
+)
+
+_CASUAL_SUFFIX_RE = re.compile(
+    r"\s+(?:folks|guys|people|team|crew|account|gang|crowd)\s*$",
+    re.IGNORECASE,
+)
+
+# Business-suffix abbreviation expansions applied at query time so a
+# verbose form ("Haley Farms Limited Partnership", "ACME Incorporated")
+# matches the same indexed alias/name as the abbreviated form.  Indexed
+# entries already use the short form, so this only adjusts the query.
+# After expansion, the trailing-suffix-token pop will drop the resulting
+# short form ("lp", "inc", "co") — that's the desired symmetry.
+_BUSINESS_ABBREVIATION_SUBS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\blimited\s+partnership\b", re.IGNORECASE), "lp"),
+    (re.compile(r"\blimited\s+liability\s+company\b", re.IGNORECASE), "llc"),
+    (re.compile(r"\bincorporated\b", re.IGNORECASE), "inc"),
+    (re.compile(r"\bcorporation\b", re.IGNORECASE), "corp"),
+    (re.compile(r"\bcompany\b", re.IGNORECASE), "co"),
+]
+
+# SKU-only quantity prefix patterns.  Two cases:
+#   A. Mass unit ("100 lb of winter fondant"): strip digits + mass unit +
+#      optional "of" so only the product family survives.
+#   B. Bare digit ("10 Carniolan mated queens"): strip the digit but KEEP
+#      everything after, including packaging units ("drums", "pails",
+#      "jars", "frames", "cases", "boxes").  Packaging units are needed by
+#      Stage B to pick the right SIZE variant ("5 drums of clover honey"
+#      must reach HONEY-CLV-A-DRUM, not HONEY-CLV-A-PAIL).
+#
+# Both patterns are SKU-path-only.  Applying them to customer queries
+# would corrupt aliases like "7 Acres Farms" → "Seven Acres Farms".
+_QTY_MASS_PREFIX_RE = re.compile(
+    r"^\s*\d+(?:\.\d+)?\s+"
+    r"(?:lbs?|pounds?|kg|kgs?|oz|ounces?|gallons?|liters?|litres?|each|ea\.?)\s+"
+    r"(?:of\s+)?",
+    re.IGNORECASE,
+)
+_QTY_BARE_PREFIX_RE = re.compile(
+    r"^\s*\d+(?:\.\d+)?\s+",
+    re.IGNORECASE,
+)
+
+
+def _normalize_for_index_and_query(
+    s: str,
+    *,
+    kind: Literal["customer", "sku"] | None = None,
+) -> str:
+    """Lightweight normalization applied to incoming queries at match time.
+
+    Despite the name, this function only runs at query time.  Indexed
+    entries (customer names / aliases / site names / product names) are
+    stored raw in the search-entry tables and the FTS tsv is generated at
+    INSERT time from that raw text, so tightening these rules does NOT
+    require rebuilding the index.
+
+    Pipeline (order matters):
+      1. Strip subject-line prefixes ("FWD:", "URGENT:", "Action item:").
+      2. Lowercase + trim whitespace.
+      3. Iteratively strip leading stop-phrases ("the ", "check if ",
+         "log a note that ", "schedule a ", "invoice ", "follow up with ",
+         "we need to ", "can you pull up the account for ", …) so combos
+         like "Could you please pull up the account for X" reduce
+         step-by-step to "X".
+      4. SKU PATH ONLY — strip leading quantity prefix.  Mass-unit form
+         ("100 lb of winter fondant") drops the whole "100 lb of " span.
+         Bare-digit form ("10 Carniolan mated queens") drops only the
+         "10 " digit, preserving packaging units ("drums", "pails",
+         "jars", "frames", "cases") so Stage B keeps the size cue.
+      5. Strip trailing colloquial suffix nouns ("folks", "guys",
+         "people", "team", "crew", "account").
+      6. Strip possessive markers, ASCII punctuation, repeat whitespace.
+      7. Truncate at the LAST company-suffix token ("co", "inc", "llc",
+         …) when at least one token precedes it ("Heartland Apiary
+         Trading Co. spring contract" → "heartland apiary trading"),
+         THEN pop any remaining trailing suffix tokens — preserves the
+         v4 behaviour for queries like "the co." → "" (empty).
+
+    Parameters:
+        s: Raw input string.
+        kind: "customer" or "sku" — enables path-specific rules.  Quantity
+            stripping is SKU-only because customer aliases like
+            "7 Acres Farms" would otherwise lose their identifier digit.
+            None (default) skips path-specific rules — safe for callers
+            that just need a cache key.
+
+    Returns:
+        Normalized string safe for FTS and embedding; empty string when
+        the input is empty.
+
+    Side effects: none.
+    """
+    s = (s or "").strip()
+    if not s:
+        return ""
+
+    s = _SUBJECT_LINE_PREFIX_RE.sub("", s)
+    s = s.lower().strip()
+
+    prev = None
+    while prev != s:
+        prev = s
+        s = _LEADING_STOP_PHRASE_RE.sub("", s, count=1)
+
+    if kind == "sku":
+        # Mass-unit form first: needs both a digit and a recognized unit.
+        s = _QTY_MASS_PREFIX_RE.sub("", s)
+        # Bare-digit form: only when no mass-unit prefix already matched.
+        # Safe because no SKU canonical name starts with a digit.
+        s = _QTY_BARE_PREFIX_RE.sub("", s)
+
+    # Expand verbose business-suffix forms ("Limited Partnership" → "lp",
+    # "Incorporated" → "inc") so they match the abbreviated index entries.
+    for pattern, replacement in _BUSINESS_ABBREVIATION_SUBS:
+        s = pattern.sub(replacement, s)
+
+    s = _CASUAL_SUFFIX_RE.sub("", s)
+
+    s = s.replace("'s ", " ").replace("'s\n", "\n").replace("'s\t", "\t")
+    if s.endswith("'s"):
+        s = s[:-2]
+    for ch in [",", ".", "'", '"', "(", ")", "/", "&", "!", "?", ":", ";"]:
+        s = s.replace(ch, " ")
+    s = " ".join(s.split())
+
+    suffix_tokens = {"co", "inc", "llc", "ltd", "company", "corp", "corporation"}
+    tokens = s.split()
+    # Truncate at the LAST company-suffix token when at least one token
+    # precedes it ("Cascadia Honey Co. spring contract" → "cascadia
+    # honey").  Skip when the suffix is at index 0 — that case falls
+    # through to the v4 trailing-pop below.
+    suffix_positions = [i for i, t in enumerate(tokens) if t in suffix_tokens and i >= 1]
+    if suffix_positions:
+        cut = max(suffix_positions)
+        tokens = tokens[:cut]
+    # v4 fallback: also pop any remaining trailing suffix tokens.  Keeps
+    # "the co." → "" (single-suffix-token query becomes empty) and is a
+    # no-op for queries already handled by the truncate-at-last branch.
+    while tokens and tokens[-1] in suffix_tokens:
+        tokens.pop()
+    return " ".join(tokens)
+
+
+def _hybrid_retrieve(
+    query: str,
+    *,
+    table: Literal["customer_search_entries", "sku_search_entries"],
+    db: Session,
+) -> list[Candidate]:
+    """Hybrid retrieve: dense (pgvector cosine) + lexical (Postgres FTS) fused
+    via Reciprocal Rank Fusion with a multi-source boost.
+
+    Parameters:
+        query: Free-text input from a user or conversation context.
+        table: Which search-entry table to query.
+        db: SQLAlchemy Session for DB reads.
+
+    Returns:
+        Up to TOP_K Candidate objects sorted by fused_score descending.
+        Returns [] for an empty query or when no rows match.
+
+    Side effects: DB reads (SET LOCAL + one CTE query within the current
+        transaction).
+    """
+    kind: Literal["customer", "sku"] = (
+        "customer" if table == "customer_search_entries" else "sku"
+    )
+    normalized = _normalize_for_index_and_query(query, kind=kind)
+    if not normalized:
+        return []
+
+    provider = _get_vector_provider()
+    embedding = provider.embed(normalized)
+
+    # Raise probe count so small datasets (tests) get full ivfflat coverage.
+    # SET LOCAL is transaction-scoped and does not persist beyond the call.
+    db.execute(text(f"SET LOCAL ivfflat.probes = {IVFFLAT_PROBES}"))
+
+    if table == "customer_search_entries":
+        target_cols = "customer_id, NULL::uuid AS product_id, NULL::uuid AS service_id"
+        group_col = "customer_id"
+    else:
+        target_cols = "NULL::uuid AS customer_id, product_id, service_id"
+        group_col = "COALESCE(product_id::text, service_id::text)"
+
+    sql = f"""
+    WITH dense AS (
+      SELECT
+        id, {target_cols}, entry_text, source,
+        1 - (embedding <=> CAST(:emb AS vector)) AS dense_score,
+        ROW_NUMBER() OVER (ORDER BY embedding <=> CAST(:emb AS vector)) AS dense_rank
+      FROM {table}
+      ORDER BY embedding <=> CAST(:emb AS vector)
+      LIMIT :retrieve_limit
+    ),
+    fts AS (
+      SELECT
+        id, {target_cols}, entry_text, source,
+        ts_rank(tsv, plainto_tsquery('english', :q)) AS fts_score,
+        ROW_NUMBER() OVER (ORDER BY ts_rank(tsv, plainto_tsquery('english', :q)) DESC) AS fts_rank
+      FROM {table}
+      WHERE tsv @@ plainto_tsquery('english', :q)
+      ORDER BY fts_score DESC
+      LIMIT :retrieve_limit
+    ),
+    fused AS (
+      SELECT
+        COALESCE(dense.id, fts.id) AS id,
+        COALESCE(dense.customer_id, fts.customer_id) AS customer_id,
+        COALESCE(dense.product_id, fts.product_id) AS product_id,
+        COALESCE(dense.service_id, fts.service_id) AS service_id,
+        COALESCE(dense.entry_text, fts.entry_text) AS entry_text,
+        COALESCE(dense.source, fts.source) AS source,
+        dense.dense_rank, dense.dense_score,
+        fts.fts_rank, fts.fts_score,
+        COALESCE(1.0 / ({RRF_K} + dense.dense_rank), 0) +
+        COALESCE(1.0 / ({RRF_K} + fts.fts_rank), 0) AS rrf_score
+      FROM dense
+      FULL OUTER JOIN fts USING (id)
+    ),
+    ranked AS (
+      -- Pick one row per target (customer / product / service): the entry
+      -- with the highest RRF score for that target.  Previously the query
+      -- used a SUM-over-partition boost — but that over-favoured targets
+      -- with many alias / site entries even when the query didn't really
+      -- match them, drowning out the right target's single high-RRF entry.
+      -- MAX semantics (via per_target_rank = 1) keeps the strongest signal
+      -- per target so noisy queries don't get hijacked.
+      SELECT
+        id, customer_id, product_id, service_id, entry_text, source,
+        dense_rank, fts_rank, dense_score, fts_score, rrf_score,
+        ROW_NUMBER() OVER (PARTITION BY {group_col} ORDER BY rrf_score DESC) AS per_target_rank
+      FROM fused
+    )
+    SELECT
+      id, customer_id, product_id, service_id, entry_text, source,
+      dense_rank, fts_rank, dense_score, fts_score,
+      rrf_score AS boosted_score
+    FROM ranked
+    WHERE per_target_rank = 1
+    ORDER BY rrf_score DESC
+    LIMIT :top_k
+    """
+
+    rows = db.execute(
+        text(sql),
+        {
+            "emb": embedding,
+            "q": normalized,
+            "retrieve_limit": RETRIEVE_LIMIT,
+            "top_k": TOP_K,
+        },
+    ).mappings().all()
+
+    candidates: list[Candidate] = []
+    for r in rows:
+        candidates.append(
+            Candidate(
+                entry_id=uuid.UUID(str(r["id"])),
+                customer_id=uuid.UUID(str(r["customer_id"])) if r.get("customer_id") else None,
+                product_id=uuid.UUID(str(r["product_id"])) if r.get("product_id") else None,
+                service_id=uuid.UUID(str(r["service_id"])) if r.get("service_id") else None,
+                entry_text=r["entry_text"],
+                source=r["source"],
+                dense_rank=r.get("dense_rank"),
+                fts_rank=r.get("fts_rank"),
+                dense_score=float(r["dense_score"]) if r.get("dense_score") is not None else None,
+                fts_score=float(r["fts_score"]) if r.get("fts_score") is not None else None,
+                fused_score=float(r["boosted_score"]),
+            )
+        )
+
+    # Safety fallback: if the hybrid query returned nothing (FTS matched zero
+    # rows and dense had no overlap with the FULL OUTER JOIN partner), fall
+    # back to a pure dense retrieval.  SET LOCAL ivfflat.probes is already
+    # active for this transaction so it applies here too.
+    if not candidates:
+        fallback_sql = f"""
+        SELECT
+          id, {target_cols}, entry_text, source,
+          1 - (embedding <=> CAST(:emb AS vector)) AS dense_score,
+          ROW_NUMBER() OVER (ORDER BY embedding <=> CAST(:emb AS vector)) AS dense_rank
+        FROM {table}
+        ORDER BY embedding <=> CAST(:emb AS vector)
+        LIMIT :top_k
+        """
+        fallback_rows = db.execute(
+            text(fallback_sql),
+            {"emb": embedding, "top_k": TOP_K},
+        ).mappings().all()
+        for r in fallback_rows:
+            dense_score = float(r["dense_score"]) if r.get("dense_score") is not None else 0.0
+            candidates.append(
+                Candidate(
+                    entry_id=uuid.UUID(str(r["id"])),
+                    customer_id=uuid.UUID(str(r["customer_id"])) if r.get("customer_id") else None,
+                    product_id=uuid.UUID(str(r["product_id"])) if r.get("product_id") else None,
+                    service_id=uuid.UUID(str(r["service_id"])) if r.get("service_id") else None,
+                    entry_text=r["entry_text"],
+                    source=r["source"],
+                    dense_rank=int(r["dense_rank"]) if r.get("dense_rank") is not None else None,
+                    fts_rank=None,
+                    dense_score=dense_score,
+                    fts_score=None,
+                    fused_score=dense_score,
+                )
+            )
+
+    return candidates
+
+
+# ---------------------------------------------------------------------------
+# Stage B — LLM disambiguate
+# ---------------------------------------------------------------------------
+
+
+def _format_customer_candidate_block(
+    candidates: list[Candidate], db: Session
+) -> str:
+    """Render candidates as a numbered list for the LLM prompt.
+
+    Looks up each customer's canonical name via the DB for the prompt
+    (entry_text might be an alias or site — we want canonical names).
+
+    Parameters:
+        candidates: Shortlisted Candidate objects from Stage A.
+        db: SQLAlchemy Session for DB reads.
+
+    Returns:
+        Numbered multi-line string describing each candidate.
+
+    Side effects: DB read (SELECT from customers).
+    """
+    if not candidates:
+        return "(empty)"
+    customer_ids = list({c.customer_id for c in candidates if c.customer_id})
+    name_rows = (
+        db.execute(
+            text("SELECT id, name FROM customers WHERE id = ANY(:ids)"),
+            {"ids": customer_ids},
+        )
+        .mappings()
+        .all()
+    )
+    id_to_name = {r["id"]: r["name"] for r in name_rows}
+
+    # Safety dedupe: Stage A already returns one row per customer (cycle
+    # 1.5 ROW_NUMBER partition), but the active_account injection in
+    # match_customer may append a duplicate when the active account also
+    # surfaced naturally.  This loop is the safety net for that case.
+    seen_ids: set[uuid.UUID] = set()
+    deduped: list[Candidate] = []
+    for c in candidates:
+        if c.customer_id and c.customer_id not in seen_ids:
+            seen_ids.add(c.customer_id)
+            deduped.append(c)
+
+    lines: list[str] = []
+    for i, c in enumerate(deduped, 1):
+        name = id_to_name.get(c.customer_id, "(unknown)")  # type: ignore[arg-type]
+        is_last = i == len(deduped)
+        if is_last:
+            gap_str = "last"
+        else:
+            gap = c.fused_score - deduped[i].fused_score
+            gap_str = f"+{gap:.4f} vs next"
+        lines.append(
+            f"{i}. customer_id={c.customer_id} name={name!r} "
+            f"matched on source={c.source} entry={c.entry_text!r} "
+            f"(fused_score={c.fused_score:.4f}, {gap_str})"
+        )
+    return "\n".join(lines)
+
+
+def _format_sku_candidate_block(
+    candidates: list[Candidate], db: Session
+) -> str:
+    """Render SKU candidates for the LLM prompt.
+
+    Parameters:
+        candidates: Shortlisted Candidate objects from Stage A.
+        db: SQLAlchemy Session for DB reads.
+
+    Returns:
+        Numbered multi-line string describing each SKU candidate.
+
+    Side effects: DB reads (SELECT from products and/or services).
+    """
+    if not candidates:
+        return "(empty)"
+    lines: list[str] = []
+    for i, c in enumerate(candidates, 1):
+        if c.product_id:
+            row = db.execute(
+                text("SELECT sku, name FROM products WHERE id = :pid"),
+                {"pid": c.product_id},
+            ).mappings().first()
+            if row:
+                lines.append(
+                    f"{i}. kind=product product_id={c.product_id} "
+                    f"sku={row['sku']!r} name={row['name']!r} "
+                    f"matched on source={c.source} entry={c.entry_text!r} "
+                    f"(fused_score={c.fused_score:.4f})"
+                )
+        elif c.service_id:
+            row = db.execute(
+                text("SELECT sku, name FROM services WHERE id = :sid"),
+                {"sid": c.service_id},
+            ).mappings().first()
+            if row:
+                lines.append(
+                    f"{i}. kind=service service_id={c.service_id} "
+                    f"sku={row['sku']!r} name={row['name']!r} "
+                    f"matched on source={c.source} entry={c.entry_text!r} "
+                    f"(fused_score={c.fused_score:.4f})"
+                )
+    return "\n".join(lines)
+
+
+def _llm_disambiguate(
+    *,
+    query: str,
+    candidates: list[Candidate],
+    kind: Literal["customer", "sku"],
+    ctx: "ConversationContext | SkuContext",
+    db: Session,
+) -> "CustomerMatch | SkuMatch":
+    """Stage B — call gpt-5.4-nano with structured output bound to the
+    matcher's Pydantic schema. Raises on auth failure; retries once on
+    network glitch; returns a low-confidence null on terminal failure.
+
+    Parameters:
+        query: The raw user text to disambiguate.
+        candidates: Stage A shortlist (up to TOP_K=5 Candidate objects).
+        kind: "customer" or "sku" — controls which schema + prompt is used.
+        ctx: ConversationContext (customer path) or SkuContext (sku path).
+        db: SQLAlchemy Session for DB reads (name lookups for prompt rendering).
+
+    Returns:
+        CustomerMatch or SkuMatch (matching kind). customer_id / sku_kind
+        will be None if the LLM cannot pick confidently.
+
+    Side effects:
+        * One OpenAI API call (two on transient network failure).
+        * Logs at INFO on each call; WARNING on retry; ERROR on terminal failure.
+
+    Raises:
+        LLMConfigurationError: when OPENAI_API_KEY is not set. Propagated
+            intentionally — misconfigured env is not a transient failure.
+    """
+    # Deferred imports to avoid circular import at module load time.
+    from agents.schemas import (
+        ConversationContext,
+        CustomerMatch,
+        SkuMatch,
+    )
+    from app.config import get_settings
+
+    settings = get_settings()
+    client = get_openai_client()
+    model = settings.copilot_matcher_disambig_model  # default: gpt-5.4-nano
+
+    if kind == "customer":
+        assert isinstance(ctx, ConversationContext)
+        active_name: str | None = None
+        recent_names: list[str] = []
+        if ctx.active_account_id:
+            row = db.execute(
+                text("SELECT name FROM customers WHERE id = :id"),
+                {"id": ctx.active_account_id},
+            ).first()
+            if row:
+                active_name = row.name
+        if ctx.last_3_customer_ids:
+            rows = db.execute(
+                text("SELECT name FROM customers WHERE id = ANY(:ids)"),
+                {"ids": list(ctx.last_3_customer_ids)},
+            ).all()
+            recent_names = [r.name for r in rows]
+
+        candidate_block = _format_customer_candidate_block(candidates, db)
+        user_msg = CUSTOMER_DISAMBIG_USER_TEMPLATE.format(
+            query=query,
+            active_account_name=active_name,
+            recent_customer_names=recent_names,
+            candidate_block=candidate_block,
+        )
+        system_msg = CUSTOMER_DISAMBIG_SYSTEM
+        schema: dict[str, Any] = CustomerMatch.model_json_schema()
+        match_class: type[CustomerMatch] | type[SkuMatch] = CustomerMatch
+    else:
+        candidate_block = _format_sku_candidate_block(candidates, db)
+        user_msg = SKU_DISAMBIG_USER_TEMPLATE.format(
+            query=query,
+            candidate_block=candidate_block,
+        )
+        system_msg = SKU_DISAMBIG_SYSTEM
+        schema = SkuMatch.model_json_schema()
+        match_class = SkuMatch
+
+    # Strip pydantic-internal keys not understood by OpenAI's json_schema mode
+    schema.pop("$defs", None)
+
+    logger.info(
+        "LLM disambig: kind=%s query=%r model=%s candidates=%d",
+        kind,
+        query,
+        model,
+        len(candidates),
+    )
+
+    last_error: Exception | None = None
+    for attempt in range(1, LLM_DISAMBIG_MAX_ATTEMPTS + 1):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg},
+                ],
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": match_class.__name__,
+                        "schema": schema,
+                        "strict": False,
+                    },
+                },
+                temperature=0,
+            )
+            raw = resp.choices[0].message.content or "{}"
+            parsed: dict[str, Any] = json.loads(raw)
+
+            # Defensive: strip malformed alternatives rather than letting
+            # them abort the whole match. The LLM often omits required fields
+            # from alternatives; drop any entry that would fail validation so
+            # the primary match still comes through.
+            if kind == "customer" and isinstance(parsed.get("alternatives"), list):
+                # Build a customer_id → canonical-name fallback map from the
+                # shortlist so we can repair alternatives that picked the
+                # right id but forgot to echo the name.
+                id_to_name: dict[str, str] = {}
+                for c in candidates:
+                    if c.customer_id is None:
+                        continue
+                    row = db.execute(
+                        text("SELECT name FROM customers WHERE id = :id"),
+                        {"id": c.customer_id},
+                    ).first()
+                    if row:
+                        id_to_name[str(c.customer_id)] = row.name
+
+                remapped: list[dict[str, Any]] = []
+                for alt in parsed["alternatives"]:
+                    if not isinstance(alt, dict):
+                        continue
+                    # Remap plausibility_score → confidence when the LLM uses
+                    # the wrong field name (gpt-5.4-nano + json_schema mode
+                    # echoes fused_score as plausibility_score sometimes).
+                    if "confidence" not in alt and "plausibility_score" in alt:
+                        alt = dict(alt)
+                        alt["confidence"] = alt.pop("plausibility_score")
+                    # Drop alternatives missing the always-required fields.
+                    if "customer_id" not in alt or "confidence" not in alt:
+                        continue
+                    # Backfill customer_name from the shortlist when the LLM
+                    # omits it (frequent failure mode that caused the whole
+                    # validation to abort before this guard).
+                    if "customer_name" not in alt or alt.get("customer_name") in (None, ""):
+                        canonical = id_to_name.get(str(alt.get("customer_id")))
+                        if not canonical:
+                            continue
+                        alt = dict(alt)
+                        alt["customer_name"] = canonical
+                    # Backfill / normalise source to one of the schema literals.
+                    if "source" not in alt or alt.get("source") not in (
+                        "name",
+                        "alias",
+                        "site",
+                    ):
+                        alt = dict(alt)
+                        alt["source"] = "name"
+                    remapped.append(alt)
+                dropped = len(parsed["alternatives"]) - len(remapped)
+                parsed["alternatives"] = remapped
+                if dropped:
+                    logger.warning(
+                        "Dropped %d customer alternative(s) missing required fields",
+                        dropped,
+                    )
+            elif kind == "sku" and isinstance(parsed.get("alternatives"), list):
+                before = len(parsed["alternatives"])
+                parsed["alternatives"] = [
+                    alt for alt in parsed["alternatives"]
+                    if isinstance(alt, dict)
+                    and "sku_kind" in alt
+                    and "sku_code" in alt
+                    and "name" in alt
+                    and "confidence" in alt
+                ]
+                dropped = before - len(parsed["alternatives"])
+                if dropped:
+                    logger.warning(
+                        "LLM omitted required fields from %d SKU alternative(s); dropped before validate",
+                        dropped,
+                    )
+
+            match = match_class.model_validate(parsed)
+
+            # Defense: if the LLM picked an id not in our shortlist, discard.
+            if kind == "customer":
+                assert isinstance(match, CustomerMatch)
+                valid_ids = {c.customer_id for c in candidates}
+                if match.customer_id and match.customer_id not in valid_ids:
+                    logger.warning(
+                        "LLM picked customer_id=%s not in shortlist; falling back",
+                        match.customer_id,
+                    )
+                    top = candidates[0] if candidates else None
+                    return CustomerMatch(
+                        customer_id=top.customer_id if top else None,
+                        customer_name=None,
+                        confidence=(top.fused_score * DEFENSE_CHECK_CONFIDENCE_PENALTY) if top else 0.0,
+                        evidence=[query],
+                        alternatives=[],
+                    )
+            return match
+        except LLMConfigurationError:
+            # Auth failure — propagate immediately; not a transient error.
+            raise
+        except Exception as e:
+            last_error = e
+            if attempt == 1:
+                logger.warning(
+                    "LLM disambig attempt 1 failed: %s; retrying", e
+                )
+                continue
+            logger.error("LLM disambig terminal failure: %s", e)
+            break
+
+    # Terminal failure — return a low-confidence null
+    logger.error(
+        "LLM disambig returning null match after terminal failure: %s", last_error
+    )
+    if kind == "customer":
+        return CustomerMatch(
+            customer_id=None,
+            customer_name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+    else:
+        return SkuMatch(
+            sku_kind=None,
+            product_id=None,
+            service_id=None,
+            sku_code=None,
+            name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+
+
+# ---------------------------------------------------------------------------
+# Stage C — Public API + cache
+# ---------------------------------------------------------------------------
+
+CACHE_CAP_PER_CONV = 64
+
+_conv_caches: dict[uuid.UUID, OrderedDict[tuple, Any]] = {}
+_cache_lock = Lock()
+
+
+def _cache_for(conversation_id: uuid.UUID) -> OrderedDict[tuple, Any]:
+    """Return (or create) the per-conversation LRU cache dict.
+
+    Parameters:
+        conversation_id: UUID identifying the conversation.
+
+    Returns:
+        The OrderedDict used as an LRU cache for this conversation.
+
+    Side effects: Inserts an empty OrderedDict into _conv_caches if absent
+        (protected by _cache_lock).
+    """
+    with _cache_lock:
+        return _conv_caches.setdefault(conversation_id, OrderedDict())
+
+
+def clear_caches() -> None:
+    """Test helper — clears all per-conversation caches.
+
+    Side effects: empties _conv_caches under _cache_lock.
+    """
+    with _cache_lock:
+        _conv_caches.clear()
+
+
+def _ctx_key(ctx: Any) -> tuple:
+    """Stable, hashable key derived from a ConversationContext or SkuContext.
+
+    Parameters:
+        ctx: ConversationContext, SkuContext, or unknown object.
+
+    Returns:
+        A hashable tuple suitable for use as a dict key.
+
+    Side effects: none.
+    """
+    from agents.schemas import ConversationContext, SkuContext
+
+    if isinstance(ctx, ConversationContext):
+        return ("conv", ctx.active_account_id, tuple(ctx.last_3_customer_ids))
+    if isinstance(ctx, SkuContext):
+        return ("sku",)
+    raise TypeError(
+        f"_ctx_key: unsupported context type {type(ctx).__name__}; "
+        f"expected ConversationContext or SkuContext"
+    )
+
+
+class MatcherIndexEmpty(RuntimeError):
+    """Search-entries table is empty — backfill must run before matching."""
+
+
+def _check_index_populated(table: str, db: Session) -> None:
+    """Raise MatcherIndexEmpty if the given search-entries table has no rows.
+
+    Parameters:
+        table: Table name to count — caller-controlled, never user input.
+        db: SQLAlchemy Session for DB reads.
+
+    Side effects: one SELECT COUNT(*) query.
+
+    Raises:
+        MatcherIndexEmpty: when the table is empty.
+    """
+    n = db.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar_one()
+    if not n:
+        raise MatcherIndexEmpty(
+            f"{table} is empty. Run providers.semantic_matcher.backfill_all(db) "
+            f"or set MATCHER_BOOTSTRAP=1 to auto-reindex on boot."
+        )
+
+
+def match_customer(
+    hint: str,
+    *,
+    conversation_ctx: Any,  # ConversationContext
+    conversation_id: uuid.UUID,
+    db: Session,
+) -> "CustomerMatch":
+    """Resolve a free-text customer reference to a customer row.
+
+    Parameters:
+        hint: Free-text customer reference from a user or conversation.
+        conversation_ctx: ConversationContext providing active account + recency.
+        conversation_id: UUID identifying the current conversation (used as
+            the LRU cache key).
+        db: SQLAlchemy Session for DB reads.
+
+    Returns:
+        CustomerMatch with customer_id=None if the hint is empty or no match
+        is found with sufficient confidence.
+
+    Side effects:
+        * Reads customers + customer_search_entries (Stage A + Stage B DB reads).
+        * One OpenAI API call (Stage B) unless cache-hit or empty hint.
+        * Writes to the per-conversation in-memory LRU cache.
+    """
+    from agents.schemas import CustomerMatch
+
+    if not hint or not hint.strip():
+        return CustomerMatch(
+            customer_id=None,
+            customer_name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+
+    if len(hint) > 512:
+        logger.warning(
+            "Truncating over-long matcher hint from %d to 512 chars", len(hint)
+        )
+        hint = hint[:512]
+
+    _check_index_populated("customer_search_entries", db)
+
+    cache = _cache_for(conversation_id)
+    cache_key = (
+        _normalize_for_index_and_query(hint, kind="customer"),
+        _ctx_key(conversation_ctx),
+    )
+    if cache_key in cache:
+        cache.move_to_end(cache_key)
+        return cache[cache_key]
+
+    candidates = _hybrid_retrieve(
+        hint,
+        table="customer_search_entries",
+        db=db,
+    )
+
+    # Inject the active account into the shortlist for pronoun queries so the
+    # LLM can always apply Rule 1 (PRONOUN RESOLUTION) even when Stage A did
+    # not surface it.  source="active_account" is a sentinel recognisable by
+    # downstream code.
+    active_account_id = getattr(conversation_ctx, "active_account_id", None)
+    if active_account_id is not None:
+        has_active = any(c.customer_id == active_account_id for c in candidates)
+        if not has_active:
+            row = db.execute(
+                text("SELECT name FROM customers WHERE id = :id"),
+                {"id": active_account_id},
+            ).first()
+            if row:
+                candidates.append(
+                    Candidate(
+                        entry_id=uuid.uuid4(),
+                        customer_id=active_account_id,
+                        product_id=None,
+                        service_id=None,
+                        entry_text=row.name,
+                        source="active_account",
+                        dense_rank=None,
+                        fts_rank=None,
+                        dense_score=None,
+                        fts_score=None,
+                        fused_score=0.50,
+                    )
+                )
+
+    if not candidates:
+        result: Any = CustomerMatch(
+            customer_id=None,
+            customer_name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+    else:
+        result = _llm_disambiguate(
+            query=hint,
+            candidates=candidates,
+            kind="customer",
+            ctx=conversation_ctx,
+            db=db,
+        )
+
+    cache[cache_key] = result
+    while len(cache) > CACHE_CAP_PER_CONV:
+        cache.popitem(last=False)
+
+    return result
+
+
+def match_sku(
+    query: str,
+    *,
+    sku_context: Any,  # SkuContext
+    conversation_id: uuid.UUID,
+    db: Session,
+) -> "SkuMatch":
+    """Resolve a free-text product/service reference to a SKU row.
+
+    Short-circuits on exact SKU-code match (skips Stage A + B entirely).
+
+    Parameters:
+        query: Free-text product or service reference from a user or extraction.
+        sku_context: SkuContext providing order-level hints.
+        conversation_id: UUID identifying the current conversation (used as
+            the LRU cache key).
+        db: SQLAlchemy Session for DB reads.
+
+    Returns:
+        SkuMatch with sku_kind=None if the query is empty or unresolvable.
+
+    Side effects:
+        * Reads sku_search_entries + products + services (Stage A + Stage B).
+        * One OpenAI API call (Stage B) unless cache-hit, empty query, or
+          exact SKU-code short-circuit.
+        * Writes to the per-conversation in-memory LRU cache.
+    """
+    from agents.schemas import SkuMatch
+
+    if not query or not query.strip():
+        return SkuMatch(
+            sku_kind=None,
+            product_id=None,
+            service_id=None,
+            sku_code=None,
+            name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+
+    if len(query) > 512:
+        logger.warning("Truncating over-long matcher query from %d to 512 chars", len(query))
+        query = query[:512]
+
+    _check_index_populated("sku_search_entries", db)
+
+    # Exact SKU-code short-circuit — skips embedding + LLM entirely.
+    normalized = query.strip().upper()
+    row = db.execute(
+        text("SELECT id, sku, name FROM products WHERE sku = :sku"),
+        {"sku": normalized},
+    ).first()
+    if row:
+        return SkuMatch(
+            sku_kind="product",
+            product_id=row.id,
+            service_id=None,
+            sku_code=row.sku,
+            name=row.name,
+            confidence=1.0,
+            evidence=[query],
+            alternatives=[],
+        )
+    row = db.execute(
+        text("SELECT id, sku, name FROM services WHERE sku = :sku"),
+        {"sku": normalized},
+    ).first()
+    if row:
+        return SkuMatch(
+            sku_kind="service",
+            product_id=None,
+            service_id=row.id,
+            sku_code=row.sku,
+            name=row.name,
+            confidence=1.0,
+            evidence=[query],
+            alternatives=[],
+        )
+
+    cache = _cache_for(conversation_id)
+    cache_key = (
+        "sku",
+        _normalize_for_index_and_query(query, kind="sku"),
+        _ctx_key(sku_context),
+    )
+    if cache_key in cache:
+        cache.move_to_end(cache_key)
+        return cache[cache_key]
+
+    candidates = _hybrid_retrieve(
+        query,
+        table="sku_search_entries",
+        db=db,
+    )
+    if not candidates:
+        result: Any = SkuMatch(
+            sku_kind=None,
+            product_id=None,
+            service_id=None,
+            sku_code=None,
+            name=None,
+            confidence=0.0,
+            evidence=[],
+            alternatives=[],
+        )
+    else:
+        result = _llm_disambiguate(
+            query=query,
+            candidates=candidates,
+            kind="sku",
+            ctx=sku_context,
+            db=db,
+        )
+
+    cache[cache_key] = result
+    while len(cache) > CACHE_CAP_PER_CONV:
+        cache.popitem(last=False)
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Backfill + reindex helpers (Task 6)
+# ---------------------------------------------------------------------------
+
+
+def backfill_all(db: Session) -> int:
+    """Truncate-and-rebuild both search-entry tables from
+    customers/sites/products/services. Idempotent.
+
+    Returns the total row count written across both tables.
+
+    Side effects:
+        * TRUNCATE on customer_search_entries + sku_search_entries.
+        * INSERTs proportional to (customers + aliases + sites +
+          products + services + their codes).
+        * Embeds every entry_text via the shared VectorSearchProvider.
+        * Commits the transaction.
+
+    Parameters:
+        db: SQLAlchemy Session for DB reads and writes.
+
+    Returns:
+        Total number of rows inserted across both tables.
+    """
+    client = _get_vector_provider()
+    db.execute(text("TRUNCATE TABLE customer_search_entries"))
+    db.execute(text("TRUNCATE TABLE sku_search_entries"))
+    total = 0
+
+    # Customer canonical names + aliases
+    rows = db.execute(text("SELECT id, name, aliases FROM customers")).mappings().all()
+    for r in rows:
+        emb = client.embed(r["name"])
+        db.execute(text(
+            "INSERT INTO customer_search_entries "
+            "(customer_id, entry_text, source, embedding) "
+            "VALUES (:cid, :et, 'name', CAST(:emb AS vector))"
+        ), {"cid": r["id"], "et": r["name"], "emb": emb})
+        total += 1
+        for alias in r.get("aliases") or []:
+            emb = client.embed(alias)
+            db.execute(text(
+                "INSERT INTO customer_search_entries "
+                "(customer_id, entry_text, source, embedding) "
+                "VALUES (:cid, :et, 'alias', CAST(:emb AS vector))"
+            ), {"cid": r["id"], "et": alias, "emb": emb})
+            total += 1
+
+    # Customer sites
+    site_rows = db.execute(text(
+        "SELECT customer_id, name FROM customer_sites"
+    )).mappings().all()
+    for r in site_rows:
+        emb = client.embed(r["name"])
+        db.execute(text(
+            "INSERT INTO customer_search_entries "
+            "(customer_id, entry_text, source, embedding) "
+            "VALUES (:cid, :et, 'site', CAST(:emb AS vector))"
+        ), {"cid": r["customer_id"], "et": r["name"], "emb": emb})
+        total += 1
+
+    # Products: name + code
+    prod_rows = db.execute(text(
+        "SELECT id, sku, name FROM products"
+    )).mappings().all()
+    for r in prod_rows:
+        emb = client.embed(r["name"])
+        db.execute(text(
+            "INSERT INTO sku_search_entries "
+            "(product_id, entry_text, source, embedding) "
+            "VALUES (:pid, :et, 'product_name', CAST(:emb AS vector))"
+        ), {"pid": r["id"], "et": r["name"], "emb": emb})
+        total += 1
+        emb = client.embed(r["sku"])
+        db.execute(text(
+            "INSERT INTO sku_search_entries "
+            "(product_id, entry_text, source, embedding) "
+            "VALUES (:pid, :et, 'product_code', CAST(:emb AS vector))"
+        ), {"pid": r["id"], "et": r["sku"], "emb": emb})
+        total += 1
+
+    # Services: name + code
+    svc_rows = db.execute(text(
+        "SELECT id, sku, name FROM services"
+    )).mappings().all()
+    for r in svc_rows:
+        emb = client.embed(r["name"])
+        db.execute(text(
+            "INSERT INTO sku_search_entries "
+            "(service_id, entry_text, source, embedding) "
+            "VALUES (:sid, :et, 'service_name', CAST(:emb AS vector))"
+        ), {"sid": r["id"], "et": r["name"], "emb": emb})
+        total += 1
+        emb = client.embed(r["sku"])
+        db.execute(text(
+            "INSERT INTO sku_search_entries "
+            "(service_id, entry_text, source, embedding) "
+            "VALUES (:sid, :et, 'service_code', CAST(:emb AS vector))"
+        ), {"sid": r["id"], "et": r["sku"], "emb": emb})
+        total += 1
+
+    db.commit()
+    logger.info("backfill_all complete: %d entries written", total)
+    return total
+
+
+def reindex_customer(customer_id: uuid.UUID, db: Session) -> None:
+    """Rebuild customer_search_entries for a single customer.
+
+    Parameters:
+        customer_id: UUID of the customer to reindex.
+        db: SQLAlchemy Session for DB reads and writes.
+
+    Side effects:
+        * DELETE then INSERT for that customer's rows. Commit.
+
+    Raises:
+        LookupError: when no customer with the given id exists.
+    """
+    client = _get_vector_provider()
+    db.execute(text(
+        "DELETE FROM customer_search_entries WHERE customer_id = :cid"
+    ), {"cid": customer_id})
+    row = db.execute(text(
+        "SELECT id, name, aliases FROM customers WHERE id = :cid"
+    ), {"cid": customer_id}).mappings().first()
+    if not row:
+        raise LookupError(
+            f"reindex_customer: customer {customer_id!r} not found. "
+            f"Does the customer exist in the customers table?"
+        )
+    emb = client.embed(row["name"])
+    db.execute(text(
+        "INSERT INTO customer_search_entries "
+        "(customer_id, entry_text, source, embedding) "
+        "VALUES (:cid, :et, 'name', CAST(:emb AS vector))"
+    ), {"cid": customer_id, "et": row["name"], "emb": emb})
+    for alias in row.get("aliases") or []:
+        emb = client.embed(alias)
+        db.execute(text(
+            "INSERT INTO customer_search_entries "
+            "(customer_id, entry_text, source, embedding) "
+            "VALUES (:cid, :et, 'alias', CAST(:emb AS vector))"
+        ), {"cid": customer_id, "et": alias, "emb": emb})
+    site_rows = db.execute(text(
+        "SELECT name FROM customer_sites WHERE customer_id = :cid"
+    ), {"cid": customer_id}).mappings().all()
+    for s in site_rows:
+        emb = client.embed(s["name"])
+        db.execute(text(
+            "INSERT INTO customer_search_entries "
+            "(customer_id, entry_text, source, embedding) "
+            "VALUES (:cid, :et, 'site', CAST(:emb AS vector))"
+        ), {"cid": customer_id, "et": s["name"], "emb": emb})
+    db.commit()
+
+
+def reindex_sku(
+    *,
+    product_id: uuid.UUID | None = None,
+    service_id: uuid.UUID | None = None,
+    db: Session,
+) -> None:
+    """Rebuild sku_search_entries for a single product OR service.
+
+    Pass exactly one of product_id / service_id.
+
+    Parameters:
+        product_id: UUID of the product to reindex, or None.
+        service_id: UUID of the service to reindex, or None.
+        db: SQLAlchemy Session for DB reads and writes.
+
+    Side effects:
+        * DELETE then INSERT for that product/service's rows. Commit.
+
+    Raises:
+        ValueError: when both or neither of product_id / service_id are passed.
+        LookupError: when the specified product or service does not exist.
+    """
+    if (product_id is None) == (service_id is None):
+        raise ValueError(
+            "reindex_sku: pass exactly one of product_id/service_id, not both or neither. "
+            f"Got product_id={product_id!r}, service_id={service_id!r}."
+        )
+    client = _get_vector_provider()
+    if product_id:
+        db.execute(text(
+            "DELETE FROM sku_search_entries WHERE product_id = :pid"
+        ), {"pid": product_id})
+        row = db.execute(text(
+            "SELECT sku, name FROM products WHERE id = :pid"
+        ), {"pid": product_id}).mappings().first()
+        if not row:
+            raise LookupError(
+                f"reindex_sku: product {product_id!r} not found. "
+                f"Does the product exist in the products table?"
+            )
+        for entry_text, source in [
+            (row["name"], "product_name"),
+            (row["sku"], "product_code"),
+        ]:
+            emb = client.embed(entry_text)
+            db.execute(text(
+                "INSERT INTO sku_search_entries "
+                "(product_id, entry_text, source, embedding) "
+                "VALUES (:pid, :et, :s, CAST(:emb AS vector))"
+            ), {"pid": product_id, "et": entry_text, "s": source, "emb": emb})
+    else:
+        db.execute(text(
+            "DELETE FROM sku_search_entries WHERE service_id = :sid"
+        ), {"sid": service_id})
+        row = db.execute(text(
+            "SELECT sku, name FROM services WHERE id = :sid"
+        ), {"sid": service_id}).mappings().first()
+        if not row:
+            raise LookupError(
+                f"reindex_sku: service {service_id!r} not found. "
+                f"Does the service exist in the services table?"
+            )
+        for entry_text, source in [
+            (row["name"], "service_name"),
+            (row["sku"], "service_code"),
+        ]:
+            emb = client.embed(entry_text)
+            db.execute(text(
+                "INSERT INTO sku_search_entries "
+                "(service_id, entry_text, source, embedding) "
+                "VALUES (:sid, :et, :s, CAST(:emb AS vector))"
+            ), {"sid": service_id, "et": entry_text, "s": source, "emb": emb})
+    db.commit()

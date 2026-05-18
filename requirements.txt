@@ -30,9 +30,6 @@ faker>=25.0
 sentence-transformers>=2.5
 numpy>=1.26
 
-# -- Fuzzy matching (customer / SKU resolution in the extraction agent) ---
-rapidfuzz>=3.9
-
 # -- LLM — required (no canned fallback). ANTHROPIC_API_KEY or OPENAI_API_KEY
 #         must be set at runtime; providers/llm.py raises if both are absent.
 anthropic>=0.40

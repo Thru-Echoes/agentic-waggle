@@ -194,8 +194,8 @@ def run_agent(db: Session, email: EmailInput) -> OrderDraft:
 
     customer = result.customer
     print(f"    customer:  {customer.customer_name!r} "
-          f"(score={customer.score:.1f}"
-          f"{', ambiguous' if customer.ambiguous else ''})")
+          f"(confidence={customer.confidence:.2f}"
+          f"{', alternatives=' + str(len(customer.alternatives)) if customer.alternatives else ''})")
     print(f"    state:     {result.state.value}")
     print(f"    total:     ${result.total_usd}")
     print(f"    items:     {len(result.line_items)}")
@@ -302,9 +302,14 @@ def persist_and_advance(db: Session, draft: OrderDraft) -> uuid.UUID:
     print(f"    fsm path:     " + " → ".join(s.value for _, s in fsm_path))
 
     # ERP sync — a real call to the mock; surfaces as a line in /erp-sync-log/.
+    # erp_customer_no is no longer on CustomerMatch; fetch it from the DB.
+    erp_customer_no = db.execute(
+        text("SELECT erp_customer_no FROM customers WHERE id = :id"),
+        {"id": str(draft.customer.customer_id)},
+    ).scalar_one()
     erp = ERPClient(db=db)
     erp_order = {
-        "customer_erp_no": draft.customer.erp_customer_no,
+        "customer_erp_no": erp_customer_no,
         "line_items": [
             {"sku": li.sku, "quantity": li.quantity} for li in draft.line_items
         ],
@@ -472,7 +477,6 @@ def chat_copilot_turn(db: Session, draft: OrderDraft) -> None:
     """
     from datetime import datetime, timezone
 
-    from agents.copilot.account_resolver import build_account_index
     from agents.copilot.orchestrator import get_copilot_response
     from agents.order_extractor import _build_chat_model
     from app.config import get_settings
@@ -483,7 +487,6 @@ def chat_copilot_turn(db: Session, draft: OrderDraft) -> None:
         "main": _build_chat_model(settings.copilot_main_model),
         "report": _build_chat_model(settings.copilot_report_model),
     }
-    account_index = build_account_index(db)
 
     customer_name = draft.customer.customer_name or "this customer"
     user_text = (
@@ -517,12 +520,12 @@ def chat_copilot_turn(db: Session, draft: OrderDraft) -> None:
     )
     print(f"    user turn: {user_text!r}")
 
-    # Orchestrator
+    # Orchestrator (semantic matcher replaces account_index — Task 12+)
     response = get_copilot_response(
         user_text=user_text,
         db=db,
         models=models,
-        account_index=account_index,
+        conv_id=conv_id,
         active_account_id=draft.customer.customer_id,
     )
 

@@ -189,6 +189,12 @@ def run(db: Session | None = None) -> None:
             per_type,
         )
 
+        # Semantic matcher backfill (runs after customers, sites,
+        # products, services, customer_reports are seeded)
+        from seed import customer_search_entries
+        matcher_count = customer_search_entries.persist(db)
+        log.info("seed.embeddings: backfilled %d matcher entries", matcher_count)
+
     finally:
         if own_session:
             db.close()
