@@ -363,7 +363,19 @@ def _split_tool_calls(
         elif name == _PENDING_REPORT_TOOL_NAME:
             pending_report = (record.get("arguments") or {}).get("draft_data")
         else:
-            real.append(ToolCallOut.model_validate(record))
+            try:
+                real.append(ToolCallOut.model_validate(record))
+            except ValidationError as exc:
+                # Legacy/malformed real tool-call record (schema evolved —
+                # e.g. result_excerpt / latency_ms became required after the
+                # row was written). Drop the un-renderable chip rather than
+                # 500 the whole page; this runs before the draft guard and
+                # on every render + confirm path.
+                log.warning(
+                    "Skipping unrenderable legacy tool_call record "
+                    "(schema evolved; not re-actionable from history): %s",
+                    exc,
+                )
     return real, pending_order, pending_report
 
 
@@ -1113,7 +1125,22 @@ def _persist_order_draft(
             message="No pending order draft on this turn.",
         )
 
-    draft = OrderDraft.model_validate(pending_order_data)
+    try:
+        draft = OrderDraft.model_validate(pending_order_data)
+    except ValidationError as exc:
+        log.warning(
+            "confirm-order on legacy/invalid stashed draft for turn %s "
+            "(schema evolved): %s",
+            turn_id,
+            exc,
+        )
+        return ConfirmResultOut(
+            ok=False, persisted_id=None,
+            message=(
+                "This order draft predates the current schema and can't be "
+                "confirmed from history — re-run the original request."
+            ),
+        )
     if draft.customer.customer_id is None:
         return ConfirmResultOut(
             ok=False, persisted_id=None,
@@ -1173,7 +1200,22 @@ def _persist_report_draft(
             message="No pending report draft on this turn.",
         )
 
-    draft = CustomerReportDraft.model_validate(pending_report_data)
+    try:
+        draft = CustomerReportDraft.model_validate(pending_report_data)
+    except ValidationError as exc:
+        log.warning(
+            "confirm-report on legacy/invalid stashed draft for turn %s "
+            "(schema evolved): %s",
+            turn_id,
+            exc,
+        )
+        return ConfirmResultOut(
+            ok=False, persisted_id=None,
+            message=(
+                "This report draft predates the current schema and can't be "
+                "confirmed from history — re-run the original request."
+            ),
+        )
     conv = db.get(Conversation, turn.conversation_id)
     if conv is None:
         return ConfirmResultOut(
