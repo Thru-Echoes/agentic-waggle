@@ -112,8 +112,10 @@ Rendered via Playwright from Mermaid sources in `../diagrams/source/`.
 
 ## Live deploy
 
-- **URL:** https://waggle.fly.dev (deployed 2026-05-11; Phase F + G live)
-- **Surfaces verified post-deploy:**
+- **URL:** https://waggle.fly.dev (Phase F+G deployed 2026-05-11; v5.1 matcher + Phase-I shipped 2026-05-18; remediation per `fix/critical-review-remediation` in progress 2026-05-19).
+- **Migration HEAD: 004** — adds `customer_search_entries` + `sku_search_entries` for the semantic matcher (pgvector + FTS + CHECK constraints). On boot, `scripts/boot.py` runs `alembic upgrade head` + seed-if-empty, then execs uvicorn. The matcher search-index backfill runs as a **post-bind FastAPI lifespan task** gated on `WAGGLE_BOOT_REINDEX=1` so a cold deploy binds the port immediately instead of blocking Fly's health check on the synchronous embed pass.
+- **2026-05-18 production incident** — Phase-I deploy surfaced a latent `/copilot` HTTP 500: historical `ChatTurn` rows held stashed-draft JSON predating the matcher schema's now-required `customer.evidence`. Hotfix shipped in `b897ef5` (L1/L2 — `_turn_view_for_template` render path) and `f52debb` (L3/L4 — `_split_tool_calls` + the confirm-order/report POST paths). Regression test in `tests/test_routes_copilot.py::TestLegacyDraftRegression`. Blast radius was contained to `/copilot` HTML; `/`, `/inbox`, `/api/*` stayed 200.
+- **Surfaces verified at the 2026-05-11 baseline deploy** (Phase F+G smoke checks):
   - `GET /` → dashboard renders, Copilot nav link visible
   - `GET /copilot` → chat shell renders with composer
   - `GET /api/copilot/conversations` → JSON list returns
@@ -121,11 +123,9 @@ Rendered via Playwright from Mermaid sources in `../diagrams/source/`.
     `build_context` tool chip + grounded answer about varroa)
   - `GET /inbox` → 162 Extract buttons rendered
   - `POST /inbox/confirm` with malformed JSON → "Could not save" error card
-  - `GET /api/orders?limit=1` → 150 seeded orders
-- **Migration 003 applied automatically** on first boot via `scripts/boot.py`
-  (`alembic upgrade head` → conversations + chat_turns tables created).
-- Image: rebuilt via `fly deploy --remote-only`, ~1 min build + 1.5 min
-  rolling restart with seeded volume reattached.
+  - `GET /api/orders?limit=1` → seeded orders
+- **Demo flow scope honesty:** the live UI exposes inbox extraction (`/inbox`) and the copilot (`/copilot`). The full `EXTRACTED → UNDER_REVIEW → APPROVED → SCHEDULED → SYNCED_TO_ERP` FSM + ERP submit is orchestrated end-to-end by `scripts/demo.py`, **not** by the interactive Confirm buttons — those persist directly to `EXTRACTED`/`DRAFT`. Wiring the FSM into the UI confirm flow is a deferred enhancement.
+- Image: rebuilt via `fly deploy --remote-only`, ~1 min build + 1.5 min rolling restart with seeded volume reattached.
 
 ## Phase H — copilot polish (done 2026-05-11)
 
@@ -330,14 +330,26 @@ copilot orchestrator both go through the public API. Legacy
 `sku_search_entries` tables added in migration 004 with pgvector + FTS
 + CHECK constraints.
 
-### v5.1 eval (full mode, 281 cases)
+### v5.1 eval (full mode, 281 cases — re-measured post-rigor)
 
-| Metric | v4 baseline | v5 | v5.1 | Delta v5→v5.1 |
+The 2026-05-19 critical-review remediation tightened the eval contract:
+the `expected_alternatives_min` field (specified on 34 cases) is now
+**asserted** by the harness (was parsed but silently ignored — the
+discriminating half of the abstain-with-alternatives contract was
+untested). That single change exposed 2 genuinely-vacuous `sku_ambiguous`
+cases (matcher returned null without surfacing the required ≥2
+alternatives) — the pre-rigor "100% SKU" was inflated by those
+vacuous passes. It also correctly lifted `ambiguous_reference` and
+`cross_customer_collision` to PASS (the matcher DOES surface alts on
+those categories — the prior assumption that they were universally
+vacuous was overstated). Numbers below are post-rigor.
+
+| Metric | v4 baseline | v5 | v5.1 (pre-rigor) | **v5.1 (post-rigor)** |
 |---|---|---|---|---|
-| Customer | 76.3% (158/207) | 94.2% (195/207) | **95.2% (200/210)** | +1.0pp / +5 cases |
-| SKU | 91.4% (64/70) | 100.0% (70/70) | **100.0% (71/71)** | maintained |
-| Customer categories PASS | 5/17 | 10/17 | **13/17** | +3 |
-| SKU categories PASS | 5/7 | 7/7 | **7/7** | maintained |
+| Customer | 76.3% (158/207) | 94.2% (195/207) | 95.2% (200/210) | **95.2% (200/210)** |
+| SKU | 91.4% (64/70) | 100.0% (70/70) | 100.0% (71/71) | **95.8% (68/71)** |
+| Customer cats PASS | 5/17 | 10/17 | 13/17 | **11/17** |
+| SKU cats PASS | 5/7 | 7/7 | 7/7 | **5/7** |
 
 ### Cycle history
 
@@ -347,26 +359,48 @@ copilot orchestrator both go through the public API. Legacy
 - v5: full quality pass — noise stripping, best-entry-per-target SQL
   (`ROW_NUMBER PARTITION BY target`), Stage B prompt rewrite,
   post-verifier business-abbreviation expansion.
-- v5.1 (current ship): 4 corpus additions (3 near-miss negatives +
+- v5.1 (shipped 2026-05-18): 4 corpus additions (3 near-miss negatives +
   wildflower honey drum), Stage B disambig model upgrade
   gpt-5.4-nano → gpt-5.4-mini.
+- **v5.1 remediation pass (2026-05-19, `fix/critical-review-remediation`)**:
+  complete the prod /copilot legacy-JSON hotfix (L3 `_split_tool_calls`
+  + L4 confirm POST paths); legacy-draft regression test; honest
+  `pytest.mark.skip` on the matcher Layer-2 browser tests (replacing a
+  stale comment); `boot.py` reindex moved to a post-bind FastAPI
+  lifespan task (fixes "not listening on 0.0.0.0:5001" fragility);
+  reindex_sku E2E test; narrow `except` in Stage B (fail-loud — programming
+  bugs no longer misclassified as transient); **eval-rigor**:
+  `expected_alternatives_min` assertion + `MATCHER_EVAL_STRICT` gate
+  with `KNOWN_ACCEPTABLE_CUSTOMER` / `KNOWN_ACCEPTABLE_SKU` allowlists
+  so `make test` stays honest about documented limitations but catches
+  regressions; README rapidfuzz removed; corpus + migration counts
+  reconciled; comparison-report gpt-5.5 provenance disclosed.
 
-### Known-acceptable failures (v5.1 ship state)
+### Known-acceptable failures (v5.1 post-rigor ship state)
 
-4 customer categories sit below their aspirational thresholds and are
-documented rather than gating the ship:
+The eval test is **green by default** because these 8 categories are on
+the documented allowlist in `tests/test_matcher_eval.py`
+(`KNOWN_ACCEPTABLE_CUSTOMER` / `KNOWN_ACCEPTABLE_SKU`). Regressions on
+*unlisted* categories still fail the test. Set `MATCHER_EVAL_STRICT=1`
+to escalate every sub-threshold category to a hard fail (CI rigor pass).
+
+Customer (6 categories):
 
 | Category | Precision | Threshold | Note |
 |---|---|---|---|
-| `cross_customer_collision` | 72.7% | 90% | gpt-5.4-mini commits to a specific name on prefix collisions (`Riverbend`, `Wenatchee`, `Seven Acres Farms`) when null+alts is expected. |
-| `site_shortform` | 62.5% | 95% | mini under-commits to null on `Martinez hilltop`, `Foothill river block`, `Haley orchard road site` (regression from nano). |
-| `ambiguous_reference` | 90.9% | 95% | `Cascade` over-resolves to Cascade Orchard Partners. |
-| `site_reference` | 86.7% | 95% | Cobblestone/Drakestone Main Warehouse swap (Stage A FTS tokenization — open follow-up). |
+| `abbreviation` | 91.7% (11/12) | 98% | mini misses single colloquial cases (e.g. `Pacific Honey`) — matcher-quality follow-up. |
+| `alias` | 92.3% (12/13) | 98% | mini misses numeric-to-word aliases (e.g. `7 Acres Farms`) — follow-up. |
+| `apostrophe_variant` | 88.9% (8/9) | 98% | mini misses some `Company`→`Co.` normalization edges — follow-up. |
+| `casual_colloquial` | 92.3% (12/13) | 95% | mini misses some casual-phrase resolutions — follow-up. |
+| `site_reference` | 86.7% (13/15) | 95% | Cobblestone/Drakestone Main Warehouse swap — Stage A FTS tokenization issue (matcher-prompt-independent). |
+| `site_shortform` | 75.0% (6/8) | 95% | mini under-commits to null on single-customer block disambiguators. |
 
-Trade-off: mini's gains across abbreviation / alias / casual /
-compound / pronoun outweigh the collision/shortform regressions in
-aggregate. The confidence-graduated UX surfaces alternatives in
-production even when Stage B commits incorrectly.
+SKU (2 categories):
+
+| Category | Precision | Threshold | Note |
+|---|---|---|---|
+| `sku_ambiguous` | 71.4% (5/7) | 95% | Rigor-exposed: matcher returns null on `varroa treatment` / `honey drum` without surfacing the required ≥2 alternatives. Matcher-prompt TODO. |
+| `sku_negative` | 87.5% (7/8) | 100% | `entrance reducer` over-matches to `EQ-FEED-ENT` — investigate corpus-vs-seed alignment. |
 
 Full details in `.reports/matcher_phase_i_summary.md`.
 

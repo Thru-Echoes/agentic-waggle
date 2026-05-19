@@ -1,20 +1,30 @@
 """Container entrypoint that prepares the DB then hands off to uvicorn.
 
-Runs in two phases:
+Runs in two blocking phases, then hands off:
 
 1. `alembic upgrade head` — apply migrations idempotently. No-op if the DB
-   is already at the head revision.
+   is already at the head revision. MUST precede serving.
 2. Seed if (and only if) the `customers` table is empty. The seed pipeline
    itself is fail-loud: re-running on a populated DB raises IntegrityError,
    which is the right behavior for local dev but the wrong behavior for an
    auto-restart in production. The empty-DB guard here is what makes the
    container restart-safe.
 
+The matcher search-index backfill is deliberately NOT run here. It is a
+slow synchronous embed pass; running it before `exec uvicorn` left Fly's
+health check hitting an unbound port (the "not listening on
+0.0.0.0:5001" fragility). Instead `main()` sets `WAGGLE_BOOT_REINDEX=1`
+and the app's lifespan (app.main._run_boot_reindex) runs `reindex_if_empty`
+as a POST-BIND background task — the port binds immediately; matcher
+calls raise the loud, expected `MatcherIndexEmpty` during the brief
+rebuild window.
+
 After preflight, exec into uvicorn so signals propagate cleanly.
 
 Side effects:
     * runs the alembic CLI
     * may execute the full `seed.generate` pipeline (writes ~17 tables of rows)
+    * sets WAGGLE_BOOT_REINDEX in the environment uvicorn inherits
     * replaces the current process with uvicorn (no return)
 
 Reads `DATABASE_URL` and uvicorn host/port from `app.config.Settings`.
@@ -114,12 +124,14 @@ def exec_uvicorn() -> None:
 
 
 def main() -> None:
-    from db.session import session_scope
-
     run_migrations()
     seed_if_empty()
-    with session_scope() as db:
-        reindex_if_empty(db)
+    # Matcher reindex is deferred to the app's POST-BIND lifespan task
+    # (app.main._run_boot_reindex) so a cold deploy binds 0.0.0.0:$PORT
+    # immediately instead of blocking Fly's health check on the
+    # synchronous one-by-one embed pass. reindex_if_empty() below is the
+    # shared implementation that task calls.
+    os.environ["WAGGLE_BOOT_REINDEX"] = "1"
     exec_uvicorn()
 
 

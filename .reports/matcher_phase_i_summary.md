@@ -23,14 +23,26 @@ orchestrator both go through the public API. `rapidfuzz` removed.
 migration 004 with pgvector + FTS + CHECK constraints.
 `scripts/boot.py reindex_if_empty` backfills the index on first deploy.
 
-## v5.1 eval (full mode, 281 cases)
+## v5.1 eval (full mode, 281 cases — post-rigor)
 
-| Metric | v4 baseline | v5 | v5.1 |
-|---|---|---|---|
-| Customer | 76.3% (158/207) | 94.2% (195/207) | **95.2% (200/210)** |
-| SKU | 91.4% (64/70) | 100.0% (70/70) | **100.0% (71/71)** |
-| Customer categories PASS | 5/17 | 10/17 | **13/17** |
-| SKU categories PASS | 5/7 | 7/7 | **7/7** |
+The 2026-05-19 critical-review remediation tightened the eval contract:
+`expected_alternatives_min` (specified on 34 corpus cases) is now
+**asserted** by the harness — previously it was parsed but silently
+ignored, leaving the discriminating half of the abstain-with-alternatives
+contract untested. The numbers below are post-rigor.
+
+| Metric | v4 baseline | v5 | v5.1 (pre-rigor, 2026-05-18) | **v5.1 (post-rigor, 2026-05-19)** |
+|---|---|---|---|---|
+| Customer | 76.3% (158/207) | 94.2% (195/207) | 95.2% (200/210) | **95.2% (200/210)** |
+| SKU | 91.4% (64/70) | 100.0% (70/70) | 100.0% (71/71) | **95.8% (68/71)** |
+| Customer cats PASS | 5/17 | 10/17 | 13/17 | **11/17** |
+| SKU cats PASS | 5/7 | 7/7 | 7/7 | **5/7** |
+
+### What the rigor change moved
+
+Two corrections to the pre-rigor narrative:
+- **`ambiguous_reference` and `cross_customer_collision` went FROM FAIL TO PASS** (90.9%→100% and 72.7%→90.9% respectively) — the matcher actually surfaces alternatives correctly on these categories; the pre-rigor framing that "mini commits when null+alts is expected" was overstated for these. The alts-assertion vindicated those cases.
+- **`sku_ambiguous` dropped 100%→71.4%** — 2 genuinely vacuous passes (`varroa treatment`, `honey drum`) where the matcher returned null without surfacing the required ≥2 alternatives. The pre-rigor "100% SKU" inflated reality by these vacuous nulls; the post-rigor 95.8% is honest.
 
 ### Cycle history
 
@@ -42,43 +54,81 @@ migration 004 with pgvector + FTS + CHECK constraints.
   best-entry-per-target SQL, Stage B prompt rewrite, post-verifier
   business-abbreviation expansion.
 - **v5.1** — 4 corpus additions (3 near-miss negatives + wildflower
-  honey drum), Stage B disambig upgrade gpt-5.4-nano → gpt-5.4-mini.
+  honey drum), Stage B disambig upgrade gpt-5.4-nano → gpt-5.4-mini
+  (shipped 2026-05-18).
+- **v5.1 remediation pass** (2026-05-19, `fix/critical-review-remediation`)
+  — surfaced by a 5-agent critical review post-incident: complete the
+  prod `/copilot` legacy-JSON hotfix (L3 `_split_tool_calls` + L4
+  confirm POST paths) + non-vacuous regression test; honest
+  `pytest.mark.skip` on the matcher Layer-2 browser tests; `boot.py`
+  reindex moved to a post-bind FastAPI lifespan task (fixes
+  bind-blocking); `reindex_sku` E2E coverage; **narrow `except`** in
+  Stage B (fail-loud — programming bugs no longer misclassified as
+  transient); **eval-rigor**: `expected_alternatives_min` assertion +
+  `MATCHER_EVAL_STRICT` gate + documented allowlists in
+  `tests/test_matcher_eval.py`; README rapidfuzz removed; corpus +
+  migration counts reconciled; comparison-report gpt-5.5 provenance
+  disclosed.
 
-### v5 → v5.1 deltas
+### v5 → v5.1 (pre-rigor) deltas — historical record
 
-**Wins from mini (4 customer categories moved from FAIL to PASS):**
+These are the numbers reported on 2026-05-18 against the looser
+(pre-rigor) eval contract. They are kept here because the model-vs-model
+comparison they encode (gpt-5.4-nano vs gpt-5.4-mini) is still useful
+context for the ship decision. The post-rigor measurements above
+supersede them for current truth.
 
-| Category | v5 | v5.1 |
+**Wins from mini (4 customer categories moved FAIL→PASS, pre-rigor):**
+
+| Category | v5 | v5.1 (pre-rigor) |
 |---|---|---|
-| `abbreviation` | 91.7% | **100%** |
-| `alias` | 84.6% | **100%** |
-| `casual_colloquial` | 92.3% | **100%** |
-| `compound_reference` | 80% | **90%** |
-| `pronoun_resolution` | 90.9% | **100%** |
+| `abbreviation` | 91.7% | 100% |
+| `alias` | 84.6% | 100% |
+| `casual_colloquial` | 92.3% | 100% |
+| `compound_reference` | 80% | 90% |
+| `pronoun_resolution` | 90.9% | 100% |
 
-**Regressions from mini (2 customer categories moved further from threshold):**
+**Regressions from mini (2 customer categories, pre-rigor):**
 
-| Category | v5 | v5.1 | Regression |
-|---|---|---|---|
-| `cross_customer_collision` | 90.9% | **72.7%** | −18.2pp |
-| `site_shortform` | 87.5% | **62.5%** | −25.0pp |
+| Category | v5 | v5.1 (pre-rigor) |
+|---|---|---|
+| `cross_customer_collision` | 90.9% | 72.7% |
+| `site_shortform` | 87.5% | 62.5% |
 
-### Known-acceptable failures (v5.1 ship state)
+### Known-acceptable failures (v5.1 post-rigor ship state)
+
+The eval test is **green by default** because these 8 categories are
+on the documented allowlist in `tests/test_matcher_eval.py`
+(`KNOWN_ACCEPTABLE_CUSTOMER` / `KNOWN_ACCEPTABLE_SKU`). **Regressions
+on unlisted categories still fail the test.** Set
+`MATCHER_EVAL_STRICT=1` to escalate every sub-threshold category to a
+hard fail (CI rigor pass).
+
+Customer (6 categories):
 
 | Category | Precision | Threshold | Note |
 |---|---|---|---|
-| `cross_customer_collision` | 72.7% | 90% | mini commits to a specific name on prefix collisions (`Riverbend`, `Wenatchee`, `Seven Acres Farms`) when null+alternatives is expected. |
-| `site_shortform` | 62.5% | 95% | mini under-commits to null on `Martinez hilltop`, `Foothill river block`, `Haley orchard road site`. |
-| `ambiguous_reference` | 90.9% | 95% | `Cascade` over-resolves to Cascade Orchard Partners. |
-| `site_reference` | 86.7% | 95% | Cobblestone/Drakestone Main Warehouse swap (Stage A FTS tokenization). |
+| `abbreviation` | 91.7% (11/12) | 98% | mini misses single colloquial cases (e.g. `Pacific Honey`) — matcher-quality follow-up. |
+| `alias` | 92.3% (12/13) | 98% | mini misses numeric-to-word aliases (e.g. `7 Acres Farms`) — follow-up. |
+| `apostrophe_variant` | 88.9% (8/9) | 98% | mini misses some `Company`→`Co.` normalization edges — follow-up. |
+| `casual_colloquial` | 92.3% (12/13) | 95% | mini misses some casual-phrase resolutions — follow-up. |
+| `site_reference` | 86.7% (13/15) | 95% | Cobblestone/Drakestone Main Warehouse swap — Stage A FTS tokenization (matcher-prompt-independent). |
+| `site_shortform` | 75.0% (6/8) | 95% | mini under-commits to null on single-customer block disambiguators (`Martinez hilltop`, `Haley orchard road site`). |
 
-Trade-off accepted: mini's gains across abbreviation / alias / casual /
-compound / pronoun outweigh the collision/shortform regressions in
-aggregate, and the confidence-graduated UX surfaces alternatives in
-production even when Stage B commits incorrectly. The
-`customer_id: 'null'` (string) pydantic warning seen once in the
-210-case eval log is mini's structured-output quirk; the matcher's
-retry path handles it cleanly.
+SKU (2 categories):
+
+| Category | Precision | Threshold | Note |
+|---|---|---|---|
+| `sku_ambiguous` | 71.4% (5/7) | 95% | Rigor-exposed: matcher returns null on `varroa treatment` / `honey drum` without the required ≥2 alternatives. Matcher-prompt TODO. |
+| `sku_negative` | 87.5% (7/8) | 100% | `entrance reducer` over-matches to `EQ-FEED-ENT` — investigate corpus-vs-seed alignment. |
+
+Trade-offs:
+- The confidence-graduated UX surfaces alternatives in production even
+  when Stage B commits incorrectly, so the customer-side fails are
+  mostly UX friction (no-match → retry) not data corruption.
+- The `customer_id: 'null'` (string) pydantic warning seen once in
+  earlier 210-case eval logs is mini's structured-output quirk; the
+  matcher's retry path handles it cleanly.
 
 ## Tasks 1–17 — final state
 
@@ -135,7 +185,7 @@ retry path handles it cleanly.
   matcher = 3 sequential LLM calls/turn) — not a v5.1 regression (these
   tests were scaffolded in Phase I Task 16 and never executed to green).
   `make test` (318 passed) covers the non-Playwright integration paths;
-  the matcher is validated by the full eval harness (95.2% / 100%).
+  the matcher is validated by the full eval harness (95.2% customer / 95.8% SKU, post-rigor).
   Follow-up fix candidates: (a) raise the wait threshold + warm the LLM
   client at app startup, (b) verify `OPENAI_API_KEY` propagates to the
   uvicorn subprocess env, (c) instrument the SSE handler for per-stage
