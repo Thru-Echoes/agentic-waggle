@@ -16,6 +16,26 @@ The name comes from the **waggle dance** — how bees tell each other where the 
 
 Clone the repo, set an `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`) in `.env`, and run `make build && make up && make migrate && make seed && make demo`. Postgres + pgvector + Redis come up under Docker; no other external dependencies.
 
+## Live demo
+
+A deployed instance is available at **<https://waggle.fly.dev>**. It runs Phase I (semantic matcher + copilot + inbox + MCP) end-to-end against a seeded synthetic Meridian Apiaries dataset.
+
+Basic-auth credentials (intentionally weak, intentionally shared — these gate against unauthenticated traffic / LLM-spend scraping, not against deliberate review use):
+
+| Field | Value |
+|---|---|
+| Username | `tester` |
+| Password | `letMeTest1` |
+
+Suggested walkthrough:
+
+1. **`/`** — dashboard: 40 customers, 150 orders across the FSM, 40 customer reports.
+2. **`/inbox`** — pick an inbound email, click *Extract*, watch the LangGraph agent draft a structured order with the semantic matcher resolving the customer (Stage A hybrid retrieve + Stage B LLM disambig), then *Confirm* to persist.
+3. **`/copilot`** — open a fresh conversation and try one of: *"What's the varroa trend at O'Reilly Family Orchards?"* (RAG-grounded answer), *"Log a visit for Foothill — mites at 3.5%, queens healthy"* (report draft), or *"Draft an order for Martinez — 20 Italian queens at $48 each"* (order draft + confirm).
+4. **MCP** — `.mcp.json.example` shows how to wire the two MCP servers into Claude Desktop / Claude Code / Cursor / Codex for the same data via tool calls.
+
+`/health` is public (Fly liveness bypass). Every other route requires the credentials above; expect an HTTP Basic prompt on first visit. Costs: each chat turn triggers ~3 sequential LLM calls (router + main + matcher), each order extraction triggers 5–10 — keep that in mind if you share the URL widely. Eval quality and known-acceptable limitations are documented honestly in [`STATUS.md`](STATUS.md) (Phase I) and [`.reports/matcher_phase_i_summary.md`](.reports/matcher_phase_i_summary.md).
+
 ## Data 
 
 - 40 customers (orchards, honey wholesalers, mead makers, specialty food)
