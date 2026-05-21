@@ -18,7 +18,7 @@
 #   partial_match_noise(6), sku_canonical_code(10), sku_product_name(10),
 #   sku_qty_plus_product(10), sku_service(6), sku_colloquial(8),
 #   sku_ambiguous(6), sku_negative(6)
-# Total: ~246 cases.
+# Total: 281 cases (210 customer-type + 71 SKU-type) across 24 categories.
 
 cases:
 

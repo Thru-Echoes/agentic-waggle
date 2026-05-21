@@ -338,6 +338,19 @@ def evaluate_case_customer(case: EvalCase, db: Any) -> EvalResult:
         else:
             passed = actual_name == case.expected_customer_name
 
+        # Enforce the abstain-with-alternatives contract when set: a case
+        # asserting `expected_alternatives_min: N` must see the matcher
+        # surface ≥N alternatives. This (a) tests the discriminating
+        # half of the contract that was previously unasserted, and
+        # (b) defangs the degenerate-null vacuity flagged in the
+        # critical review — a "null everywhere" matcher would fail
+        # every ambiguous_reference / cross_customer_collision case
+        # that demands alternatives, instead of scoring ~100% on them.
+        if case.expected_alternatives_min is not None:
+            passed = passed and (
+                len(match.alternatives) >= case.expected_alternatives_min
+            )
+
         return EvalResult(
             case=case,
             passed=passed,
@@ -394,6 +407,13 @@ def evaluate_case_sku(case: EvalCase, db: Any) -> EvalResult:
             else:
                 code_ok = True
             passed = kind_ok and code_ok
+
+        # Abstain-with-alternatives contract — see evaluate_case_customer
+        # for rationale. Closes the alts-untested gap on sku_ambiguous.
+        if case.expected_alternatives_min is not None:
+            passed = passed and (
+                len(match.alternatives) >= case.expected_alternatives_min
+            )
 
         return EvalResult(
             case=case,

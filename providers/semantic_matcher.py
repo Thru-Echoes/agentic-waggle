@@ -41,6 +41,8 @@ from dataclasses import dataclass
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal
 
+from openai import OpenAIError
+from pydantic import ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -797,7 +799,12 @@ def _llm_disambiguate(
         except LLMConfigurationError:
             # Auth failure — propagate immediately; not a transient error.
             raise
-        except Exception as e:
+        except (OpenAIError, ValidationError, json.JSONDecodeError) as e:
+            # Narrowed from `except Exception` (fail-loud rigor): only the
+            # legitimately-transient triggers retry / null-degrade.
+            # Programming bugs (AttributeError, KeyError, TypeError, etc.)
+            # now propagate to the caller's error handler instead of being
+            # silently misclassified as a transient API failure.
             last_error = e
             if attempt == 1:
                 logger.warning(

@@ -693,3 +693,36 @@ def test_reindex_customer_only_touches_that_customer(db_session_with_seed):
         "SELECT COUNT(*) FROM customer_search_entries"
     )).scalar_one()
     assert before_total == after_total  # idempotent — same row count
+
+
+def test_reindex_sku_only_touches_that_sku(db_session_with_seed, faker_instance):
+    """reindex_sku mirrors reindex_customer: rebuild one row's entries
+    idempotently, leaving the total sku_search_entries row count
+    unchanged. Closes the coverage gap flagged by the critical review
+    (reindex_customer was tested, reindex_sku was not).
+
+    Seeds products + services inline because db_session_with_seed only
+    populates regions/customers/sites — SKU search entries need product
+    rows to backfill from.
+    """
+    from seed import products as products_gen, services as services_gen
+
+    products_gen.persist(
+        db_session_with_seed, products_gen.generate(faker_instance)
+    )
+    services_gen.persist(db_session_with_seed, services_gen.generate())
+    db_session_with_seed.commit()
+
+    semantic_matcher.backfill_all(db_session_with_seed)
+    pid = db_session_with_seed.execute(text(
+        "SELECT id FROM products LIMIT 1"
+    )).scalar_one()
+    before_total = db_session_with_seed.execute(text(
+        "SELECT COUNT(*) FROM sku_search_entries"
+    )).scalar_one()
+    assert before_total > 0  # sanity: backfill produced SKU entries
+    semantic_matcher.reindex_sku(product_id=pid, db=db_session_with_seed)
+    after_total = db_session_with_seed.execute(text(
+        "SELECT COUNT(*) FROM sku_search_entries"
+    )).scalar_one()
+    assert before_total == after_total  # idempotent — same row count

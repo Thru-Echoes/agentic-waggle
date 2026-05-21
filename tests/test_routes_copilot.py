@@ -597,6 +597,106 @@ class TestJsonApi:
 
 
 # ---------------------------------------------------------------------------
+# Regression: legacy / schema-evolved persisted JSON must not 500
+# (the production /copilot incident — pre-Phase-I stashed drafts).
+# ---------------------------------------------------------------------------
+
+
+class TestLegacyDraftRegression:
+    """A ChatTurn holding pre-Phase-I JSON must render + confirm
+    gracefully, never HTTP 500.
+
+    The turn carries (a) a stashed OrderDraft whose ``customer`` lacks the
+    now-required ``evidence`` field — the exact incident cause — and (b) a
+    real tool_call record predating required ``result_excerpt`` /
+    ``latency_ms``. Guards exercised: ``_split_tool_calls`` (L3),
+    ``_turn_view_for_template`` draft re-hydration (L1),
+    ``_persist_order_draft`` (L4).
+    """
+
+    def _legacy_turn(self, db) -> tuple[uuid.UUID, uuid.UUID]:
+        from agents.schemas import CustomerMatch, OrderDraft, ResolvedLineItem
+        from app.routes.copilot import _PENDING_ORDER_TOOL_NAME
+
+        cust = db.execute(
+            text("SELECT id, name FROM customers LIMIT 1")
+        ).mappings().first()
+        prod = db.execute(
+            text("SELECT id, sku, price_usd FROM products LIMIT 1")
+        ).mappings().first()
+
+        valid = OrderDraft(
+            customer=CustomerMatch(
+                customer_id=cust["id"], customer_name=cust["name"],
+                confidence=1.0, evidence=[cust["name"]], alternatives=[],
+            ),
+            line_items=[ResolvedLineItem(
+                sku=prod["sku"], product_id=prod["id"], service_id=None,
+                quantity=5, unit_price_usd=prod["price_usd"],
+                match_method="exact_sku", source_description="5 units",
+                evidence=[], confidence=1.0,
+            )],
+            total_usd=prod["price_usd"] * 5,
+            overall_confidence=1.0, extraction_concerns=[],
+            customer_evidence=[], pollination_date=None,
+            source_email_external_id=None,
+        )
+        legacy_draft = valid.model_dump(mode="json")
+        # Simulate a row written before customer.evidence was required.
+        del legacy_draft["customer"]["evidence"]
+
+        conv = Conversation()
+        db.add(conv); db.commit(); db.refresh(conv)
+        turn = ChatTurn(
+            conversation_id=conv.id,
+            role="assistant",
+            text="I drafted an order. Review and confirm to save.",
+            tool_calls=[
+                # Legacy real tool_call: predates required
+                # result_excerpt / latency_ms → exercises L3.
+                {"tool_name": "build_context", "arguments": {"hint": "x"}},
+                # Legacy stashed draft missing customer.evidence → L1 + L4.
+                {"tool_name": _PENDING_ORDER_TOOL_NAME,
+                 "arguments": {"draft_data": legacy_draft}},
+            ],
+        )
+        db.add(turn); db.commit(); db.refresh(turn)
+        return conv.id, turn.id
+
+    def test_legacy_payload_is_genuinely_rejected(
+        self, db, faker_instance
+    ) -> None:
+        # Non-vacuous guard: prove the fixture truly reproduces the
+        # incident (current schema must reject it for the evidence reason).
+        from pydantic import ValidationError
+        from agents.schemas import OrderDraft
+
+        _seed_min_for_orchestrator(db, faker_instance)
+        _, turn_id = self._legacy_turn(db)
+        turn = db.get(ChatTurn, turn_id)
+        draft_data = turn.tool_calls[1]["arguments"]["draft_data"]
+        with pytest.raises(ValidationError):
+            OrderDraft.model_validate(draft_data)
+
+    def test_copilot_shell_renders_legacy_turn_200(
+        self, client, db, faker_instance
+    ) -> None:
+        _seed_min_for_orchestrator(db, faker_instance)
+        conv_id, _ = self._legacy_turn(db)
+        resp = client.get(f"/copilot/{conv_id}")
+        assert resp.status_code == 200  # L1 + L3 guards: no 500
+
+    def test_confirm_order_on_legacy_draft_degrades_gracefully(
+        self, client, db, faker_instance
+    ) -> None:
+        _seed_min_for_orchestrator(db, faker_instance)
+        _, turn_id = self._legacy_turn(db)
+        resp = client.post(f"/copilot/turns/{turn_id}/confirm-order")
+        assert resp.status_code == 200  # L4 guard: not 500
+        assert "predates the current schema" in resp.text
+
+
+# ---------------------------------------------------------------------------
 # Type-check: imports below are exercised by the test runner.
 # ---------------------------------------------------------------------------
 

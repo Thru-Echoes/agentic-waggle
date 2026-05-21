@@ -20,6 +20,17 @@ disambig models on the same eval harness and same corpus SHA
 
 ## Results
 
+> **Pre-rigor snapshot (2026-05-18).** These numbers were measured before
+> the 2026-05-19 eval-rigor pass that started asserting
+> `expected_alternatives_min`. Under the post-rigor contract, the
+> shipped `gpt-5.4-mini` measures **95.2% customer / 95.8% SKU**
+> (the prior "100% SKU" was inflated by 3 vacuous null passes —
+> 2 `sku_ambiguous` cases + 1 `sku_negative` jitter; see
+> `matcher_phase_i_summary.md` for the honest post-rigor breakdown).
+> The model-vs-model comparison below still holds directionally;
+> a like-for-like re-measurement of the other three models was not
+> performed (would cost another ~$5 and the ship decision stood).
+
 | Model | Customer | SKU | # FAIL customer cat | Deterministic? | Runtime | Cost/eval |
 |---|---|---|---|---|---|---|
 | `gpt-5.4-nano` | 95.2% (200/210) | 100% (71/71) | 6 | yes (`temp=0`) | 11 min | ~$0.05 |
@@ -30,6 +41,26 @@ disambig models on the same eval harness and same corpus SHA
 `gpt-5-mini` was also evaluated but **also requires `temp=1`**; one snapshot
 was abandoned at 38 min after the patch path was extended. Same
 non-determinism caveat as gpt-5.5; not pursued further.
+
+### Provenance note on the gpt-5.5 numbers (audit-trail disclosure)
+
+The `gpt-5.5` 96.7% / 100% figures above came from a single
+**temperature=1, non-deterministic** snapshot, run against an
+exploratory patch (`temperature=1 if model.startswith('gpt-5.5')`) in
+`providers/semantic_matcher.py` that was reverted post-decision (the
+shipped code is `temperature=0` unconditionally). The TRACE audit trail
+for this evaluation is **incomplete**: session `trace_20260518_b35eea`
+event `evt_006` records only the *first* gpt-5.5 attempt, which was
+invalid (temp=0 rejected → all 281 disambig calls failed → null-coincidence
+scores 24.8% / 35.2%); the subsequent valid temp=1 re-run that produced
+the 96.7% figure was not logged as its own TRACE event in the
+multi-day-staled session. The shipped decision (ship `gpt-5.4-mini`,
+revert the patch) is unchanged — non-determinism + 37× cost still
+disqualifies gpt-5.5 — but a reader trusting these numbers should know
+they (a) are a single non-deterministic snapshot, not a stable metric,
+and (b) lack a direct TRACE corroboration. To independently verify, one
+would re-apply the temperature patch and re-run with
+`MATCHER_EVAL_FULL=1 COPILOT_MATCHER_DISAMBIG_MODEL=gpt-5.5`.
 
 ## Per-category — `gpt-5.4-mini` vs `gpt-5.5`
 

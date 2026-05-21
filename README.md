@@ -83,7 +83,7 @@ flowchart TB
 
     subgraph AI["AI / data-science layer"]
       direction TB
-      Agent["LangGraph order-extraction agent<br/>classify → fuzzy-match customer →<br/>structured-output line items →<br/>SKU resolution (rapidfuzz + LLM fallback)"]
+      Agent["LangGraph order-extraction agent<br/>classify → semantic-match customer →<br/>structured-output line items →<br/>SKU resolution (semantic matcher)"]
       RAG["Local RAG<br/>sentence-transformers (384-dim) +<br/>pgvector cosine semantic search"]
       MCP["MCP servers<br/>Sales Copilot · Customer Reports<br/>(tools over stdio)"]
     end
@@ -107,9 +107,13 @@ Three pieces worth highlighting from a data-science / AI-engineering lens:
 
 - **Structured-output extraction.** The LangGraph agent uses
   `with_structured_output(PydanticModel)` so each node returns validated
-  Pydantic objects, not free-text JSON. Fuzzy customer matching uses
-  `rapidfuzz`; SKU resolution falls back to an LLM guess only when the
-  fuzzy score is below threshold.
+  Pydantic objects, not free-text JSON. Customer and SKU resolution both
+  flow through the **semantic matcher** (`providers/semantic_matcher.py`):
+  Stage A is a hybrid retrieve (pgvector cosine + Postgres FTS, fused via
+  RRF, best-entry-per-target); Stage B is an LLM disambiguator
+  (gpt-5.4-mini) that returns an evidence-grounded `CustomerMatch` /
+  `SkuMatch` with confidence. No legacy `rapidfuzz` / Levenshtein —
+  removed in Phase I in favor of the semantic path.
 - **Local semantic search.** Customer-report narratives are chunked, embedded
   with `sentence-transformers/all-MiniLM-L6-v2` (384-dim), and stored in
   `pgvector`. The Sales Copilot MCP tool runs cosine similarity directly
@@ -171,7 +175,7 @@ OpenAPI docs are at `/docs`; raw schema at `/openapi.json`.
 ## Flagship demo flow
 
 1. **Inbound email arrives** — the inbox provider surfaces a fixture email ("Hi, can we get 20 Italian queens for our Central Valley site next week?").
-2. **LangGraph agent extracts** — customer is fuzzy-matched, line items are resolved to SKUs, the order is drafted in state `EXTRACTED`. Visible from `/inbox`.
+2. **LangGraph agent extracts** — customer is resolved via the semantic matcher (Stage A retrieve + Stage B LLM disambig), line items are resolved to SKUs, the order is drafted in state `EXTRACTED`. Visible from `/inbox`.
 3. **Order goes through FSM** — `EXTRACTED → UNDER_REVIEW → APPROVED → SCHEDULED`.
 4. **ERP sync fires** — the mock writes a JSON line to `/erp-sync-log/`; the order transitions to `SYNCED_TO_ERP`. Visible from `/erp-log`.
 5. **Sales Copilot answers a question** — "What's the varroa trend at the O'Reilly orchard?" The MCP server queries customer reports, aggregates mite counts, and returns a structured answer with citations.
