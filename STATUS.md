@@ -112,7 +112,11 @@ Rendered via Playwright from Mermaid sources in `../diagrams/source/`.
 
 ## Live deploy
 
-- **URL:** https://waggle.fly.dev (Phase F+G deployed 2026-05-11; v5.1 matcher + Phase-I shipped 2026-05-18; remediation per `fix/critical-review-remediation` in progress 2026-05-19).
+- **URL:** https://waggle.fly.dev (Phase F+G deployed 2026-05-11; v5.1 matcher + Phase-I shipped 2026-05-18; remediation per `fix/critical-review-remediation` merged + deployed 2026-05-21).
+- **Basic-auth credentials** (Fly secrets `WAGGLE_USER` / `WAGGLE_PASS`, set 2026-05-21 to close the public-LLM-spend exposure flagged by the critical review):
+  - Username: `tester`
+  - Password: `letMeTest1`
+  - These are intentionally weak + intentionally shared for portfolio review (see README "Live demo" section). Rotate via `fly secrets set WAGGLE_USER=… WAGGLE_PASS=…` (triggers a restart). `/health` is the only public bypass (Fly liveness).
 - **Migration HEAD: 004** — adds `customer_search_entries` + `sku_search_entries` for the semantic matcher (pgvector + FTS + CHECK constraints). On boot, `scripts/boot.py` runs `alembic upgrade head` + seed-if-empty, then execs uvicorn. The matcher search-index backfill runs as a **post-bind FastAPI lifespan task** gated on `WAGGLE_BOOT_REINDEX=1` so a cold deploy binds the port immediately instead of blocking Fly's health check on the synchronous embed pass.
 - **2026-05-18 production incident** — Phase-I deploy surfaced a latent `/copilot` HTTP 500: historical `ChatTurn` rows held stashed-draft JSON predating the matcher schema's now-required `customer.evidence`. Hotfix shipped in `b897ef5` (L1/L2 — `_turn_view_for_template` render path) and `f52debb` (L3/L4 — `_split_tool_calls` + the confirm-order/report POST paths). Regression test in `tests/test_routes_copilot.py::TestLegacyDraftRegression`. Blast radius was contained to `/copilot` HTML; `/`, `/inbox`, `/api/*` stayed 200.
 - **Surfaces verified at the 2026-05-11 baseline deploy** (Phase F+G smoke checks):
