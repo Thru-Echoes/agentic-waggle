@@ -292,6 +292,30 @@ def customer_reports_page(
     return templates.TemplateResponse(request, "customer_reports.html", ctx)
 
 
+@router.get("/customer-reports/{customer_report_id}", response_class=HTMLResponse)
+def customer_report_page(
+    customer_report_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> HTMLResponse:
+    """Permalink for one customer report (the target of copilot citation chips)."""
+    row = db.execute(
+        select(CustomerReport)
+        .where(CustomerReport.id == customer_report_id)
+        .options(
+            selectinload(CustomerReport.site), selectinload(CustomerReport.author)
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"customer report {customer_report_id} not found")
+    ctx = _common_context(request, settings) | {
+        "nav": "customer_reports",
+        "customer_report": row,
+    }
+    return templates.TemplateResponse(request, "customer_report.html", ctx)
+
+
 @router.get("/customer-reports/{customer_report_id}/partial", response_class=HTMLResponse)
 def customer_report_partial(
     customer_report_id: uuid.UUID,

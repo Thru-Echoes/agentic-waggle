@@ -15,6 +15,7 @@ to the fixture schema, and 1-3 LLM calls per orchestrator-touching test.
 # pyright: reportMissingImports=false
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Iterator
 
@@ -545,10 +546,14 @@ class TestConfirmDrafts:
 
 class TestConversationRail:
     def test_rail_lists_conversations_newest_first(self, client, db) -> None:
+        # The rail is scoped to the visitor: mint the cookie first and tag the
+        # rows with that visitor so they are listed.
+        assert client.get("/copilot").status_code == 200
+        visitor = db.execute(text("SELECT visitor_id FROM conversations LIMIT 1")).scalar_one()
         # Three conversations, deliberate order.
         ids = []
         for title in ("oldest", "middle", "newest"):
-            conv = Conversation(title=title)
+            conv = Conversation(title=title, visitor_id=visitor)
             db.add(conv)
             db.commit()
             db.refresh(conv)
@@ -738,3 +743,145 @@ class TestLegacyDraftRegression:
 # ---------------------------------------------------------------------------
 
 _ = Order, OrderLineItem, OrderStateTransition, CustomerReport
+
+
+def _seed_with_reports(db, faker_instance) -> None:
+    """Full seed incl. inspections + embeddings + matcher index, so a query
+    turn has reports to cite."""
+    from providers import semantic_matcher
+    from seed import (
+        apiarists as apiarists_gen,
+        customers as customers_gen,
+        embeddings as embeddings_gen,
+        inspections as inspections_gen,
+        products as products_gen,
+        regions as regions_gen,
+        services as services_gen,
+        sites as sites_gen,
+    )
+
+    regions = regions_gen.generate()
+    regions_gen.persist(db, regions)
+    customers = customers_gen.generate(faker_instance)
+    customers_gen.persist(db, customers)
+    sites = sites_gen.generate(faker_instance, customers, regions)
+    sites_gen.persist(db, sites)
+    apiarists = apiarists_gen.generate(faker_instance, regions)
+    apiarists_gen.persist(db, apiarists)
+    inspections_gen.persist(db, inspections_gen.generate(faker_instance, sites, apiarists))
+    products_gen.persist(db, products_gen.generate(faker_instance))
+    services_gen.persist(db, services_gen.generate())
+    embeddings_gen.run(db)
+    semantic_matcher.backfill_all(db)
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Visitor scoping, expired drafts, citations
+# ---------------------------------------------------------------------------
+
+
+class TestVisitorScoping:
+    def _two_clients(self, db) -> tuple[TestClient, TestClient]:
+        app = create_app()
+
+        def _override():
+            yield db
+
+        app.dependency_overrides[get_db_session] = _override
+        return TestClient(app), TestClient(app)
+
+    def test_first_visit_lands_on_a_fresh_conversation_scoped_to_the_visitor(self, db) -> None:
+        a, _ = self._two_clients(db)
+        resp = a.get("/copilot")
+        assert resp.status_code == 200
+        assert "waggle_visitor" in resp.cookies
+        assert "How can Waggle help?" in resp.text
+        row = db.execute(text("SELECT visitor_id FROM conversations")).scalar_one()
+        assert row  # the new conversation belongs to a visitor
+
+    def test_visitors_do_not_see_each_others_conversations(self, db) -> None:
+        a, b = self._two_clients(db)
+        a.get("/copilot")
+        a_conv = db.execute(text("SELECT id FROM conversations")).scalar_one()
+        b_page = b.get("/copilot")
+        assert b_page.status_code == 200
+        # B has its own conversation now; the rail lists only B's.
+        assert f"/copilot/{a_conv}" not in b_page.text
+        assert _count(db, "conversations") == 2
+        # Direct URL access to A's conversation is a 404 for B.
+        assert b.get(f"/copilot/{a_conv}").status_code == 404
+        # And A still sees its own.
+        assert a.get(f"/copilot/{a_conv}").status_code == 200
+
+    def test_api_without_cookie_lists_only_api_created_conversations(self, db) -> None:
+        a, _ = self._two_clients(db)
+        a.get("/copilot")  # one browser conversation
+        api = TestClient(a.app)  # fresh cookie jar, no visitor cookie sent
+        listing = api.get("/api/copilot/conversations").json()
+        assert listing["total"] == 0 and listing["items"] == []
+        created = api.post("/api/copilot/conversations", json={}).json()
+        listing = api.get("/api/copilot/conversations").json()
+        assert [i["id"] for i in listing["items"]] == [created["id"]]
+
+    def test_turn_post_to_another_visitors_conversation_is_404(self, db) -> None:
+        a, b = self._two_clients(db)
+        a.get("/copilot")
+        a_conv = db.execute(text("SELECT id FROM conversations")).scalar_one()
+        resp = b.post("/copilot/turns", data={"conversation_id": str(a_conv), "text": "hello"})
+        assert resp.status_code == 404
+
+
+class TestExpiredDraftNote:
+    def test_legacy_stashed_draft_renders_an_explicit_note(self, client, db) -> None:
+        assert client.get("/copilot").status_code == 200
+        conv_id = db.execute(text("SELECT id FROM conversations")).scalar_one()
+        # A stashed draft from before CustomerMatch required `evidence`.
+        legacy = json.dumps([{
+            "tool_name": "pending_order_draft",
+            "arguments": {"draft_data": {
+                "state": "EXTRACTED",
+                "customer": {"customer_id": str(uuid.uuid4()), "customer_name": "Old Co.", "score": 90.0, "confidence": 0.9},
+                "line_items": [], "total_usd": "1.00", "overall_confidence": 0.9,
+            }},
+            "result_excerpt": "legacy", "latency_ms": 0, "tokens": 0,
+        }])
+        db.execute(
+            text("INSERT INTO chat_turns (id, conversation_id, role, text, tool_calls) "
+                 "VALUES (:tid, :cid, 'assistant', 'Review and confirm to save.', CAST(:tc AS jsonb))"),
+            {"tid": str(uuid.uuid4()), "cid": str(conv_id), "tc": legacy},
+        )
+        db.commit()
+        page = client.get(f"/copilot/{conv_id}")
+        assert page.status_code == 200
+        assert "Draft expired" in page.text
+        assert "can no longer be confirmed" in page.text
+        assert "draft-order-" not in page.text
+
+
+class TestCitations:
+    def test_query_turn_persists_real_report_citations(
+        self, client, db, faker_instance, require_llm_api_key
+    ) -> None:
+        _seed_with_reports(db, faker_instance)
+        cust = db.execute(text(
+            "SELECT c.id, c.name FROM customers c JOIN customer_sites s ON s.customer_id=c.id "
+            "JOIN customer_reports r ON r.customer_site_id=s.id LIMIT 1"
+        )).mappings().one()
+
+        conv = client.post("/api/copilot/conversations", json={"active_account_id": str(cust["id"])}).json()
+        turn_resp = client.post("/copilot/turns", data={
+            "conversation_id": conv["id"],
+            "text": f"What's the varroa situation at {cust['name']}?",
+        })
+        assert turn_resp.status_code == 200
+        api = client.get(f"/api/copilot/conversations/{conv['id']}").json()
+        assistant = [t for t in api["turns"] if t["role"] == "assistant"][-1]
+        assert assistant["citations"], "query turn must cite the reports it was grounded on"
+        for c in assistant["citations"]:
+            assert c["kind"] == "customer_report"
+            exists = db.execute(text("SELECT 1 FROM customer_reports WHERE id = :id"), {"id": c["id"]}).first()
+            assert exists is not None, f"citation {c['id']} does not point at a real report"
+            assert client.get(f"/customer-reports/{c['id']}").status_code == 200
+        page = client.get(f"/copilot/{conv['id']}")
+        assert f"/customer-reports/{assistant['citations'][0]['id']}" in page.text

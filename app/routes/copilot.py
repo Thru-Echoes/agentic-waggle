@@ -50,7 +50,7 @@ from agents.copilot.conversation_schemas import (
     CopilotResponse,
     CustomerReportDraft,
 )
-from agents.copilot.orchestrator import get_copilot_response
+from agents.copilot.orchestrator import get_copilot_response, get_pending_match, resume_with_customer
 from agents.order_extractor import _build_chat_model
 from agents.schemas import OrderDraft
 from app.config import Settings, get_settings
@@ -61,8 +61,10 @@ from app.routes._order_persistence import (
     resolve_default_apiarist,
 )
 from app.templating import get_templates
+from app.visitor import get_visitor_id
 from app.schemas.copilot import (
     ChatTurnOut,
+    CitationOut,
     ConfirmResultOut,
     ConversationCreateIn,
     ConversationListItem,
@@ -145,23 +147,45 @@ def _build_models(settings: Settings) -> dict[str, Any]:
     }
 
 
-def _list_conversations(db: Session, limit: int = 50) -> list[ConversationListItem]:
-    """Fetch conversation rail items, newest-first.
+def _is_visible_to(conv: Conversation, visitor_id: str | None) -> bool:
+    """A conversation is visible to the visitor that created it, and
+    conversations with no visitor (API-created or pre-scoping rows) are
+    reachable by URL for anyone with the demo login."""
+    return conv.visitor_id is None or conv.visitor_id == visitor_id
 
-    Side effects: 4 SELECTs (conversations, turn counts, latest turns,
-    active-account names). Multi-column queries use raw SQL via ``text()``
-    to match the project's existing pattern in ``agents/copilot/``.
+
+def _get_visible_conversation(
+    db: Session, conversation_id: uuid.UUID, visitor_id: str | None
+) -> Conversation:
+    """Load a conversation or raise 404 when it is missing or belongs to
+    another visitor (the two cases are indistinguishable on purpose)."""
+    conv = db.get(Conversation, conversation_id)
+    if conv is None or not _is_visible_to(conv, visitor_id):
+        raise HTTPException(status_code=404, detail="conversation not found")
+    return conv
+
+
+def _list_conversations(
+    db: Session, visitor_id: str | None, limit: int = 50
+) -> list[ConversationListItem]:
+    """Fetch the visitor's conversation rail items, newest-first.
+
+    ``visitor_id=None`` lists only conversations that have no visitor
+    (the JSON API's view). Side effects: 4 SELECTs (conversations, turn
+    counts, latest turns, active-account names).
     """
     rows = db.execute(
         text(
             """
             SELECT id, title, active_account_id, updated_at
             FROM conversations
+            WHERE (CAST(:visitor AS text) IS NULL AND visitor_id IS NULL)
+               OR visitor_id = CAST(:visitor AS text)
             ORDER BY updated_at DESC
             LIMIT :lim
             """
         ),
-        {"lim": limit},
+        {"lim": limit, "visitor": visitor_id},
     ).mappings().all()
     if not rows:
         return []
@@ -253,29 +277,31 @@ def _coerce_uuid(val: Any) -> uuid.UUID:
 
 
 def _get_or_create_conversation(
-    db: Session, conversation_id: uuid.UUID | None
+    db: Session, conversation_id: uuid.UUID | None, visitor_id: str
 ) -> Conversation:
-    """Return the requested conversation, the newest, or a freshly-created one.
+    """Return the requested conversation (if visible), the visitor's newest,
+    or a freshly-created one for this visitor.
 
-    Side effects: SELECT (and possibly INSERT) against ``conversations``.
+    A first-time visitor therefore lands on an empty conversation instead of
+    inside whoever chatted last. Side effects: SELECT (and possibly INSERT)
+    against ``conversations``.
     """
     if conversation_id is not None:
-        conv = db.get(Conversation, conversation_id)
-        if conv is None:
-            raise HTTPException(status_code=404, detail="conversation not found")
-        return conv
+        return _get_visible_conversation(db, conversation_id, visitor_id)
 
     row = db.execute(
         text(
-            "SELECT id FROM conversations ORDER BY updated_at DESC LIMIT 1"
-        )
+            "SELECT id FROM conversations WHERE visitor_id = :v "
+            "ORDER BY updated_at DESC LIMIT 1"
+        ),
+        {"v": visitor_id},
     ).mappings().first()
     if row is not None:
         existing = db.get(Conversation, _coerce_uuid(row["id"]))
         if existing is not None:
             return existing
 
-    conv = Conversation()
+    conv = Conversation(visitor_id=visitor_id)
     db.add(conv)
     db.commit()
     db.refresh(conv)
@@ -395,7 +421,7 @@ def _turn_to_out(turn: ChatTurn) -> ChatTurnOut:
         text=turn.text,
         tool_calls=real_tools,
         evidence_used=list(turn.evidence_used or []),
-        citations=[],  # Citations live in the orchestrator's response shape; not persisted yet.
+        citations=_citations_out(turn),
         model=turn.model,
         tokens_input=turn.tokens_input,
         tokens_output=turn.tokens_output,
@@ -419,16 +445,18 @@ def _turn_view_for_template(turn: ChatTurn) -> dict[str, Any]:
         turn.tool_calls
     )
     pending_order: OrderDraft | None = None
+    expired_draft: str | None = None
     if pending_order_data is not None:
         try:
             pending_order = OrderDraft.model_validate(pending_order_data)
         except ValidationError as exc:
             log.warning(
-                "Skipping legacy pending_order_draft on turn %s "
+                "Legacy pending_order_draft on turn %s "
                 "(schema evolved; draft not re-actionable from history): %s",
                 turn.id,
                 exc,
             )
+            expired_draft = "order"
     pending_report: CustomerReportDraft | None = None
     if pending_report_data is not None:
         try:
@@ -437,23 +465,37 @@ def _turn_view_for_template(turn: ChatTurn) -> dict[str, Any]:
             )
         except ValidationError as exc:
             log.warning(
-                "Skipping legacy pending_report_draft on turn %s "
+                "Legacy pending_report_draft on turn %s "
                 "(schema evolved; draft not re-actionable from history): %s",
                 turn.id,
                 exc,
             )
+            expired_draft = "report"
     return {
         "id": turn.id,
         "role": turn.role,
         "text": turn.text,
         "tool_calls": real_tools,
         "evidence_used": list(turn.evidence_used or []),
+        "citations": _citations_out(turn),
         "model": turn.model,
         "latency_ms": turn.latency_ms,
         "created_at": turn.created_at,
         "pending_order_draft": pending_order,
         "pending_report_draft": pending_report,
+        "expired_draft": expired_draft,
     }
+
+
+def _citations_out(turn: ChatTurn) -> list[CitationOut]:
+    """Validate the persisted citation dicts; drop any that no longer parse."""
+    out: list[CitationOut] = []
+    for raw in turn.citations or []:
+        try:
+            out.append(CitationOut.model_validate(raw))
+        except ValidationError as exc:
+            log.warning("Skipping unparseable citation on turn %s: %s", turn.id, exc)
+    return out
 
 
 def _persist_assistant_turn(
@@ -509,6 +551,7 @@ def _persist_assistant_turn(
         text=response.text,
         tool_calls=tool_call_records,
         evidence_used=list(response.evidence_used),
+        citations=[c.model_dump(mode="json") for c in response.citations],
         model=response.model,
         tokens_input=response.tokens_input,
         tokens_output=response.tokens_output,
@@ -701,12 +744,9 @@ def copilot_index(
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
-    """Render the copilot shell anchored on the most recent conversation.
-
-    If no conversations exist, creates a fresh one so the composer is
-    immediately usable.
-    """
-    conv = _get_or_create_conversation(db, None)
+    """Render the copilot shell on this visitor's newest conversation, or a
+    fresh empty one for a first-time visitor."""
+    conv = _get_or_create_conversation(db, None, get_visitor_id(request))
     return _render_shell(request, settings, db, conv)
 
 
@@ -719,8 +759,8 @@ def copilot_rail(
     db: Session = Depends(get_db_session),
     active_id: uuid.UUID | None = None,
 ) -> HTMLResponse:
-    """Re-render the conversation list (used after creating a new conv)."""
-    rail = _list_conversations(db)
+    """Re-render the visitor's conversation list (used after creating a new conv)."""
+    rail = _list_conversations(db, get_visitor_id(request))
     return templates.TemplateResponse(
         request,
         "partials/copilot_rail.html",
@@ -735,8 +775,8 @@ def copilot_for_conversation(
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
-    """Render the copilot shell for one specific conversation."""
-    conv = _get_or_create_conversation(db, conversation_id)
+    """Render the copilot shell for one specific (visible) conversation."""
+    conv = _get_or_create_conversation(db, conversation_id, get_visitor_id(request))
     return _render_shell(request, settings, db, conv)
 
 
@@ -748,7 +788,7 @@ def _render_shell(
 ) -> HTMLResponse:
     """Render templates/copilot.html with full thread + rail context."""
     turns = _load_turns(db, conv.id)
-    rail = _list_conversations(db)
+    rail = _list_conversations(db, get_visitor_id(request))
     active_account_name: str | None = None
     if conv.active_account_id:
         cust = db.get(Customer, conv.active_account_id)
@@ -792,7 +832,7 @@ async def post_turn(
       * UPDATE Conversation.updated_at + active_account_id (and title on
         first turn)
     """
-    conv = _get_or_create_conversation(db, conversation_id)
+    conv = _get_visible_conversation(db, conversation_id, get_visitor_id(request))
 
     accept = request.headers.get("accept", "")
     if "text/event-stream" in accept:
@@ -1039,8 +1079,8 @@ def post_new_conversation(
     request: Request,
     db: Session = Depends(get_db_session),
 ) -> RedirectResponse:
-    """Create an empty conversation and redirect the browser into it."""
-    conv = Conversation()
+    """Create an empty conversation for this visitor and redirect into it."""
+    conv = Conversation(visitor_id=get_visitor_id(request))
     db.add(conv)
     db.commit()
     db.refresh(conv)
@@ -1349,12 +1389,14 @@ async def confirm_match(
     customer_id: uuid.UUID | None = Form(default=None),
     reject: bool = Query(default=False),
     db: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
 ) -> HTMLResponse:
     """Resume a paused turn whose matcher returned low confidence.
 
     Two paths:
-      * ``customer_id`` provided: commit that customer, re-dispatch via
-        ``resume_with_customer``, return the resumed assistant turn partial.
+      * ``customer_id`` provided: re-run the original request with that
+        customer pinned (``resume_with_customer``), persist the new
+        assistant turn (with any draft it produced), return its partial.
       * ``reject=1``: swap in the pick-match card listing the alternatives
         stored in the ``pending_customer_match`` marker on the turn.
 
@@ -1369,7 +1411,7 @@ async def confirm_match(
     if turn is None:
         raise HTTPException(status_code=404, detail="Turn not found")
 
-    pending = _extract_pending_match(turn)
+    pending = get_pending_match(turn.tool_calls)
     if pending is None:
         raise HTTPException(
             status_code=409, detail="No pending match on this turn"
@@ -1395,15 +1437,28 @@ async def confirm_match(
             status_code=400, detail="customer_id required when reject is not set"
         )
 
-    from agents.copilot.orchestrator import resume_with_customer
+    conv_id = _coerce_uuid(turn.conversation_id)
+    conv = _get_visible_conversation(db, conv_id, get_visitor_id(request))
+    user_text = pending.get("user_text") or _preceding_user_text(db, turn) or pending.get("hint") or ""
+    if not user_text.strip():
+        raise HTTPException(status_code=409, detail="Nothing to resume: the original message is missing")
 
-    resumed_turn = resume_with_customer(
-        conv_id=_coerce_uuid(turn.conversation_id),
-        paused_turn=turn,
+    response = resume_with_customer(
+        pending=pending,
+        user_text=user_text,
         chosen_customer_id=customer_id,
         db=db,
+        models=_build_models(settings),
+        conv_id=conv_id,
+        last_3_customer_ids=_last_3_customer_ids(db, conv_id),
     )
+    resumed_turn = _persist_assistant_turn(db, conversation_id=conv_id, response=response)
     _clear_pending_match(turn, db)
+    conv.updated_at = utc_now()
+    conv.active_account_id = customer_id
+    conv.model_used = response.model
+    db.add(conv)
+    db.commit()
 
     resumed_view = _turn_view_for_template(resumed_turn)
     return templates.TemplateResponse(
@@ -1413,15 +1468,24 @@ async def confirm_match(
     )
 
 
-def _extract_pending_match(turn: ChatTurn) -> dict | None:
-    """Return the first ``pending_customer_match`` record from a turn's tool_calls.
+def _preceding_user_text(db: Session, assistant_turn: ChatTurn) -> str | None:
+    """Return the text of the user turn right before ``assistant_turn``.
 
-    Returns ``None`` if no such record exists.
+    Used to resume markers written before ``user_text`` was stored on them.
+    Side effects: one SELECT.
     """
-    for tc in turn.tool_calls or []:
-        if tc.get("tool_name") == "pending_customer_match":
-            return tc
-    return None
+    row = db.execute(
+        text(
+            """
+            SELECT text FROM chat_turns
+            WHERE conversation_id = :cid AND role = 'user' AND created_at <= :ts
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        ),
+        {"cid": str(assistant_turn.conversation_id), "ts": assistant_turn.created_at},
+    ).scalar_one_or_none()
+    return row
 
 
 def _clear_pending_match(turn: ChatTurn, db: Session) -> None:
@@ -1445,12 +1509,22 @@ def _clear_pending_match(turn: ChatTurn, db: Session) -> None:
 
 @api_router.get("/conversations", response_model=ConversationListOut)
 def get_conversations(
+    request: Request,
     db: Session = Depends(get_db_session),
     limit: int = 50,
 ) -> ConversationListOut:
-    """List conversations, newest-first."""
-    items = _list_conversations(db, limit=limit)
-    total = db.execute(select(func.count(Conversation.id))).scalar_one()
+    """List this visitor's conversations, newest-first.
+
+    A client without the visitor cookie (curl, scripts) sees only
+    conversations created through this API, never a browser visitor's.
+    """
+    visitor_id = request.cookies.get("waggle_visitor") and get_visitor_id(request)
+    items = _list_conversations(db, visitor_id or None, limit=limit)
+    total = db.execute(
+        select(func.count(Conversation.id)).where(
+            Conversation.visitor_id == visitor_id if visitor_id else Conversation.visitor_id.is_(None)  # type: ignore[union-attr]
+        )
+    ).scalar_one()
     return ConversationListOut(items=items, total=int(total))
 
 
@@ -1459,12 +1533,12 @@ def get_conversations(
 )
 def get_conversation(
     conversation_id: uuid.UUID,
+    request: Request,
     db: Session = Depends(get_db_session),
 ) -> ConversationOut:
     """Read one conversation with all of its turns hydrated."""
-    conv = db.get(Conversation, conversation_id)
-    if conv is None:
-        raise HTTPException(status_code=404, detail="conversation not found")
+    visitor_id = request.cookies.get("waggle_visitor") and get_visitor_id(request)
+    conv = _get_visible_conversation(db, conversation_id, visitor_id or None)
     turns = _load_turns(db, conversation_id)
     active_account_name: str | None = None
     if conv.active_account_id:

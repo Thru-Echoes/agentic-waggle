@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}{{ product }} — customer report{% endblock %}
+{% block content %}
+<p class="muted"><a href="/customer-reports">← All customer reports</a></p>
+<div class="card">
+  {% include "partials/customer_report_detail.html" %}
+</div>
+{% endblock %}

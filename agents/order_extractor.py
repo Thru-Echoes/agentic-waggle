@@ -72,6 +72,7 @@ class _State(TypedDict):
     db: Session  # stashed here so nodes can query without dependency injection
     models: dict[str, BaseChatModel]  # stage_name -> per-stage chat model
     notes: list[str]
+    pinned_customer_id: NotRequired[uuid.UUID | None]  # user-confirmed; skips matching
     intent: NotRequired[IntentClassification]
     customer_ref: NotRequired[CustomerReference]
     customer_match: NotRequired[CustomerMatch]
@@ -242,6 +243,28 @@ def match_customer_node(state: _State) -> dict[str, Any]:
     Side effects: DB SELECTs + one LLM API call via semantic_matcher.
     """
     ref = state["customer_ref"]
+    pinned = state.get("pinned_customer_id")
+    if pinned is not None:
+        # The user already chose the customer (confirm-match flow): no
+        # retrieval, no disambiguation, confidence 1.0, and the evidence
+        # says so instead of quoting the email.
+        from sqlalchemy import text as _sql_text
+
+        name = state["db"].execute(
+            _sql_text("SELECT name FROM customers WHERE id = :id"), {"id": str(pinned)}
+        ).scalar_one_or_none()
+        if name is None:
+            raise LookupError(
+                f"pinned_customer_id {pinned} does not exist in customers; "
+                "the confirm-match marker referenced a deleted row."
+            )
+        return {"customer_match": CustomerMatch(
+            customer_id=pinned,
+            customer_name=name,
+            confidence=1.0,
+            evidence=["customer confirmed by the user"],
+            alternatives=[],
+        )}
     # Each order extraction is a synthetic conversation — no real chat thread.
     ctx = ConversationContext()
     match: CustomerMatch = semantic_matcher.match_customer(
@@ -514,14 +537,23 @@ def _get_graph() -> Any:
 # ---------------------------------------------------------------------------
 
 
-def run_order_extraction(email: EmailInput, db: Session) -> ExtractionResult:
+def run_order_extraction(
+    email: EmailInput,
+    db: Session,
+    *,
+    pinned_customer_id: uuid.UUID | None = None,
+) -> ExtractionResult:
     """Run the full extraction pipeline against an email. Returns OrderDraft or ExtractionFailure.
+
+    ``pinned_customer_id`` skips customer matching and uses that customer
+    with confidence 1.0 (the copilot's confirm-match resume).
 
     Side effects:
         * DB SELECTs via the provided session.
         * One LLM call per active node (~3–5 calls per email).
     Raises:
         RuntimeError if no LLM API key is configured.
+        LookupError if ``pinned_customer_id`` names no customer.
     """
     graph = _get_graph()
     initial: _State = {
@@ -529,6 +561,7 @@ def run_order_extraction(email: EmailInput, db: Session) -> ExtractionResult:
         "db": db,
         "models": _build_stage_models(),
         "notes": [],
+        "pinned_customer_id": pinned_customer_id,
     }
     with usage_scope("order_extraction"):
         final_state: _State = graph.invoke(initial)  # type: ignore[assignment]

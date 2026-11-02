@@ -195,12 +195,14 @@ def draft_order_from_text(
     text_in: str,
     from_address: str = "copilot@waggle.local",
     subject: str = "Order draft from copilot",
+    pinned_customer_id: uuid.UUID | None = None,
 ):
     """Run Phase A's order extractor against free-text input.
 
     Wraps the input in an ``EmailInput`` shape so the existing pipeline
-    handles it without modification. Returns ``OrderDraft`` or
-    ``ExtractionFailure``.
+    handles it without modification. ``pinned_customer_id`` skips the
+    customer match (the user already confirmed it). Returns ``OrderDraft``
+    or ``ExtractionFailure``.
 
     Side effects: full extraction pipeline (3-5 LLM calls + DB lookups).
     """
@@ -212,7 +214,7 @@ def draft_order_from_text(
         subject=subject,
         body_text=text_in,
     )
-    return run_order_extraction(email, db)
+    return run_order_extraction(email, db, pinned_customer_id=pinned_customer_id)
 
 
 # ---------------------------------------------------------------------------

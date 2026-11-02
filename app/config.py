@@ -187,6 +187,14 @@ class Settings(BaseSettings):
             "purpose (the portfolio does this); never for a real deployment."
         ),
     )
+    waggle_secret_key: str | None = Field(
+        default=None,
+        description=(
+            "HMAC key for the visitor cookie that scopes copilot conversations. "
+            "Unset: a random per-process key is used, so visitors are forgotten "
+            "on restart (fine locally). Set a long random value in production."
+        ),
+    )
     waggle_portfolio_url: str | None = Field(
         default="https://thru-echoes.github.io/waggle",
         description="Link shown on the 401 page and in the footer; None hides it.",

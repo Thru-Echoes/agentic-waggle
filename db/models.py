@@ -461,6 +461,14 @@ class Conversation(SQLModel, table=True):
     )
     title: Optional[str] = Field(default=None, nullable=True)
     model_used: Optional[str] = Field(default=None, nullable=True)
+    visitor_id: Optional[str] = Field(
+        default=None,
+        nullable=True,
+        description=(
+            "Opaque id from the signed browser cookie that created this "
+            "conversation; NULL for API-created or pre-scoping rows."
+        ),
+    )
     created_at: datetime = Field(default_factory=utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=utc_now, nullable=False)
 
@@ -505,6 +513,10 @@ class ChatTurn(SQLModel, table=True):
     evidence_used: list[str] = Field(
         default_factory=list,
         sa_column=Column("evidence_used", JSONB, nullable=False, server_default="[]"),
+    )
+    citations: list[dict[str, Any]] = Field(
+        default_factory=list,
+        sa_column=Column("citations", JSONB, nullable=False, server_default="[]"),
     )
     model: Optional[str] = Field(default=None, nullable=True)
     tokens_input: int = Field(default=0, nullable=False)

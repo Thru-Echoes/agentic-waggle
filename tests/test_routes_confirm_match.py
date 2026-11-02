@@ -77,11 +77,13 @@ def _seed_conv_and_pending_turn(
     *,
     target_intent: str = "log_customer_report",
     hint: str = "the orchard",
+    user_text: str | None = "Visited the orchard today — mites at 2.1%, queens healthy, follow up in two weeks.",
 ) -> tuple[str, str, str]:
     """Insert a conversation + an assistant turn with a pending_customer_match marker.
 
-    Also seeds a minimal customer row so resume_with_customer can look up
-    the customer name.
+    Also seeds a minimal customer row so the resume can pin it. ``user_text``
+    is stored on the marker (as the orchestrator does since the resume
+    re-runs the original request); pass ``None`` to simulate a legacy marker.
 
     Returns ``(conv_id_str, turn_id_str, customer_id_str)``.
 
@@ -96,16 +98,17 @@ def _seed_conv_and_pending_turn(
     )
 
     turn_id = str(uuid.uuid4())
-    pending_record = json.dumps([
-        {
-            "tool_name": "pending_customer_match",
-            "target_intent": target_intent,
-            "hint": hint,
-            "alternatives": [
-                [target_cid, "Test Orchard", 0.6],
-            ],
-        }
-    ])
+    marker: dict = {
+        "tool_name": "pending_customer_match",
+        "target_intent": target_intent,
+        "hint": hint,
+        "alternatives": [
+            [target_cid, "Test Orchard", 0.6],
+        ],
+    }
+    if user_text is not None:
+        marker["user_text"] = user_text
+    pending_record = json.dumps([marker])
     # Use psycopg2 %(name)s style + explicit CAST to avoid the sqlalchemy
     # named-param / postgres cast collision with :name::type syntax.
     db.execute(
@@ -148,7 +151,10 @@ def _seed_conv_and_plain_turn(db) -> tuple[str, str]:
 
 
 class TestConfirmMatchCommit:
-    def test_returns_200_and_inserts_assistant_turn(self, client, db) -> None:
+    """The commit path re-runs the original request with the customer pinned,
+    so these tests call the model and skip without a key."""
+
+    def test_returns_200_and_inserts_assistant_turn(self, client, db, require_llm_api_key) -> None:
         """Committing a customer_id inserts a new assistant ChatTurn."""
         _, turn_id, target_cid = _seed_conv_and_pending_turn(db)
 
@@ -167,8 +173,10 @@ class TestConfirmMatchCommit:
             "Expected one new assistant ChatTurn to be inserted on commit"
         )
 
-    def test_response_body_is_assistant_partial_html(self, client, db) -> None:
-        """Response body contains the assistant bubble HTML fragment."""
+    def test_response_body_is_assistant_partial_with_report_draft(
+        self, client, db, require_llm_api_key
+    ) -> None:
+        """The resumed log_customer_report turn carries a report draft card."""
         _, turn_id, target_cid = _seed_conv_and_pending_turn(db)
 
         resp = client.post(
@@ -178,8 +186,14 @@ class TestConfirmMatchCommit:
         assert resp.status_code == 200
         # The copilot_turn_assistant.html partial marks the bubble with data-role="assistant".
         assert 'data-role="assistant"' in resp.text
+        assert "draft-report-" in resp.text, "resume must produce the report draft, not a placeholder"
+        assert "I'll extract the visit report now" not in resp.text
+        conv_row = db.execute(
+            text("SELECT active_account_id FROM conversations LIMIT 1")
+        ).scalar_one()
+        assert str(conv_row) == target_cid
 
-    def test_clears_pending_marker_from_turn(self, client, db) -> None:
+    def test_clears_pending_marker_from_turn(self, client, db, require_llm_api_key) -> None:
         """After commit, the paused turn's tool_calls no longer has the pending marker."""
         _, turn_id, target_cid = _seed_conv_and_pending_turn(db)
 
@@ -198,10 +212,22 @@ class TestConfirmMatchCommit:
             "pending_customer_match marker should be cleared after commit"
         )
 
-    def test_create_order_intent_also_works(self, client, db) -> None:
-        """create_order intent goes through resume_create_order without error."""
+    def test_create_order_intent_yields_an_order_draft_for_the_pinned_customer(
+        self, client, db, faker_instance, require_llm_api_key
+    ) -> None:
+        """create_order resume runs the extractor with the customer pinned."""
+        from providers import semantic_matcher
+        from seed import products as products_gen
+        from seed import services as services_gen
+
+        products_gen.persist(db, products_gen.generate(faker_instance))
+        services_gen.persist(db, services_gen.generate())
+        semantic_matcher.backfill_all(db)
         _, turn_id, target_cid = _seed_conv_and_pending_turn(
-            db, target_intent="create_order", hint="queen order"
+            db,
+            target_intent="create_order",
+            hint="the orchard",
+            user_text="Draft an order for the orchard: 12 Italian mated queens (QUEEN-ITA-MATED) at $48 each.",
         )
         resp = client.post(
             f"/copilot/turns/{turn_id}/confirm-match",
@@ -209,6 +235,19 @@ class TestConfirmMatchCommit:
         )
         assert resp.status_code == 200
         assert 'data-role="assistant"' in resp.text
+        assert "draft-order-" in resp.text, "resume must produce the order draft"
+        assert "Test Orchard" in resp.text
+
+    def test_legacy_marker_without_text_and_without_a_user_turn_is_409(self, client, db) -> None:
+        """A marker from before user_text was stored, with no preceding user turn
+        and no usable hint, cannot be resumed; the failure is explicit."""
+        _, turn_id, target_cid = _seed_conv_and_pending_turn(db, hint="", user_text=None)
+        resp = client.post(
+            f"/copilot/turns/{turn_id}/confirm-match",
+            data={"customer_id": target_cid},
+        )
+        assert resp.status_code == 409
+        assert "Nothing to resume" in resp.text
 
 
 # ---------------------------------------------------------------------------

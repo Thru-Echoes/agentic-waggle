@@ -98,6 +98,7 @@ class VectorSearchProvider:
           * `source_type`        — exact match: 'customer_report' | 'email' |
                                    'product_data_sheet' | 'regulatory_doc'
           * `customer_site_id`   — UUID; matches `metadata.customer_site_id`
+          * `customer_site_ids`  — list of UUIDs; any of the customer's sites
           * `site_id`            — alias of `customer_site_id` (legacy)
           * `visit_date_after`   — date; matches reports with visit_date >=
           * `min_varroa`         — numeric; varroa_count >= threshold
@@ -119,6 +120,7 @@ class VectorSearchProvider:
         f = filters or {}
         # Accept either `customer_site_id` (preferred) or `site_id` (legacy).
         site_filter = f.get("customer_site_id") or f.get("site_id")
+        site_ids = [str(s) for s in (f.get("customer_site_ids") or [])] or None
 
         # SQLAlchemy's `:name` syntax collides with Postgres `::` type-casts,
         # so use `CAST(... AS T)` exclusively. NULL-checks short-circuit each
@@ -135,6 +137,11 @@ class VectorSearchProvider:
                 CAST(:site_id AS uuid) IS NULL
                 OR CAST(metadata->>'customer_site_id' AS uuid)
                    = CAST(:site_id AS uuid)
+              )
+              AND (
+                CAST(:site_ids AS uuid[]) IS NULL
+                OR CAST(metadata->>'customer_site_id' AS uuid)
+                   = ANY(CAST(:site_ids AS uuid[]))
               )
               AND (
                 CAST(:after AS date) IS NULL
@@ -156,6 +163,7 @@ class VectorSearchProvider:
             "qv": query_vec,
             "source_type": f.get("source_type"),
             "site_id": site_filter,
+            "site_ids": site_ids,
             "after": f.get("visit_date_after"),
             "min_varroa": f.get("min_varroa"),
             "tag": f.get("tag"),
