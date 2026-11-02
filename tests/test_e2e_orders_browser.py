@@ -81,10 +81,17 @@ class TestOrdersWalk:
     def test_keyboard_opens_row_and_back_forward_keeps_page(
         self, page: Page, orders_server: LiveServer, seeded_order_id: uuid.UUID
     ) -> None:
+        errors: list[str] = []
+        page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)
         page.goto(f"{orders_server.base_url}/orders")
-        page.locator("tr.clickable").first.focus()
+        row = page.locator("tr.clickable").first
+        row.focus()
+        page.keyboard.press("a")  # a non-activating key must not open the row
+        page.wait_for_timeout(300)
+        expect(page.locator("#order-detail-pane")).to_contain_text("Select an order")
         page.keyboard.press("Enter")
         expect(page.locator("#order-detail-pane")).to_contain_text("Transition history", timeout=10_000)
+        assert not [e for e in errors if "evalDisallowed" in e or "Content Security Policy" in e], errors
         page.goto(f"{orders_server.base_url}/orders?state=UNDER_REVIEW")
         page.go_back()
         expect(page.locator("h1")).to_have_text("Orders")

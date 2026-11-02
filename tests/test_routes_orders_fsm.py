@@ -88,6 +88,7 @@ class TestOrdersList:
         resp = client.get("/orders")
         assert f'hx-get="/orders/{order.id}/partial"' in resp.text
         assert 'tabindex="0"' in resp.text and 'role="button"' in resp.text
+        assert "keyup[" not in resp.text  # no eval-based hx-trigger filters under the CSP config
 
     def test_empty_state(self, client: TestClient, db, faker_instance) -> None:
         _seed_people(db, faker_instance)

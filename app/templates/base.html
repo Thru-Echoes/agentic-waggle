@@ -23,6 +23,18 @@
         evt.detail.isError = false;
       }
     });
+    // Keyboard activation for row-as-button elements: Enter or Space on a
+    // focused [role="button"] that HTMX would react to on click. Done here
+    // rather than with an hx-trigger event filter, which needs eval
+    // (disabled by the CSP-compatible htmx config above).
+    document.addEventListener('keydown', function (evt) {
+      var el = evt.target;
+      if (!el || el.getAttribute('role') !== 'button' || el.tagName === 'BUTTON') return;
+      if (evt.key !== 'Enter' && evt.key !== ' ') return;
+      if (!el.hasAttribute('hx-get') && !el.hasAttribute('hx-post')) return;
+      evt.preventDefault();
+      el.click();
+    });
   </script>
 </head>
 <body>

@@ -41,8 +41,7 @@
                 aria-label="Open order for {{ o.customer.name if o.customer else 'unknown customer' }}"
                 hx-get="/orders/{{ o.id }}/partial"
                 hx-target="#order-detail-pane"
-                hx-swap="innerHTML"
-                hx-trigger="click, keyup[key=='Enter']">
+                hx-swap="innerHTML">
               <td>{{ o.created_at.strftime("%Y-%m-%d") }}</td>
               <td>{{ o.customer.name if o.customer else "(unknown)" }}</td>
               <td>{{ o.apiarist.name if o.apiarist else "(unknown)" }}</td>
