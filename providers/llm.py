@@ -23,15 +23,24 @@ Public surface:
     supports_temperature(model) -> bool
     get_temperature(model, temperature=0.0) -> float | None
 
+    get_provider_error_types() -> tuple[type[Exception], ...]
+    describe_provider_error(exc) -> str
+    check_provider_auth() -> ProviderStatus            (one free metadata request)
+    get_provider_status(ttl_seconds=300) -> ProviderStatus (cached)
+
 Side effects: `complete` makes a real HTTP call to Anthropic or OpenAI.
 """
 # pyright: reportMissingImports=false
 from __future__ import annotations
 
+import logging
 import os
 import re
+import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any, Iterator, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
     import openai
@@ -260,6 +269,161 @@ def _openai_complete(
             "output_tokens": resp.usage.completion_tokens if resp.usage else 0,
         },
     )
+
+
+log = logging.getLogger(__name__)
+
+
+def get_provider_error_types() -> tuple[type[Exception], ...]:
+    """Return the exception classes that mean "the LLM provider failed".
+
+    Covers configuration (no key), provider-side rejections (bad key, rate
+    limit, bad request) and transport failures for both SDKs. Imported
+    lazily so callers that never touch an SDK do not pay for it.
+
+    Side effects: imports the SDK modules.
+    """
+    import anthropic
+    import httpx
+    import openai
+
+    return (
+        LLMConfigurationError,
+        openai.APIError,
+        anthropic.APIError,
+        httpx.HTTPError,
+    )
+
+
+def describe_provider_error(exc: BaseException) -> str:
+    """Return a user-facing sentence for a provider failure.
+
+    Never echoes the provider message: it can carry masked key fragments,
+    account URLs and request ids that belong in the server log, not in a
+    browser.
+
+    Side effects: none.
+    """
+    status = getattr(exc, "status_code", None)
+    if isinstance(exc, LLMConfigurationError):
+        return "No LLM API key is configured on this server."
+    if status == 401:
+        return "The LLM provider rejected this server's API key."
+    if status == 429:
+        return "The LLM provider is rate-limiting this server. Try again in a minute."
+    if status == 404:
+        return "The configured LLM model is not available to this API key."
+    if isinstance(status, int) and status >= 500:
+        return "The LLM provider is having an outage."
+    if status is None:
+        return "The LLM provider could not be reached."
+    return "The LLM provider returned an error."
+
+
+ProviderState = Literal["ok", "unauthorized", "unreachable", "unconfigured", "error"]
+
+
+class ProviderStatus(BaseModel):
+    """Result of one LLM-provider authentication probe."""
+
+    model_config = ConfigDict(frozen=True)
+
+    provider: str | None = Field(
+        default=None, description="openai | anthropic | None when unconfigured."
+    )
+    model: str | None = Field(default=None, description="Model id that was probed.")
+    state: ProviderState = Field(
+        ..., description="ok, unauthorized, unreachable, unconfigured, or error."
+    )
+    detail: str = Field(
+        ..., description="Fixed user-facing phrase; never the raw provider message."
+    )
+    checked_at: float = Field(..., description="Unix time of the probe.")
+
+    @property
+    def ok(self) -> bool:
+        """True only when the key was accepted for the configured model."""
+        return self.state == "ok"
+
+
+def check_provider_auth() -> ProviderStatus:
+    """Probe the configured provider with a free metadata request.
+
+    ``GET /v1/models/{model}`` costs no tokens and answers the one question
+    that matters at boot and in ``/ready``: does this key work for this
+    model? A dead key is logged at ERROR so it is loud in the deploy logs.
+
+    Side effects: one HTTPS request to the provider; one log line on failure.
+    """
+    from app.config import get_settings
+
+    now = time.time()
+    try:
+        provider = resolve_provider()
+    except LLMConfigurationError as exc:
+        status = ProviderStatus(
+            state="unconfigured", detail=describe_provider_error(exc), checked_at=now
+        )
+        log.error("LLM provider probe: %s", status.detail)
+        return status
+
+    settings = get_settings()
+    model = settings.openai_model if provider == "openai" else settings.anthropic_model
+    try:
+        if provider == "openai":
+            get_openai_client().models.retrieve(model)
+        else:
+            import anthropic
+
+            anthropic.Anthropic().models.retrieve(model)
+    except Exception as exc:  # noqa: BLE001 — classified by status below, never swallowed silently
+        code = getattr(exc, "status_code", None)
+        state: ProviderState
+        if code in (401, 403):
+            state = "unauthorized"
+        elif code is None:
+            state = "unreachable"
+        else:
+            state = "error"
+        status = ProviderStatus(
+            provider=provider,
+            model=model,
+            state=state,
+            detail=describe_provider_error(exc),
+            checked_at=now,
+        )
+        log.error("LLM provider probe failed (%s, %s): %s", provider, model, status.detail)
+        return status
+    return ProviderStatus(
+        provider=provider,
+        model=model,
+        state="ok",
+        detail="LLM provider reachable and key accepted.",
+        checked_at=now,
+    )
+
+
+_PROVIDER_STATUS_CACHE: ProviderStatus | None = None
+
+
+def get_provider_status(*, ttl_seconds: int = 300, force: bool = False) -> ProviderStatus:
+    """Return the cached probe result, refreshing when older than ``ttl_seconds``.
+
+    Side effects: may call ``check_provider_auth`` (one HTTPS request);
+    updates the module-level cache.
+    """
+    global _PROVIDER_STATUS_CACHE
+    cached = _PROVIDER_STATUS_CACHE
+    if force or cached is None or (time.time() - cached.checked_at) > ttl_seconds:
+        cached = check_provider_auth()
+        _PROVIDER_STATUS_CACHE = cached
+    return cached
+
+
+def reset_provider_status_cache() -> None:
+    """Forget the cached probe (tests). Side effect: clears module state."""
+    global _PROVIDER_STATUS_CACHE
+    _PROVIDER_STATUS_CACHE = None
 
 
 class LLMClient:

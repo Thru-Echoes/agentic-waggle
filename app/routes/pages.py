@@ -14,7 +14,6 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session
@@ -27,6 +26,7 @@ from app.routes._order_persistence import (
     persist_order_from_draft,
 )
 from app.schemas.copilot import ConfirmResultOut
+from app.templating import get_templates
 from db.enums import OrderState
 from db.models import Customer, Order, CustomerReport
 from db.session import get_db_session
@@ -34,8 +34,7 @@ from providers.inbox import FIXTURE_ROOT, InboxClient, InboxFixtureMissing
 
 router = APIRouter(tags=["pages"], include_in_schema=False)
 
-TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
-templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
+templates = get_templates()
 
 ERP_LOG_ROOT = Path("/erp-sync-log")
 

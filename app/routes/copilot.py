@@ -34,7 +34,6 @@ import logging
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from pathlib import Path
 from typing import Any
 
 import asyncio
@@ -42,7 +41,6 @@ from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from sqlalchemy import func, select, text
 from sqlmodel import Session
@@ -60,6 +58,7 @@ from app.routes._order_persistence import (
     persist_order_from_draft,
     resolve_default_apiarist,
 )
+from app.templating import get_templates
 from app.schemas.copilot import (
     ChatTurnOut,
     ConfirmResultOut,
@@ -96,8 +95,7 @@ _PENDING_REPORT_TOOL_NAME = "pending_report_draft"
 #: Fallback character cap on the auto-generated conversation title.
 _TITLE_FALLBACK_LIMIT = 60
 
-TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates"
-templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
+templates = get_templates()
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +108,10 @@ html_router = APIRouter(tags=["copilot-pages"], include_in_schema=False)
 
 # JSON API router. Mounted under /api in app.main.
 api_router = APIRouter(prefix="/copilot", tags=["copilot"])
+
+# Template-rendering routes for tests only. Mounted by app.main solely when
+# ``Settings.waggle_internal_routes_enabled`` is true (WAGGLE_INTERNAL_ROUTES_ENABLED=1).
+internal_router = APIRouter(tags=["internal"], include_in_schema=False)
 
 
 # ---------------------------------------------------------------------------
@@ -646,7 +648,7 @@ def _resolve_active_customer_site(
 # ---------------------------------------------------------------------------
 
 
-@html_router.get("/_internal/render/confirm-match", response_class=HTMLResponse)
+@internal_router.get("/_internal/render/confirm-match", response_class=HTMLResponse)
 async def _internal_render_confirm_match(
     request: Request,
     turn_id: uuid.UUID,
@@ -662,7 +664,7 @@ async def _internal_render_confirm_match(
     )
 
 
-@html_router.get("/_internal/render/pick-match", response_class=HTMLResponse)
+@internal_router.get("/_internal/render/pick-match", response_class=HTMLResponse)
 async def _internal_render_pick_match(
     request: Request,
     turn_id: uuid.UUID,
@@ -674,6 +676,8 @@ async def _internal_render_pick_match(
     """
     alternatives = []
     for a in alt:
+        if "|" not in a:
+            raise HTTPException(status_code=422, detail="alt must be 'customer_id|customer_name'")
         cid, name = a.split("|", 1)
         alternatives.append({"customer_id": cid, "customer_name": name, "confidence": None})
     return templates.TemplateResponse(
@@ -1528,4 +1532,5 @@ def api_confirm_report(
 __all__ = [
     "html_router",
     "api_router",
+    "internal_router",
 ]
