@@ -1,68 +1,102 @@
+# syntax=docker/dockerfile:1.7
 # ---------------------------------------------------------------------------
-# agentic-mcp-crm — single image for api / worker / seed / mcp entrypoints.
-# Compose overrides CMD per service.
+# Waggle — one Dockerfile, three stages.
+#
+#   base     runtime dependencies from uv.lock, model weights baked in,
+#            source tree copied, non-root user created.
+#   test     base + the dev dependency group + tests/. Used by the compose
+#            `seed` service (`make test`, `make seed`, `make migrate`).
+#   runtime  base + entrypoint. The last stage, so it is what `docker build .`
+#            and `fly deploy` produce.
+#
+# Dependencies install from the lock (`uv sync --frozen`): the versions that
+# run in production are the versions that were tested. torch resolves from
+# the CPU-only PyTorch index on Linux (see pyproject.toml), which keeps the
+# image at a fraction of the CUDA build.
 # ---------------------------------------------------------------------------
 
 FROM python:3.11-slim AS base
 
+ARG WAGGLE_UID=10001
+ARG WAGGLE_GID=10001
+
 ENV PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1 \
-    # sentence-transformers cache lives here; compose mounts a named volume
-    # so model weights aren't re-downloaded every rebuild.
+    PYTHONDONTWRITEBYTECODE=1 \
+    # sentence-transformers cache; compose mounts a named volume here so
+    # the weights baked into the image survive rebuilds.
     HF_HOME=/cache/huggingface \
-    TRANSFORMERS_CACHE=/cache/huggingface
+    # uv installs into a fixed virtualenv on PATH, outside /app, so the
+    # source tree can be bind-mounted without hiding the environment.
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    PATH=/opt/venv/bin:$PATH
 
 WORKDIR /app
 
-# System deps:
-#   libpq5       — psycopg2 runtime
-#   build-essential + libpq-dev — needed only if psycopg2-binary fails and we
-#       fall back to building from source. Kept in build stage; stripped in
-#       a multi-stage later if image size matters.
+# libpq5: psycopg2-binary bundles libpq, but keeping the system library makes
+# `psql`-less debugging via python work on any wheel. curl: health probes.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        libpq5 \
-        build-essential \
-        libpq-dev \
-        curl \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends libpq5 curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid "${WAGGLE_GID}" waggle \
+    && useradd --uid "${WAGGLE_UID}" --gid waggle --create-home --shell /usr/sbin/nologin waggle
 
-# Install Python deps first so source-code edits don't bust the dep cache.
-COPY requirements.txt /app/requirements.txt
-RUN pip install --upgrade pip && pip install -r /app/requirements.txt
+COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /uvx /bin/
 
-# Pre-download the sentence-transformers model into the image. Without
-# this, the first request after a fresh container start downloads ~80 MB
-# from HuggingFace and times out — the model lives in HF_HOME so this
-# layer caches it where the runtime expects to find it.
+# Dependencies first so source edits do not bust the layer cache.
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
+
+# Pre-download the embedding model into the image. Without this, the first
+# request after a cold start downloads ~80 MB and times out the probe.
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
 
-# Copy the source tree. Order follows likelihood-of-change (least → most)
-# to keep layer caching useful. Each dir must exist at build time — placeholder
-# __init__.py files are checked in so the image still builds while the app
-# scaffolding is being filled out.
-COPY alembic.ini /app/alembic.ini
-COPY alembic /app/alembic
-COPY providers /app/providers
-COPY db /app/db
-COPY seed /app/seed
-COPY agents /app/agents
-COPY mcp_servers /app/mcp_servers
-COPY app /app/app
-COPY scripts /app/scripts
-COPY tests /app/tests
+# Source tree, least-changing first.
+COPY alembic.ini ./alembic.ini
+COPY alembic ./alembic
+COPY providers ./providers
+COPY db ./db
+COPY seed ./seed
+COPY agents ./agents
+COPY mcp_servers ./mcp_servers
+COPY app ./app
+COPY scripts ./scripts
 
-# Runtime dirs the providers expect. Locally, compose re-mounts these as
-# volumes so writes persist across container restarts. In production, the
-# storage / sent-mail / erp-sync-log dirs are typically remounted onto a
-# persistent volume (e.g., Fly volume at /data/<dir>); gmail-fixtures is a
-# read-only dataset baked into the image, so we copy it in directly.
-RUN mkdir -p /local-storage /sent-mail /erp-sync-log /cache/huggingface
+# Provider roots. Locally compose bind-mounts these; on Fly the entrypoint
+# bridges them onto the /data volume. gmail-fixtures is a read-only dataset
+# baked in so the image is self-contained.
 COPY gmail-fixtures /gmail-fixtures
+RUN mkdir -p /local-storage /sent-mail /erp-sync-log /app/.reports \
+    && chown -R waggle:waggle /app /local-storage /sent-mail /erp-sync-log /gmail-fixtures /cache/huggingface
 
-# Default command: run migrations, conditionally seed, then exec uvicorn.
-# docker-compose overrides this per service (the `seed` service uses an
-# empty entrypoint so it can run alembic / seed.generate / pytest directly).
+# Build provenance, surfaced by GET /health.
+ARG GIT_SHA=unknown
+ARG BUILT_AT=unknown
+ENV WAGGLE_GIT_SHA=${GIT_SHA} \
+    WAGGLE_BUILT_AT=${BUILT_AT}
+
 EXPOSE 5001
+
+
+# ---------------------------------------------------------------------------
+FROM base AS test
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project
+# The environment stays root-owned and read-only for the test user; only the
+# tree the tests write to (reports, pytest caches) needs to be writable.
+# chown-ing /opt/venv would copy the whole environment into a new layer.
+COPY --chown=waggle:waggle tests ./tests
+USER waggle
+CMD ["pytest", "tests", "-q"]
+
+
+# ---------------------------------------------------------------------------
+FROM base AS runtime
+
+# The entrypoint starts as root only to fix ownership of the mounted volume,
+# then drops to the `waggle` user before running migrations and uvicorn.
+USER root
 CMD ["./scripts/entrypoint.sh"]

@@ -29,9 +29,10 @@ from pathlib import Path
 from typing import Iterator
 
 import pytest
+from db.url import get_sqlalchemy_url
 
 playwright_module = pytest.importorskip("playwright")
-from playwright.sync_api import Browser, BrowserContext, Page, expect, sync_playwright  # noqa: E402
+from playwright.sync_api import Page, expect  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -86,7 +87,7 @@ def live_server_url() -> Iterator[str]:
     Faker.seed(42)
     fk.add_provider(BeekeepingProvider)
 
-    seed_engine = create_engine(db_url, future=True)
+    seed_engine = create_engine(get_sqlalchemy_url(db_url), future=True)
 
     schema_path = REPO_ROOT / "tests" / "schema.sql"
     with seed_engine.begin() as conn:
@@ -163,37 +164,8 @@ def _split_sql(sql: str) -> list[str]:
     return [c.strip() for c in no_comments.split(";") if c.strip()]
 
 
-@pytest.fixture(scope="session")
-def browser() -> Iterator[Browser]:
-    """One Chromium browser instance shared across the session.
-
-    Skips with an actionable message when the Chromium binary isn't
-    installed (typical in CI / Docker — run ``playwright install
-    chromium`` first). The Python package being installed is not enough.
-    """
-    with sync_playwright() as pw:
-        try:
-            b = pw.chromium.launch(headless=True)
-        except Exception as exc:
-            pytest.skip(
-                "Chromium binary not available — run `playwright install "
-                f"chromium` first. Error: {exc.__class__.__name__}"
-            )
-        try:
-            yield b
-        finally:
-            b.close()
-
-
-@pytest.fixture
-def page(browser: Browser) -> Iterator[Page]:
-    """Fresh browser context + page per test (isolated cookies / storage)."""
-    ctx: BrowserContext = browser.new_context()
-    p = ctx.new_page()
-    try:
-        yield p
-    finally:
-        ctx.close()
+# The session-scoped ``browser`` and per-test ``page`` fixtures live in
+# tests/conftest.py so every browser module shares one Playwright context.
 
 
 # ---------------------------------------------------------------------------

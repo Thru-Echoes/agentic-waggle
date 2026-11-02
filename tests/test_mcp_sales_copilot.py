@@ -46,6 +46,11 @@ def _seed_copilot_corpus(db, faker_instance) -> None:
         faker_instance, customers, sites, apiarists, products, services, emails
     )
     orders_gen.persist(db, orders)
+    # find_customer goes through the semantic matcher, which needs the
+    # search-entry tables populated from the rows above.
+    from providers import semantic_matcher
+
+    semantic_matcher.backfill_all(db)
     # The MCP tool opens its own `session_scope()`, a separate transaction
     # from the test's `db` fixture. Commit here so the MCP session can see
     # the seeded rows. Without this, tool calls hit LookupError on fresh data.
@@ -60,8 +65,13 @@ async def _first_customer_id(db) -> str:
 
 
 class TestFindCustomer:
+    """find_customer runs the semantic matcher, whose Stage B is an LLM call,
+    so these tests skip (with the documented reason) when no key is set."""
+
     @pytest.mark.asyncio
-    async def test_exact_name_returns_hit(self, db, faker_instance) -> None:
+    async def test_exact_name_returns_hit(
+        self, db, faker_instance, require_llm_api_key
+    ) -> None:
         _seed_copilot_corpus(db, faker_instance)
         async with Client(server) as client:
             result = await client.call_tool(
@@ -75,7 +85,7 @@ class TestFindCustomer:
 
     @pytest.mark.asyncio
     async def test_no_match_returns_empty_list(
-        self, db, faker_instance
+        self, db, faker_instance, require_llm_api_key
     ) -> None:
         _seed_copilot_corpus(db, faker_instance)
         async with Client(server) as client:

@@ -19,15 +19,16 @@ from sqlmodel import SQLModel
 
 # Import to register models on SQLModel.metadata.
 import db.models  # noqa: F401
+from db.url import get_sqlalchemy_url
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-db_url = os.environ.get("DATABASE_URL")
-if db_url:
-    config.set_main_option("sqlalchemy.url", db_url)
+# Always name the psycopg2 driver explicitly (SQLAlchemy 2.1 defaults a bare
+# postgresql:// URL to psycopg v3, which is not installed).
+config.set_main_option("sqlalchemy.url", get_sqlalchemy_url(os.environ.get("DATABASE_URL")))
 
 target_metadata = SQLModel.metadata
 

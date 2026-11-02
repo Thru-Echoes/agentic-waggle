@@ -15,7 +15,7 @@
       "args": ["-m", "mcp_servers.sales_copilot_server"],
       "cwd": "/absolute/path/to/agentic-mcp-crm/waggle",
       "env": {
-        "DATABASE_URL": "postgresql://agentic_mcp_crm:agentic_mcp_crm@localhost:5433/agentic_mcp_crm",
+        "DATABASE_URL": "postgresql+psycopg2://agentic_mcp_crm:agentic_mcp_crm@localhost:5433/agentic_mcp_crm",
         "OPENAI_API_KEY": "sk-...",
         "LLM_PROVIDER": "openai"
       }
@@ -25,7 +25,7 @@
       "args": ["-m", "mcp_servers.customer_reports_server"],
       "cwd": "/absolute/path/to/agentic-mcp-crm/waggle",
       "env": {
-        "DATABASE_URL": "postgresql://agentic_mcp_crm:agentic_mcp_crm@localhost:5433/agentic_mcp_crm",
+        "DATABASE_URL": "postgresql+psycopg2://agentic_mcp_crm:agentic_mcp_crm@localhost:5433/agentic_mcp_crm",
         "OPENAI_API_KEY": "sk-..."
       }
     }

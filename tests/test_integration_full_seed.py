@@ -6,7 +6,7 @@ test that tells you the seed end-to-end works.
 
 Run with:
 
-    TEST_DATABASE_URL=postgresql://...@localhost:5433/test pytest tests/test_integration_full_seed.py -vv
+    TEST_DATABASE_URL=postgresql+psycopg2://...@localhost:5433/test pytest tests/test_integration_full_seed.py -vv
 """
 # pyright: reportMissingImports=false
 from __future__ import annotations

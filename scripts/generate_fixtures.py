@@ -329,7 +329,6 @@ def _generate_one_email_body(kind: str, customer_name: str, customer_segment: st
     )
 
     contact_name = faker.name()
-    contact_first = contact_name.split()[0]
 
     if kind == "clear_order":
         directive = (

@@ -8,7 +8,6 @@ first use so test-suite imports don't fail when DATABASE_URL is unset.
 from __future__ import annotations
 
 import logging
-import os
 from contextlib import contextmanager
 from functools import lru_cache
 from typing import Iterator
@@ -17,16 +16,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-log = logging.getLogger(__name__)
+from db.url import get_sqlalchemy_url
 
-DEFAULT_DATABASE_URL = (
-    "postgresql://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm"
-)
+log = logging.getLogger(__name__)
 
 
 def get_database_url() -> str:
-    """Return the current DATABASE_URL or the compose default. Not cached."""
-    return os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
+    """Return DATABASE_URL (or the compose default) with the psycopg2 driver named.
+
+    Not cached. Side effect: reads ``DATABASE_URL`` from the environment.
+    """
+    return get_sqlalchemy_url()
 
 
 @lru_cache(maxsize=1)

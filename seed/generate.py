@@ -26,6 +26,8 @@ from faker import Faker
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from db.url import get_sqlalchemy_url
+
 from seed import (
     apiarists as apiarists_gen,
     approval_rules as approval_rules_gen,
@@ -88,11 +90,7 @@ def build_faker() -> Faker:
 
 @contextmanager
 def session_scope() -> Iterator[Session]:
-    db_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm",
-    )
-    engine = create_engine(db_url, future=True)
+    engine = create_engine(get_sqlalchemy_url(), future=True)
     Maker = sessionmaker(bind=engine, expire_on_commit=False, future=True)
     with Maker() as session:
         try:

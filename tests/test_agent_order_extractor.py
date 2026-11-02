@@ -4,8 +4,8 @@ These tests require a real LLM (ANTHROPIC_API_KEY or OPENAI_API_KEY).
 They skip with a documented message if no key is set — matching the
 fail-loud-but-deliberate pattern from `tests/test_provider_llm.py`.
 
-Tests run the full 6-node pipeline with real LLM calls, real rapidfuzz,
-real pgvector. No mocks.
+Tests run the full 6-node pipeline with real LLM calls, the real semantic
+matcher (pgvector + FTS + LLM disambiguation), real pgvector. No mocks.
 
 Includes the evidence-grounding invariant test that exercises the
 Grounded mixin's promise: every customer-evidence quote must appear
@@ -15,10 +15,10 @@ sourced so we relax the assertion there.
 # pyright: reportMissingImports=false
 from __future__ import annotations
 
-import pytest
 
 from agents.order_extractor import run_order_extraction
 from agents.schemas import EmailInput, ExtractionFailure, OrderDraft
+from providers import semantic_matcher
 
 
 def _seed_minimum(db, faker_instance) -> None:
@@ -43,6 +43,9 @@ def _seed_minimum(db, faker_instance) -> None:
     products_gen.persist(db, products)
     services = services_gen.generate()
     services_gen.persist(db, services)
+    # The semantic matcher (Phase I) raises MatcherIndexEmpty until the
+    # search-entry tables are populated; backfill from the rows just seeded.
+    semantic_matcher.backfill_all(db)
 
 
 class TestOrderExtractionHappyPath:

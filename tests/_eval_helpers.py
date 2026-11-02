@@ -515,19 +515,19 @@ def write_report(
 
     lines: list[str] = [
         f"# Eval Report: {name}",
-        f"",
+        "",
         f"**Generated:** {now}  ",
         f"**Git SHA:** `{git_sha}`  ",
         f"**Corpus SHA:** `{corpus_sha_hex[:12]}`  ",
         f"**Eval mode:** `{eval_mode}`  ",
         f"**Result:** {'ALL PASS' if all_pass else 'FAILURES PRESENT'}  ",
-        f"",
+        "",
         f"Overall precision: **{overall_precision:.1%}** ({total_passed}/{total_cases})",
-        f"",
-        f"## Per-Category Results",
-        f"",
-        f"| Category | Precision | Pass/Total | Threshold | Status |",
-        f"|---|---|---|---|---|",
+        "",
+        "## Per-Category Results",
+        "",
+        "| Category | Precision | Pass/Total | Threshold | Status |",
+        "|---|---|---|---|---|",
     ]
 
     for r in sorted(category_results, key=lambda x: x.category):
@@ -545,18 +545,18 @@ def write_report(
     failures_exist = any(r.failures for r in category_results)
     if failures_exist:
         lines += [
-            f"",
-            f"## Failure Details",
-            f"",
+            "",
+            "## Failure Details",
+            "",
         ]
         for r in sorted(category_results, key=lambda x: x.category):
             if not r.failures:
                 continue
             lines += [
                 f"### `{r.category}` failures ({len(r.failures)})",
-                f"",
-                f"| Input | Expected | Got | Error |",
-                f"|---|---|---|---|",
+                "",
+                "| Input | Expected | Got | Error |",
+                "|---|---|---|---|",
             ]
             for res in r.failures:
                 case = res.case

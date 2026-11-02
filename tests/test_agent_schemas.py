@@ -166,34 +166,37 @@ def test_resolved_line_item_grounded_evidence_can_be_empty_for_exact_match():
 
 
 # ---------------------------------------------------------------------------
-# CustomerMatch is deterministic but carries confidence for aggregation
+# CustomerMatch is Grounded: evidence + confidence travel with the match
 # ---------------------------------------------------------------------------
 
 
 def test_customer_match_carries_confidence_for_aggregation():
-    """CustomerMatch is deterministic (not Grounded — no evidence field),
-    but exposes confidence in [0,1] derived from the fuzzy score band so
-    downstream OrderDraft.overall_confidence can fold it in."""
+    """CustomerMatch exposes confidence in [0,1] so downstream
+    OrderDraft.overall_confidence can fold it in, and the evidence quotes
+    that justified the match travel with it."""
     high = CustomerMatch(
         customer_id=uuid.uuid4(),
         customer_name="St. Agnes Pollination",
-        erp_customer_no="C-01004",
-        score=95.0,
+        evidence=["St. Agnes Pollination"],
         confidence=0.95,
     )
     assert high.confidence == 0.95
+    assert high.evidence == ["St. Agnes Pollination"]
 
 
 def test_customer_match_confidence_bounded():
-    """CustomerMatch.confidence is bounded [0,1]."""
-    with pytest.raises(ValidationError):
-        CustomerMatch(score=95.0, confidence=1.5)
+    """CustomerMatch.confidence is bounded [0,1]; evidence is otherwise valid
+    so the only violation is the bound."""
+    with pytest.raises(ValidationError, match="confidence"):
+        CustomerMatch(evidence=["x"], confidence=1.5)
 
 
-def test_customer_match_has_no_evidence_field():
-    """CustomerMatch is deterministic — it does NOT inherit Grounded
-    (no verbatim quotes available from a fuzzy-match score)."""
-    assert "evidence" not in CustomerMatch.model_fields
+def test_customer_match_requires_evidence():
+    """CustomerMatch inherits Grounded, so evidence is a required field: a
+    match can always be traced back to the text that justified it."""
+    assert "evidence" in CustomerMatch.model_fields
+    with pytest.raises(ValidationError, match="evidence"):
+        CustomerMatch(customer_id=uuid.uuid4(), confidence=0.9)  # type: ignore[call-arg]
 
 
 # ---------------------------------------------------------------------------
@@ -218,8 +221,7 @@ def _minimal_customer_match() -> CustomerMatch:
     return CustomerMatch(
         customer_id=uuid.uuid4(),
         customer_name="Test Co.",
-        erp_customer_no="C-00001",
-        score=100.0,
+        evidence=["Test Co."],
         confidence=1.0,
     )
 

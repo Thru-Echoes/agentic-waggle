@@ -28,6 +28,8 @@ import uuid
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from db.url import get_sqlalchemy_url
+
 log = logging.getLogger("seed.embeddings")
 
 # Tighter chunking than the prior 1500-char threshold. With the
@@ -127,11 +129,7 @@ def run(db: Session | None = None) -> None:
     """
     own_session = db is None
     if db is None:
-        db_url = os.environ.get(
-            "DATABASE_URL",
-            "postgresql://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm",
-        )
-        engine = create_engine(db_url, future=True)
+        engine = create_engine(get_sqlalchemy_url(), future=True)
         SessionLocal = sessionmaker(bind=engine, future=True)
         db = SessionLocal()
 

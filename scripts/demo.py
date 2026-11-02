@@ -299,7 +299,7 @@ def persist_and_advance(db: Session, draft: OrderDraft) -> uuid.UUID:
         {"s": OrderState.SCHEDULED.value, "ts": now, "id": str(order_id)},
     )
     print(f"    persisted:    order_id={order_id}")
-    print(f"    fsm path:     " + " → ".join(s.value for _, s in fsm_path))
+    print("    fsm path:     " + " → ".join(s.value for _, s in fsm_path))
 
     # ERP sync — a real call to the mock; surfaces as a line in /erp-sync-log/.
     # erp_customer_no is no longer on CustomerMatch; fetch it from the DB.
@@ -360,7 +360,7 @@ def copilot_qna(db: Session, draft: OrderDraft) -> None:
     )
     hits = provider.search(query, top_k=3)
     print(f"    rag query:    {query!r}")
-    print(f"    top hits:")
+    print("    top hits:")
     for h in hits:
         print(f"      - score={h.score:.3f}  {h.content[:90]!r}")
 
@@ -410,7 +410,7 @@ def copilot_qna(db: Session, draft: OrderDraft) -> None:
     )
     subject, body = _parse_subject_body(resp.text)
     print(f"    draft subject: {subject}")
-    print(f"    draft body:")
+    print("    draft body:")
     print(_indent(body, "      "))
 
     msg_id = send_mail(
@@ -557,7 +557,7 @@ def chat_copilot_turn(db: Session, draft: OrderDraft) -> None:
     print(f"    conversation: {conv_id}")
     print(f"    model: {response.model}  · latency: {response.latency_ms} ms")
     print(f"    tool calls: {', '.join(tc.tool_name for tc in response.tool_calls) or '(none)'}")
-    print(f"    assistant:")
+    print("    assistant:")
     print(_indent(response.text, "      "))
 
 
