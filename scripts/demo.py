@@ -50,6 +50,8 @@ from sqlalchemy.orm import Session
 from agents.order_extractor import run_order_extraction
 from agents.schemas import EmailInput, ExtractionFailure, OrderDraft
 from db.enums import OrderState
+from db.fsm import record_creation, transition_order
+from db.models import Order, OrderLineItem
 from db.session import session_scope
 from mcp_servers.sales_copilot_server import (
     _format_email_context,
@@ -217,11 +219,13 @@ def run_agent(db: Session, email: EmailInput) -> OrderDraft:
 
 
 def persist_and_advance(db: Session, draft: OrderDraft) -> uuid.UUID:
-    """Write the draft to `orders` + `order_line_items`, record FSM history,
-    call the ERP mock, then flip state to SYNCED_TO_ERP.
+    """Write the draft to `orders` + `order_line_items`, walk the FSM to
+    SYNCED_TO_ERP through ``db.fsm.transition_order`` (every step is a legal
+    edge of the published state diagram), and call the ERP mock at the
+    invoice step.
 
-    Side effects: 1 INSERT per order, 1 per line item, 4 per FSM transition,
-    and one line in the ERP log.
+    Side effects: 1 INSERT per order, 1 per line item, 1 creation record +
+    7 transition rows, and one line in the ERP log.
     """
     if draft.customer.customer_id is None:
         raise RuntimeError("draft has no resolved customer_id; cannot persist.")
@@ -231,75 +235,43 @@ def persist_and_advance(db: Session, draft: OrderDraft) -> uuid.UUID:
     user_id = db.execute(
         text("SELECT id FROM users WHERE is_active = TRUE ORDER BY email LIMIT 1")
     ).scalar_one()
+    user_uuid = uuid.UUID(str(user_id))
 
-    order_id = uuid.uuid4()
-    now = datetime.now(timezone.utc)
-    db.execute(
-        text(
-            "INSERT INTO orders (id, customer_id, user_id, state, "
-            "pollination_date, total_usd, source_email_id, created_at, updated_at) "
-            "VALUES (:id, :cust, :user, :state, :pdate, :total, :src, :ts, :ts)"
-        ),
-        {
-            "id": str(order_id),
-            "cust": str(draft.customer.customer_id),
-            "user": str(user_id),
-            "state": OrderState.EXTRACTED.value,
-            "pdate": draft.pollination_date,
-            "total": draft.total_usd,
-            "src": None,  # we don't persist synced_emails in the demo
-            "ts": now,
-        },
+    order = Order(
+        customer_id=draft.customer.customer_id,
+        user_id=user_uuid,
+        state=OrderState.EXTRACTED,
+        pollination_date=draft.pollination_date,
+        total_usd=draft.total_usd,
+        source_email_id=None,  # we don't persist synced_emails in the demo
     )
+    db.add(order)
+    db.flush()
     for li in draft.line_items:
-        db.execute(
-            text(
-                "INSERT INTO order_line_items "
-                "(id, order_id, product_id, service_id, sku, quantity, unit_price_usd) "
-                "VALUES (:id, :oid, :pid, :sid, :sku, :q, :p)"
-            ),
-            {
-                "id": str(uuid.uuid4()),
-                "oid": str(order_id),
-                "pid": str(li.product_id) if li.product_id else None,
-                "sid": str(li.service_id) if li.service_id else None,
-                "sku": li.sku,
-                "q": li.quantity,
-                "p": li.unit_price_usd,
-            },
-        )
+        db.add(OrderLineItem(
+            order_id=order.id,
+            product_id=li.product_id,
+            service_id=li.service_id,
+            sku=li.sku,
+            quantity=li.quantity,
+            unit_price_usd=li.unit_price_usd,
+        ))
+    record_creation(db, order, actor_id=user_uuid, metadata={"source": "scripts.demo"})
 
-    # FSM progression — a realistic abbreviated path.
-    fsm_path: list[tuple[OrderState | None, OrderState]] = [
-        (None, OrderState.EXTRACTED),
-        (OrderState.EXTRACTED, OrderState.UNDER_REVIEW),
-        (OrderState.UNDER_REVIEW, OrderState.APPROVED),
-        (OrderState.APPROVED, OrderState.SCHEDULED),
+    # FSM progression — the full legal path from extraction to ERP sync.
+    review_path = [
+        OrderState.UNDER_REVIEW,
+        OrderState.APPROVED,
+        OrderState.SCHEDULED,
+        OrderState.IN_PROGRESS,
+        OrderState.FULFILLED,
+        OrderState.INVOICED,
     ]
-    for from_s, to_s in fsm_path:
-        db.execute(
-            text(
-                "INSERT INTO order_state_transitions "
-                "(id, order_id, from_state, to_state, actor_id, transitioned_at, metadata) "
-                "VALUES (:id, :oid, :fs, :ts_to, :actor, :ts, CAST('{}' AS jsonb))"
-            ),
-            {
-                "id": str(uuid.uuid4()),
-                "oid": str(order_id),
-                "fs": from_s.value if from_s else None,
-                "ts_to": to_s.value,
-                "actor": str(user_id),
-                "ts": now,
-            },
-        )
-    db.execute(
-        text(
-            "UPDATE orders SET state = :s, updated_at = :ts WHERE id = :id"
-        ),
-        {"s": OrderState.SCHEDULED.value, "ts": now, "id": str(order_id)},
-    )
-    print(f"    persisted:    order_id={order_id}")
-    print("    fsm path:     " + " → ".join(s.value for _, s in fsm_path))
+    for to_state in review_path:
+        transition_order(db, order, to_state, actor_id=user_uuid, metadata={"source": "scripts.demo"})
+    db.commit()
+    print(f"    persisted:    order_id={order.id}")
+    print("    fsm path:     EXTRACTED → " + " → ".join(s.value for s in review_path))
 
     # ERP sync — a real call to the mock; surfaces as a line in /erp-sync-log/.
     # erp_customer_no is no longer on CustomerMatch; fetch it from the DB.
@@ -319,32 +291,14 @@ def persist_and_advance(db: Session, draft: OrderDraft) -> uuid.UUID:
     resp = erp.submit_sales_order(erp_order)
     print(f"    erp synced:   so_no={resp.erp_so_no}  status={resp.status}")
 
-    # Final FSM step into SYNCED_TO_ERP, recorded for history.
-    db.execute(
-        text(
-            "INSERT INTO order_state_transitions "
-            "(id, order_id, from_state, to_state, actor_id, transitioned_at, metadata) "
-            "VALUES (:id, :oid, :fs, :ts_to, :actor, :ts, CAST(:meta AS jsonb))"
-        ),
-        {
-            "id": str(uuid.uuid4()),
-            "oid": str(order_id),
-            "fs": OrderState.SCHEDULED.value,
-            "ts_to": OrderState.SYNCED_TO_ERP.value,
-            "actor": str(user_id),
-            "ts": datetime.now(timezone.utc),
-            "meta": f'{{"erp_so_no": "{resp.erp_so_no}"}}',
-        },
+    # Final FSM step into SYNCED_TO_ERP, with the ERP sales-order number on the
+    # transition's metadata for history.
+    transition_order(
+        db, order, OrderState.SYNCED_TO_ERP, actor_id=user_uuid,
+        metadata={"source": "scripts.demo", "erp_so_no": resp.erp_so_no},
     )
-    db.execute(
-        text("UPDATE orders SET state = :s, updated_at = :ts WHERE id = :id"),
-        {
-            "s": OrderState.SYNCED_TO_ERP.value,
-            "ts": datetime.now(timezone.utc),
-            "id": str(order_id),
-        },
-    )
-    return order_id
+    db.commit()
+    return order.id
 
 
 # ---------------------------------------------------------------------------
@@ -475,7 +429,6 @@ def chat_copilot_turn(db: Session, draft: OrderDraft) -> None:
     Side effects: 1 INSERT on ``conversations``, 2 INSERTs on
     ``chat_turns`` (user + assistant), 1-3 LLM calls.
     """
-    from datetime import datetime, timezone
 
     from agents.copilot.orchestrator import get_copilot_response
     from agents.order_extractor import _build_chat_model
