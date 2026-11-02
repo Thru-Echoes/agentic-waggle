@@ -137,3 +137,28 @@ class TestBrowserArrivalWithAuth:
             expect(authed.locator("h1")).to_contain_text("Dashboard")
         finally:
             ctx.close()
+
+
+class TestCopilotComposerUnderCsp:
+    def test_enter_sends_and_failure_bubble_uses_the_fixed_phrase(
+        self, page: Page, badkey_server: LiveServer
+    ) -> None:
+        errors: list[str] = []
+        page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)
+        page.goto(f"{badkey_server.base_url}/copilot")
+        page.locator("#new-conv-btn").click()
+        page.wait_for_url("**/copilot/*")
+        ta = page.locator("#composer-text")
+        ta.fill("What's the varroa trend at Foothill Orchards?")
+        ta.press("Enter")
+        thread = page.locator("#thread")
+        expect(thread.locator(".turn.user")).to_have_count(1, timeout=10_000)
+        expect(thread.locator(".turn.assistant .bubble")).to_contain_text(
+            "rejected this server's API key", timeout=30_000
+        )
+        assert "Error" not in thread.locator(".turn.assistant .bubble").inner_text()
+        assert "sk-proj" not in page.content()
+        assert not [e for e in errors if "Content Security Policy" in e], errors
+        # composer is usable again
+        expect(page.locator("#send-btn")).to_be_enabled()
+        expect(ta).to_be_enabled()

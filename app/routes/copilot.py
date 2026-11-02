@@ -30,6 +30,7 @@ canonical Pydantic shapes from ``app/schemas/copilot.py``.
 # pyright: reportMissingImports=false
 from __future__ import annotations
 
+import html
 import logging
 import uuid
 from datetime import date, datetime
@@ -53,6 +54,7 @@ from agents.copilot.orchestrator import get_copilot_response
 from agents.order_extractor import _build_chat_model
 from agents.schemas import OrderDraft
 from app.config import Settings, get_settings
+from providers.llm import describe_provider_error, get_provider_error_types
 from app.routes._order_persistence import (
     apply_order_overrides,
     persist_order_from_draft,
@@ -992,13 +994,17 @@ async def _stream_turn_events(
     try:
         response = await orch_task
     except Exception as exc:
+        # Fixed phrases only: the provider's message can carry key fragments.
         log.exception("orchestrator failed mid-stream")
+        if isinstance(exc, get_provider_error_types()):
+            reason = describe_provider_error(exc)
+        else:
+            reason = "Something went wrong while drafting the answer."
         yield _sse_event(
             "complete",
             (
                 '<div class="turn assistant"><div class="bubble">'
-                '<div class="text">Something went wrong while drafting the '
-                f'answer ({type(exc).__name__}). Please retry.</div>'
+                f'<div class="text">{html.escape(reason)} Please retry.</div>'
                 "</div></div>"
             ),
         )
