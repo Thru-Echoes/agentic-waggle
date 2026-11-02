@@ -37,6 +37,10 @@ from seed.models import Apiarist, Customer, Email
 #   1. ``INBOX_FIXTURE_ROOT`` env var (used by tests + local dev)
 #   2. ``/gmail-fixtures`` (Docker bind-mount)
 GMAIL_FIXTURE_ROOT = Path(os.environ.get("INBOX_FIXTURE_ROOT", "/gmail-fixtures"))
+
+#: Fixed clock for generated timestamps. The seed is deterministic
+#: (Faker(seed=42)); anchoring the clock keeps its output deterministic too.
+SEED_CLOCK_ANCHOR = datetime(2026, 5, 8, 12, 0, tzinfo=timezone.utc)
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "emails.json"
 
 
@@ -83,12 +87,15 @@ def generate(
 
     The fixture's customer_name + account_id are guaranteed to match the
     deterministic seed via Faker(seed=42). Message ids are content-hashed
-    for stability. received_at is randomized within the last 30 days.
+    for stability. received_at is randomized within the 30 days before
+    ``SEED_CLOCK_ANCHOR`` (a fixed instant, not "now"), so two seed runs
+    produce byte-identical inbox files and the committed
+    gmail-fixtures/*.inbox.json never churn.
 
     Side effects: filesystem read of the fixture file.
     """
     rows = _load_fixture()
-    now = datetime.now(timezone.utc)
+    now = SEED_CLOCK_ANCHOR
     out: list[Email] = []
 
     for i, r in enumerate(rows):
