@@ -46,7 +46,9 @@ from pydantic import ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from providers.llm import LLMConfigurationError, get_openai_client
+from openai import omit
+
+from providers.llm import LLMConfigurationError, get_openai_client, get_temperature
 from providers.semantic_matcher_prompts import (
     CUSTOMER_DISAMBIG_SYSTEM,
     CUSTOMER_DISAMBIG_USER_TEMPLATE,
@@ -629,7 +631,7 @@ def _llm_disambiguate(
 
     settings = get_settings()
     client = get_openai_client()
-    model = settings.copilot_matcher_disambig_model  # default: gpt-5.4-nano
+    model = settings.copilot_matcher_disambig_model
 
     if kind == "customer":
         assert isinstance(ctx, ConversationContext)
@@ -697,7 +699,9 @@ def _llm_disambiguate(
                         "strict": False,
                     },
                 },
-                temperature=0,
+                temperature=(
+                    _temperature if (_temperature := get_temperature(model)) is not None else omit
+                ),
             )
             raw = resp.choices[0].message.content or "{}"
             parsed: dict[str, Any] = json.loads(raw)

@@ -83,6 +83,13 @@ KNOWN_ACCEPTABLE_SKU: dict[str, str] = {
 }
 
 
+#: Below this many sampled cases a category's precision cannot meaningfully
+#: be compared with a 85-100% threshold (one miss in two cases reads as
+#: 50%). Sample mode warns on such categories instead of failing; the full
+#: corpus run (MATCHER_EVAL_FULL=1) is the real gate.
+MIN_CASES_FOR_THRESHOLD = 5
+
+
 def _assert_thresholds(
     category_results: list[CategoryResult],
     thresholds: dict[str, float],
@@ -92,17 +99,26 @@ def _assert_thresholds(
     """Partition sub-threshold categories into allowlisted (warn) vs
     unlisted (fail). Strict mode escalates allowlisted to fail too.
 
-    Raises AssertionError if any UNLISTED category is below its threshold,
-    or if MATCHER_EVAL_STRICT=1 and any sub-threshold category exists.
-    Allowlisted-only failures print a clear warning and let the test pass
-    (so `make test` stays green on documented-known-acceptable cases
-    while still catching regressions).
+    Raises AssertionError if any UNLISTED category with at least
+    ``MIN_CASES_FOR_THRESHOLD`` evaluated cases is below its threshold, or
+    if MATCHER_EVAL_STRICT=1 and any such sub-threshold category exists.
+    Categories with fewer cases (a stratified sample) are reported as
+    warnings whatever their precision. Allowlisted-only failures print a
+    clear warning and let the test pass (so `make test` stays green on
+    documented-known-acceptable cases while still catching regressions).
     """
     strict = os.environ.get("MATCHER_EVAL_STRICT") == "1"
     allowlisted_lines: list[str] = []
     unaccepted_lines: list[str] = []
+    too_small_lines: list[str] = []
     for cr in sorted(category_results, key=lambda r: r.category):
         threshold = thresholds.get(cr.category, 1.0)
+        if cr.precision < threshold and cr.total < MIN_CASES_FOR_THRESHOLD:
+            too_small_lines.append(
+                f"  {cr.category}: precision={cr.precision:.1%} on only "
+                f"{cr.total} sampled case(s); not gated below {MIN_CASES_FOR_THRESHOLD}"
+            )
+            continue
         if cr.precision < threshold:
             line = (
                 f"  {cr.category}: precision={cr.precision:.1%} "
@@ -115,6 +131,11 @@ def _assert_thresholds(
                 )
             else:
                 unaccepted_lines.append(line)
+    if too_small_lines:
+        print(
+            f"\n{kind} eval — sub-threshold categories with too few sampled cases to gate:\n"
+            + "\n".join(too_small_lines)
+        )
     if allowlisted_lines:
         print(
             f"\n{kind} eval — documented known-acceptable below threshold:\n"

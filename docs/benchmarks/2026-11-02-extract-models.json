@@ -1,0 +1,935 @@
+{
+  "started_at": "2026-11-02T21:02:45.585750+00:00",
+  "models": {
+    "gpt-5.4-mini": {
+      "by_stage": {
+        "intent": {
+          "stage": "intent",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 0,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 11455,
+          "total_input_tokens": 3770,
+          "total_output_tokens": 851,
+          "total_cost_usd": 0.0010761000000000002,
+          "errors": []
+        },
+        "customer": {
+          "stage": "customer",
+          "n_calls": 10,
+          "n_scored": 5,
+          "n_correct": 5,
+          "n_evidence_grounded": 2,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 9791,
+          "total_input_tokens": 4130,
+          "total_output_tokens": 627,
+          "total_cost_usd": 0.0009957,
+          "errors": []
+        },
+        "line_items": {
+          "stage": "line_items",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 1,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 11619,
+          "total_input_tokens": 7130,
+          "total_output_tokens": 1083,
+          "total_cost_usd": 0.0017193,
+          "errors": []
+        }
+      },
+      "cases": [
+        {
+          "account_id": "ari.solomon@meridian-apiaries.test",
+          "message_id": "6ce17c59bc4f219328",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "dana.chen@meridian-apiaries.test",
+          "message_id": "3c33fefacf5e1c1b36",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "elena.vasquez@meridian-apiaries.test",
+          "message_id": "3acab59f45030c467f",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "isa.martinez@meridian-apiaries.test",
+          "message_id": "d7800545b84f727792",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "jun-ho.park@meridian-apiaries.test",
+          "message_id": "5a06ede03a4ba2386a",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "marcus.okafor@meridian-apiaries.test",
+          "message_id": "d6dee6c260972dd491",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "kai.okonkwo@meridian-apiaries.test",
+          "message_id": "98450c59347d820a3d",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "luz.garcia@meridian-apiaries.test",
+          "message_id": "80fd1ef4a1b261b7c1",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "devon.hale@meridian-apiaries.test",
+          "message_id": "e7afd9027141cd872f",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "maya.whitfield@meridian-apiaries.test",
+          "message_id": "548c885554c24bc6c9",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": false
+        }
+      ]
+    },
+    "gpt-5.4-nano": {
+      "by_stage": {
+        "intent": {
+          "stage": "intent",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 3,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 10883,
+          "total_input_tokens": 3770,
+          "total_output_tokens": 837,
+          "total_cost_usd": 0.0005338500000000001,
+          "errors": []
+        },
+        "customer": {
+          "stage": "customer",
+          "n_calls": 10,
+          "n_scored": 5,
+          "n_correct": 4,
+          "n_evidence_grounded": 3,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 10151,
+          "total_input_tokens": 4130,
+          "total_output_tokens": 585,
+          "total_cost_usd": 0.00048524999999999995,
+          "errors": []
+        },
+        "line_items": {
+          "stage": "line_items",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 9,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 12747,
+          "total_input_tokens": 7130,
+          "total_output_tokens": 1078,
+          "total_cost_usd": 0.0008581499999999998,
+          "errors": []
+        }
+      },
+      "cases": [
+        {
+          "account_id": "ari.solomon@meridian-apiaries.test",
+          "message_id": "6ce17c59bc4f219328",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": false,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "dana.chen@meridian-apiaries.test",
+          "message_id": "3c33fefacf5e1c1b36",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "elena.vasquez@meridian-apiaries.test",
+          "message_id": "3acab59f45030c467f",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "isa.martinez@meridian-apiaries.test",
+          "message_id": "d7800545b84f727792",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "jun-ho.park@meridian-apiaries.test",
+          "message_id": "5a06ede03a4ba2386a",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "marcus.okafor@meridian-apiaries.test",
+          "message_id": "d6dee6c260972dd491",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "kai.okonkwo@meridian-apiaries.test",
+          "message_id": "98450c59347d820a3d",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "luz.garcia@meridian-apiaries.test",
+          "message_id": "80fd1ef4a1b261b7c1",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "devon.hale@meridian-apiaries.test",
+          "message_id": "e7afd9027141cd872f",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "maya.whitfield@meridian-apiaries.test",
+          "message_id": "548c885554c24bc6c9",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": true
+        }
+      ]
+    },
+    "gpt-5.6-luna": {
+      "by_stage": {
+        "intent": {
+          "stage": "intent",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 8,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 15320,
+          "total_input_tokens": 3770,
+          "total_output_tokens": 836,
+          "total_cost_usd": 0.0,
+          "errors": []
+        },
+        "customer": {
+          "stage": "customer",
+          "n_calls": 10,
+          "n_scored": 5,
+          "n_correct": 5,
+          "n_evidence_grounded": 8,
+          "n_evidence_with_quotes": 9,
+          "total_latency_ms": 20532,
+          "total_input_tokens": 4130,
+          "total_output_tokens": 953,
+          "total_cost_usd": 0.0,
+          "errors": []
+        },
+        "line_items": {
+          "stage": "line_items",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 5,
+          "n_evidence_with_quotes": 7,
+          "total_latency_ms": 21286,
+          "total_input_tokens": 7130,
+          "total_output_tokens": 1203,
+          "total_cost_usd": 0.0,
+          "errors": []
+        }
+      },
+      "cases": [
+        {
+          "account_id": "ari.solomon@meridian-apiaries.test",
+          "message_id": "6ce17c59bc4f219328",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": false,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "dana.chen@meridian-apiaries.test",
+          "message_id": "3c33fefacf5e1c1b36",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": null,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "elena.vasquez@meridian-apiaries.test",
+          "message_id": "3acab59f45030c467f",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "isa.martinez@meridian-apiaries.test",
+          "message_id": "d7800545b84f727792",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "jun-ho.park@meridian-apiaries.test",
+          "message_id": "5a06ede03a4ba2386a",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "marcus.okafor@meridian-apiaries.test",
+          "message_id": "d6dee6c260972dd491",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "kai.okonkwo@meridian-apiaries.test",
+          "message_id": "98450c59347d820a3d",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": null
+        },
+        {
+          "account_id": "luz.garcia@meridian-apiaries.test",
+          "message_id": "80fd1ef4a1b261b7c1",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "devon.hale@meridian-apiaries.test",
+          "message_id": "e7afd9027141cd872f",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": null
+        },
+        {
+          "account_id": "maya.whitfield@meridian-apiaries.test",
+          "message_id": "548c885554c24bc6c9",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": null
+        }
+      ]
+    },
+    "gpt-6-luna": {
+      "by_stage": {
+        "intent": {
+          "stage": "intent",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 7,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 21050,
+          "total_input_tokens": 3770,
+          "total_output_tokens": 1219,
+          "total_cost_usd": 0.0,
+          "errors": []
+        },
+        "customer": {
+          "stage": "customer",
+          "n_calls": 10,
+          "n_scored": 5,
+          "n_correct": 5,
+          "n_evidence_grounded": 8,
+          "n_evidence_with_quotes": 8,
+          "total_latency_ms": 20008,
+          "total_input_tokens": 4130,
+          "total_output_tokens": 1031,
+          "total_cost_usd": 0.0,
+          "errors": []
+        },
+        "line_items": {
+          "stage": "line_items",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 5,
+          "n_evidence_with_quotes": 7,
+          "total_latency_ms": 23238,
+          "total_input_tokens": 7130,
+          "total_output_tokens": 1611,
+          "total_cost_usd": 0.0,
+          "errors": []
+        }
+      },
+      "cases": [
+        {
+          "account_id": "ari.solomon@meridian-apiaries.test",
+          "message_id": "6ce17c59bc4f219328",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": null,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "dana.chen@meridian-apiaries.test",
+          "message_id": "3c33fefacf5e1c1b36",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": null,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "elena.vasquez@meridian-apiaries.test",
+          "message_id": "3acab59f45030c467f",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "isa.martinez@meridian-apiaries.test",
+          "message_id": "d7800545b84f727792",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": null
+        },
+        {
+          "account_id": "jun-ho.park@meridian-apiaries.test",
+          "message_id": "5a06ede03a4ba2386a",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": false
+        },
+        {
+          "account_id": "marcus.okafor@meridian-apiaries.test",
+          "message_id": "d6dee6c260972dd491",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "kai.okonkwo@meridian-apiaries.test",
+          "message_id": "98450c59347d820a3d",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": null
+        },
+        {
+          "account_id": "luz.garcia@meridian-apiaries.test",
+          "message_id": "80fd1ef4a1b261b7c1",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "devon.hale@meridian-apiaries.test",
+          "message_id": "e7afd9027141cd872f",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": false,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": null
+        },
+        {
+          "account_id": "maya.whitfield@meridian-apiaries.test",
+          "message_id": "548c885554c24bc6c9",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        }
+      ]
+    },
+    "gpt-6.1-terra": {
+      "by_stage": {
+        "intent": {
+          "stage": "intent",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 10,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 22847,
+          "total_input_tokens": 3770,
+          "total_output_tokens": 960,
+          "total_cost_usd": 0.0,
+          "errors": []
+        },
+        "customer": {
+          "stage": "customer",
+          "n_calls": 10,
+          "n_scored": 5,
+          "n_correct": 5,
+          "n_evidence_grounded": 8,
+          "n_evidence_with_quotes": 8,
+          "total_latency_ms": 20061,
+          "total_input_tokens": 4130,
+          "total_output_tokens": 783,
+          "total_cost_usd": 0.0,
+          "errors": []
+        },
+        "line_items": {
+          "stage": "line_items",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 10,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 25865,
+          "total_input_tokens": 7130,
+          "total_output_tokens": 1129,
+          "total_cost_usd": 0.0,
+          "errors": []
+        }
+      },
+      "cases": [
+        {
+          "account_id": "ari.solomon@meridian-apiaries.test",
+          "message_id": "6ce17c59bc4f219328",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": null,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "dana.chen@meridian-apiaries.test",
+          "message_id": "3c33fefacf5e1c1b36",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": null,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "elena.vasquez@meridian-apiaries.test",
+          "message_id": "3acab59f45030c467f",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "isa.martinez@meridian-apiaries.test",
+          "message_id": "d7800545b84f727792",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "jun-ho.park@meridian-apiaries.test",
+          "message_id": "5a06ede03a4ba2386a",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "marcus.okafor@meridian-apiaries.test",
+          "message_id": "d6dee6c260972dd491",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "kai.okonkwo@meridian-apiaries.test",
+          "message_id": "98450c59347d820a3d",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "luz.garcia@meridian-apiaries.test",
+          "message_id": "80fd1ef4a1b261b7c1",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "devon.hale@meridian-apiaries.test",
+          "message_id": "e7afd9027141cd872f",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "maya.whitfield@meridian-apiaries.test",
+          "message_id": "548c885554c24bc6c9",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        }
+      ]
+    },
+    "gpt-6.1-sol": {
+      "by_stage": {
+        "intent": {
+          "stage": "intent",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 10,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 24026,
+          "total_input_tokens": 3770,
+          "total_output_tokens": 823,
+          "total_cost_usd": 0.0,
+          "errors": []
+        },
+        "customer": {
+          "stage": "customer",
+          "n_calls": 10,
+          "n_scored": 5,
+          "n_correct": 5,
+          "n_evidence_grounded": 8,
+          "n_evidence_with_quotes": 8,
+          "total_latency_ms": 21757,
+          "total_input_tokens": 4130,
+          "total_output_tokens": 504,
+          "total_cost_usd": 0.0,
+          "errors": []
+        },
+        "line_items": {
+          "stage": "line_items",
+          "n_calls": 10,
+          "n_scored": 10,
+          "n_correct": 10,
+          "n_evidence_grounded": 10,
+          "n_evidence_with_quotes": 10,
+          "total_latency_ms": 22018,
+          "total_input_tokens": 7130,
+          "total_output_tokens": 948,
+          "total_cost_usd": 0.0,
+          "errors": []
+        }
+      },
+      "cases": [
+        {
+          "account_id": "ari.solomon@meridian-apiaries.test",
+          "message_id": "6ce17c59bc4f219328",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": null,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "dana.chen@meridian-apiaries.test",
+          "message_id": "3c33fefacf5e1c1b36",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": null,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "elena.vasquez@meridian-apiaries.test",
+          "message_id": "3acab59f45030c467f",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "isa.martinez@meridian-apiaries.test",
+          "message_id": "d7800545b84f727792",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "jun-ho.park@meridian-apiaries.test",
+          "message_id": "5a06ede03a4ba2386a",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "marcus.okafor@meridian-apiaries.test",
+          "message_id": "d6dee6c260972dd491",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "kai.okonkwo@meridian-apiaries.test",
+          "message_id": "98450c59347d820a3d",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "luz.garcia@meridian-apiaries.test",
+          "message_id": "80fd1ef4a1b261b7c1",
+          "expected_intent": "order_request",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "devon.hale@meridian-apiaries.test",
+          "message_id": "e7afd9027141cd872f",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": true,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        },
+        {
+          "account_id": "maya.whitfield@meridian-apiaries.test",
+          "message_id": "548c885554c24bc6c9",
+          "expected_intent": "inquiry",
+          "intent_correct": true,
+          "customer_correct": null,
+          "line_items_correct": true,
+          "intent_evidence_grounded": true,
+          "customer_evidence_grounded": true,
+          "line_items_evidence_grounded": true
+        }
+      ]
+    }
+  }
+}
