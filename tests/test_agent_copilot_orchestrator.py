@@ -98,6 +98,9 @@ class TestOrchestrator:
         assert result.latency_ms > 0
         # build_context tool call should have been recorded
         assert any(tc.tool_name == "build_context" for tc in result.tool_calls)
+        # Usage accounting: the router + answer calls must be attributed.
+        assert result.tokens_input > 0 and result.tokens_output > 0
+        assert result.cost_usd > 0
 
     def test_log_customer_report_intent_extracts(
         self, db, faker_instance, require_llm_api_key

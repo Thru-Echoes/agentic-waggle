@@ -54,7 +54,7 @@ from agents.copilot.orchestrator import get_copilot_response
 from agents.order_extractor import _build_chat_model
 from agents.schemas import OrderDraft
 from app.config import Settings, get_settings
-from providers.llm import describe_provider_error, get_provider_error_types
+from providers.llm import describe_provider_error, get_provider_error_types, usage_scope
 from app.routes._order_persistence import (
     apply_order_overrides,
     persist_order_from_draft,
@@ -591,7 +591,8 @@ def _llm_title(text_in: str, settings: Settings) -> str | None:
     try:
         chat_model = _build_chat_model(settings.copilot_title_model)
         prompt = _TITLE_PROMPT.format(text=text_in)
-        result = chat_model.invoke(prompt)
+        with usage_scope("copilot_title"):
+            result = chat_model.invoke(prompt)
         raw = getattr(result, "content", None)
         if isinstance(raw, list):
             raw = "".join(

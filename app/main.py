@@ -5,7 +5,7 @@ routers mounted, the middleware stack registered, startup hooks, and the
 exception handlers that turn failures into something a reader can act on.
 
 Middleware order (outermost first): request context + security headers,
-HTTP Basic auth, cross-site origin check. Security headers therefore apply
+HTTP Basic auth, LLM rate limit + daily budget, cross-site origin check. Security headers therefore apply
 to 401 and 403 responses too.
 
 Exception handling:
@@ -41,6 +41,7 @@ from fastapi.staticfiles import StaticFiles
 from app.auth import BasicAuthMiddleware
 from app.config import Settings, get_settings
 from app.middleware import CsrfOriginMiddleware, RequestContextMiddleware
+from app.ratelimit import LlmRateLimiter, LlmRateLimitMiddleware
 from app.routes import (
     agent,
     copilot,
@@ -149,8 +150,15 @@ def create_app() -> FastAPI:
     )
 
     # Middleware. Starlette wraps in registration order, so the last one
-    # added runs first; register innermost first.
+    # added runs first; register innermost first. The rate limiter sits
+    # inside auth so unauthenticated requests never consume the budget.
+    limiter = LlmRateLimiter(
+        per_minute=settings.waggle_llm_rate_per_minute,
+        daily_budget=settings.waggle_llm_daily_budget,
+    )
+    app.state.llm_limiter = limiter
     app.add_middleware(CsrfOriginMiddleware)
+    app.add_middleware(LlmRateLimitMiddleware, limiter=limiter)
     app.add_middleware(BasicAuthMiddleware)
     app.add_middleware(RequestContextMiddleware)
 

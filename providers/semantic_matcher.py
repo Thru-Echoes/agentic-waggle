@@ -48,7 +48,7 @@ from sqlalchemy.orm import Session
 
 from openai import omit
 
-from providers.llm import LLMConfigurationError, get_openai_client, get_temperature
+from providers.llm import LLMConfigurationError, get_openai_client, get_temperature, record_usage
 from providers.semantic_matcher_prompts import (
     CUSTOMER_DISAMBIG_SYSTEM,
     CUSTOMER_DISAMBIG_USER_TEMPLATE,
@@ -703,6 +703,8 @@ def _llm_disambiguate(
                     _temperature if (_temperature := get_temperature(model)) is not None else omit
                 ),
             )
+            if resp.usage is not None:
+                record_usage(model, resp.usage.prompt_tokens, resp.usage.completion_tokens)
             raw = resp.choices[0].message.content or "{}"
             parsed: dict[str, Any] = json.loads(raw)
 

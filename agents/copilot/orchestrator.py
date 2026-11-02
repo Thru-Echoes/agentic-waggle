@@ -48,6 +48,7 @@ from agents.copilot.tools import (
 )
 from agents.schemas import ConversationContext, CustomerMatch, ExtractionFailure, OrderDraft
 from providers import semantic_matcher
+from providers.llm import usage_scope
 
 log = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ def _format_rag_block(bundle: ContextBundle) -> str:
 # ---------------------------------------------------------------------------
 
 
-def get_copilot_response(
+def _get_copilot_response_inner(
     *,
     user_text: str,
     db: Session,
@@ -416,7 +417,7 @@ def get_copilot_response(
         tool_calls=tool_calls,
         evidence_used=evidence_used,
         model=getattr(main_model, "model_name", "unknown"),
-        tokens_input=0,    # token accounting wired in step 17 budget pass
+        tokens_input=0,    # filled by get_copilot_response from the usage scope
         tokens_output=0,
         cost_usd=Decimal("0"),
         latency_ms=total_latency,
@@ -424,6 +425,43 @@ def get_copilot_response(
         pending_report_draft=pending_report,
         resolved_customer_id=customer_id,
     )
+
+
+def get_copilot_response(
+    *,
+    user_text: str,
+    db: Session,
+    models: dict[str, BaseChatModel],
+    conv_id: uuid.UUID | None = None,
+    active_account_id: uuid.UUID | None = None,
+    last_3_customer_ids: list[uuid.UUID] | None = None,
+    on_step: OnStepFn | None = None,
+) -> CopilotResponse:
+    """Handle one chat turn and attribute every LLM call made to it.
+
+    Wraps ``_get_copilot_response_inner`` in a ``usage_scope`` so the
+    returned ``tokens_input`` / ``tokens_output`` / ``cost_usd`` are the
+    measured totals across the router, the matcher's disambiguator, the
+    answer or draft model, and any tool call. See the inner function for
+    the pipeline. Side effects: those of the inner function plus one INFO
+    usage log line.
+    """
+    with usage_scope("copilot_turn") as usage:
+        response = _get_copilot_response_inner(
+            user_text=user_text,
+            db=db,
+            models=models,
+            conv_id=conv_id,
+            active_account_id=active_account_id,
+            last_3_customer_ids=last_3_customer_ids,
+            on_step=on_step,
+        )
+    s = usage.summary
+    return response.model_copy(update={
+        "tokens_input": s.input_tokens,
+        "tokens_output": s.output_tokens,
+        "cost_usd": s.cost_usd,
+    })
 
 
 # ---------------------------------------------------------------------------

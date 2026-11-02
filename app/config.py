@@ -208,6 +208,22 @@ class Settings(BaseSettings):
             "a free metadata request, not a completion."
         ),
     )
+    waggle_llm_rate_per_minute: int = Field(
+        default=10,
+        ge=0,
+        description=(
+            "Model-backed requests allowed per client address per minute "
+            "(token bucket with the same burst). 0 disables the check."
+        ),
+    )
+    waggle_llm_daily_budget: int = Field(
+        default=500,
+        ge=0,
+        description=(
+            "Model-backed requests allowed per UTC day across all clients. "
+            "0 disables the check. Each request is 2-10 model calls."
+        ),
+    )
 
 
 @lru_cache(maxsize=1)

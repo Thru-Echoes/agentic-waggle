@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlmodel import Session
@@ -47,6 +47,10 @@ class ReadyOut(BaseModel):
     llm: ProviderState = Field(description="Result of the cached LLM-provider auth probe.")
     llm_detail: str = Field(description="Fixed user-facing phrase for the probe result.")
     llm_model: str | None = Field(default=None, description="Model id that was probed.")
+    llm_budget_remaining_today: int | None = Field(
+        default=None,
+        description="Model-backed requests left in today's budget; null when the budget is disabled.",
+    )
 
 
 @router.get("/health", response_model=HealthOut)
@@ -63,6 +67,7 @@ def health(settings: Settings = Depends(get_settings)) -> HealthOut:
 
 @router.get("/ready", response_model=ReadyOut)
 def ready(
+    request: Request,
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
 ) -> ReadyOut:
@@ -78,6 +83,7 @@ def ready(
             "Run `make migrate` (the first migration creates it)."
         )
     probe = get_provider_status(ttl_seconds=settings.llm_probe_ttl_seconds)
+    limiter = getattr(request.app.state, "llm_limiter", None)
     return ReadyOut(
         status="ready" if probe.ok else "degraded",
         database="ok",
@@ -85,4 +91,5 @@ def ready(
         llm=probe.state,
         llm_detail=probe.detail,
         llm_model=probe.model,
+        llm_budget_remaining_today=limiter.remaining_today() if limiter else None,
     )

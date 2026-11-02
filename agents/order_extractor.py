@@ -58,6 +58,7 @@ from agents.schemas import (
     SkuContext,
 )
 from providers import semantic_matcher
+from providers.llm import usage_scope
 
 log = logging.getLogger(__name__)
 
@@ -529,7 +530,8 @@ def run_order_extraction(email: EmailInput, db: Session) -> ExtractionResult:
         "models": _build_stage_models(),
         "notes": [],
     }
-    final_state: _State = graph.invoke(initial)  # type: ignore[assignment]
+    with usage_scope("order_extraction"):
+        final_state: _State = graph.invoke(initial)  # type: ignore[assignment]
     result = final_state.get("result")
     if result is None:
         # Defensive: should never happen because every node either populates
