@@ -12,6 +12,11 @@
 app            = 'waggle-pg'
 primary_region = 'iad'
 
+# A machine update re-pulls this image through Fly's Docker Hub mirror. When
+# the mirror reports the current digest as not found (seen 2026-11-03, while
+# Docker Hub served it), flyd reverts the update; pulling from Docker Hub
+# directly works:
+#   fly machine update <id> -a waggle-pg --image registry-1.docker.io/pgvector/pgvector:pg15 --yes
 [build]
   image = 'pgvector/pgvector:pg15'
 
@@ -28,6 +33,7 @@ primary_region = 'iad'
   source      = 'pgdata'
   destination = '/var/lib/postgresql/data'
 
+# The seeded database is about 70 MB and idles under 200 MB of memory.
 [[vm]]
   size   = 'shared-cpu-1x'
-  memory = '1gb'
+  memory = '512mb'
