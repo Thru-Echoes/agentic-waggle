@@ -14,8 +14,9 @@ Jinja/HTMX, LangGraph + MCP, real LLM (OpenAI default; Anthropic toggle).
 ## Stack
 
 - **Python 3.11+**, FastAPI app factory at `app/main.py`.
-- **Postgres 16 + pgvector** for relational + semantic data; SQLModel + Alembic
-  data layer (17 tables, authoritative schema in `tests/schema.sql`).
+- **Postgres 15 + pgvector** for relational + semantic data; SQLModel + Alembic
+  data layer (21 tables, authoritative schema in `tests/schema.sql`; every
+  engine URL names the psycopg2 driver via `db/url.py`).
 - **LangGraph** for the order-extraction agent (`agents/order_extractor.py`).
 - **MCP servers** at `mcp_servers/sales_copilot_server.py` and
   `mcp_servers/customer_reports_server.py`.
@@ -36,7 +37,8 @@ make migrate   # alembic migrations
 make seed      # 40 customers, 150 orders, 40 inspections, embeddings
 make demo      # api + worker, http://localhost:5001
 make test      # full E2E against a fresh test DB
-make test-unit # Pydantic-only tests (no DB)
+make test-unit # every test that needs no database (local uv env)
+make lint      # ruff + pyright
 make reset-db  # drop everything and rerun migrate+seed
 ```
 
@@ -83,7 +85,7 @@ db/
   models.py            SQLModel layer (matches tests/schema.sql)
   session.py           engine + session scope
 seed/                  16 generators; entry: python -m seed.generate
-tests/                 21-module E2E suite; real deps throughout
+tests/                 55-module E2E suite; real deps throughout
 alembic/               migrations; first migration creates pgvector + 17 tables
 scripts/demo.py        5-minute demo orchestrator
 ```
@@ -95,6 +97,10 @@ scripts/demo.py        5-minute demo orchestrator
 - **MCP tools** use `@mcp.tool()` with parentheses (FastMCP convention).
 - **Atomic writes** for any persisted state: temp file + `os.replace`. No
   `fcntl` (cross-platform).
+- **Order state changes only through `db/fsm.py`**; `tests/test_fsm.py` scans
+  for raw transition inserts. Other guarded rules: `docs/INVARIANTS.md`.
+- **No inline event handlers or `hx-trigger` event filters in templates** (the
+  CSP blocks eval); register handlers in the page's nonce-tagged script.
 - **Seed generators write via raw SQL with `text()`**, not ORM. Keeps the
   pre-app-layer scaffolding independent of `db/models.py`.
 - **`from __future__ import annotations`** at the top of every Python file.
@@ -105,9 +111,10 @@ scripts/demo.py        5-minute demo orchestrator
    (*"Hi, can we get 20 Italian queens for our Central Valley site next week?"*).
 2. **LangGraph agent extracts** — fuzzy-match customer, resolve line items to
    SKUs, draft order in state `EXTRACTED`.
-3. **FSM transitions** — `EXTRACTED → UNDER_REVIEW → APPROVED → SCHEDULED`.
-4. **ERP sync fires** — JSON line written to `/erp-sync-log/`, order moves to
-   `SYNCED_TO_ERP`.
+3. **FSM transitions** — every step through `db/fsm.py` (`transition_order`);
+   `EXTRACTED → UNDER_REVIEW → APPROVED → SCHEDULED → IN_PROGRESS → FULFILLED → INVOICED`.
+4. **ERP sync fires** — JSON line written to `/erp-sync-log/`, order moves
+   `INVOICED → SYNCED_TO_ERP`.
 5. **Sales Copilot answers** a question over MCP — *"What's the varroa trend
    at the O'Reilly orchard?"* — queries customer reports, aggregates mite counts,
    returns a structured answer with citations.
