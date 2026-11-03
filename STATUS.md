@@ -55,7 +55,7 @@ to families known to accept it.
 - **Boot:** `scripts/entrypoint.sh` prepares the `/data` volume as root, drops to the `waggle` user, then `scripts/boot.py` runs `alembic upgrade head`, seeds if `customers` is empty, and execs uvicorn; the matcher index backfill and the provider probe run as post-bind tasks.
 - **Secrets:** `OPENAI_API_KEY`, `DATABASE_URL`, `WAGGLE_USER`, `WAGGLE_PASS`; set `WAGGLE_SECRET_KEY` so visitor cookies survive restarts and `WAGGLE_DEMO_CREDENTIALS_PUBLIC=1` so the HTML 401 page prints the demo credentials. Rotate the model key with `fly secrets set OPENAI_API_KEY=…` (restarts the app).
 - **Deploy:** `fly deploy --build-arg GIT_SHA=$(git rev-parse --short HEAD) --build-arg BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)`; the image is built from `uv.lock`.
-- **Cost:** about $33/month at list prices (web machine shared-cpu-2x 4 GB always on, Postgres shared-cpu-1x 1 GB, 4 GB of volumes). `auto_stop_machines` would cut the web machine to its root-filesystem cost when idle at the price of a cold start.
+- **Cost:** about $5/month at list prices while idle, about $18/month if the web machine never suspends (web machine shared-cpu-2x 2 GB, Postgres shared-cpu-1x 512 MB, 4 GB of volumes). The Fly proxy suspends the web machine when no requests arrive (`auto_stop_machines = 'suspend'`, `min_machines_running = 0`) and resumes it on the next request in under a second; a suspended machine bills only its root filesystem. A deploy or host maintenance discards the suspend snapshot, so the first request afterwards waits for a full cold start (migrations plus the embedding-model load, measured at about 33 s).
 
 ## History
 
@@ -67,7 +67,6 @@ to families known to accept it.
 
 ## Decisions open
 
-- Always-on web machine vs scale-to-zero (cost vs cold start).
 - Keep Basic auth with the HTML 401 page, or an auth-exempt landing page with an "Enter demo" button.
 - Whether to purge the pre-scoping conversations and the one visitor-confirmed order from the live database by hand.
 - The matcher corpus case for a bare "Cascade" (expected ambiguous, resolved to Cascade Orchard Partners by every evaluated model): fix the corpus or the matcher.
