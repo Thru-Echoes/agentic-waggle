@@ -44,3 +44,11 @@ class ProblemDetail(BaseModel):
     instance: str | None = Field(
         default=None, description="URI reference identifying this specific occurrence."
     )
+    request_id: str | None = Field(
+        default=None,
+        description=(
+            "Server-side request id (also sent as the X-Request-ID header). "
+            "Quote it when reporting a failure; the server log line carries "
+            "the full exception under the same id."
+        ),
+    )

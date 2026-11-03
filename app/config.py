@@ -179,6 +179,35 @@ class Settings(BaseSettings):
         default=None,
         description="HTTP Basic auth password for production gate.",
     )
+    waggle_demo_credentials_public: bool = Field(
+        default=False,
+        description=(
+            "When true, the HTML 401 page prints the configured Basic-auth "
+            "credentials. Only for a demo whose credentials are published on "
+            "purpose (the portfolio does this); never for a real deployment."
+        ),
+    )
+    waggle_portfolio_url: str | None = Field(
+        default="https://thru-echoes.github.io/waggle",
+        description="Link shown on the 401 page and in the footer; None hides it.",
+    )
+
+    # -- Operational switches ---------------------------------------------
+    waggle_internal_routes_enabled: bool = Field(
+        default=False,
+        description=(
+            "Mount the /_internal/render/* template-rendering routes. They "
+            "exist for template tests and must stay off in production."
+        ),
+    )
+    llm_probe_ttl_seconds: int = Field(
+        default=300,
+        ge=10,
+        description=(
+            "How long /ready caches the LLM-provider auth probe. The probe is "
+            "a free metadata request, not a completion."
+        ),
+    )
 
 
 @lru_cache(maxsize=1)

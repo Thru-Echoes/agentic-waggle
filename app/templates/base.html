@@ -6,7 +6,24 @@
   <title>{% block title %}{{ product }}{% endblock %}</title>
   <link rel="stylesheet" href="/static/waggle.css">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  {# HTMX is vendored (no third-party script origin) and runs under the
+     per-request CSP nonce. allowEval off: no hx-vals='js:' or hx-on in
+     use. includeIndicatorStyles off: the indicator rules live in waggle.css
+     so HTMX does not inject an inline <style>, which the CSP would block. #}
+  <meta name="htmx-config" content='{"allowEval": false, "includeIndicatorStyles": false}'>
+  <script src="/static/htmx.min.js" nonce="{{ csp_nonce }}"></script>
+  <script nonce="{{ csp_nonce }}">
+    // Swap 4xx/5xx responses into the page. HTMX 1.x ignores error
+    // responses by default, which left a failed Extract looking like
+    // nothing happened; the server returns an error card for them.
+    document.addEventListener('htmx:beforeSwap', function (evt) {
+      var xhr = evt.detail && evt.detail.xhr;
+      if (xhr && xhr.status >= 400) {
+        evt.detail.shouldSwap = true;
+        evt.detail.isError = false;
+      }
+    });
+  </script>
 </head>
 <body>
   <header class="masthead">
@@ -36,6 +53,8 @@
 
   <footer>
     <strong>{{ product }}</strong> · {{ company }}
+    · <span class="muted">synthetic demo data; the company and every customer are fictional</span>
+    · <a href="/docs">API docs</a>
   </footer>
 </body>
 </html>

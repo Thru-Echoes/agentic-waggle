@@ -1,0 +1,8 @@
+{# Generic failure card swapped into an HTMX target when a request fails.
+   Rendered by app.main for 5xx responses to HTMX requests. #}
+<div class="confirm-result error" role="alert">
+  <span class="badge alarm">{{ title }}</span>
+  <p>{{ detail }}</p>
+  {% if hint %}<p class="muted">{{ hint }}</p>{% endif %}
+  {% if request_id %}<p class="muted">Request id <code>{{ request_id }}</code></p>{% endif %}
+</div>
