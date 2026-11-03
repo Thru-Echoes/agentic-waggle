@@ -26,9 +26,9 @@ Requires:
     - gmail-fixtures available at /gmail-fixtures (in container)
       or ./gmail-fixtures (when run locally)
 
-Outputs:
-    - docs/benchmarks/2026-05-08-extract-models.md
-    - docs/benchmarks/2026-05-08-extract-models.json
+Outputs (date-stamped, so earlier reports are kept for comparison):
+    - docs/benchmarks/<YYYY-MM-DD>-extract-models.md
+    - docs/benchmarks/<YYYY-MM-DD>-extract-models.json
 """
 # pyright: reportMissingImports=false
 from __future__ import annotations
@@ -63,23 +63,27 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 
 
 CANDIDATE_MODELS = [
-    "gpt-4o-mini",
     "gpt-5.4-mini",
     "gpt-5.4-nano",
-    "gpt-5.5",
-    "gpt-5.5-mini",
-    "gpt-5.5-nano",
+    "gpt-5.6-luna",
+    "gpt-6-luna",
+    "gpt-6.1-terra",
+    "gpt-6.1-sol",
 ]
 
-# Approximate $/M tokens — best-effort placeholders. The benchmark records
-# raw token counts so cost can be re-derived from authoritative pricing.
+# $/M tokens, standard tier, from the provider's public pricing page at the
+# time of the 2026-11-02 run. The benchmark records raw token counts so
+# cost can be re-derived when prices change; unknown models report $0.
 PRICING_USD_PER_M_TOKENS: dict[str, dict[str, float]] = {
     "gpt-4o-mini":  {"input": 0.150, "output": 0.600},
     "gpt-5.4-mini": {"input": 0.150, "output": 0.600},
     "gpt-5.4-nano": {"input": 0.075, "output": 0.300},
     "gpt-5.5":      {"input": 2.500, "output": 10.000},
-    "gpt-5.5-mini": {"input": 0.250, "output": 1.000},
-    "gpt-5.5-nano": {"input": 0.100, "output": 0.400},
+    "gpt-5.6-luna": {"input": 0.100, "output": 0.500},
+    "gpt-6-luna":   {"input": 0.100, "output": 0.500},
+    "gpt-6-astra":  {"input": 10.000, "output": 50.000},
+    "gpt-6.1-terra": {"input": 1.000, "output": 5.000},
+    "gpt-6.1-sol":  {"input": 2.000, "output": 10.000},
 }
 
 STAGE_NAMES = ("intent", "customer", "line_items")

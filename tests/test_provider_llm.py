@@ -60,3 +60,38 @@ class TestRealAnthropic:
         ))
         assert chunks
         assert "".join(chunks)
+
+
+# ---------------------------------------------------------------------------
+# Temperature capability rule (no network)
+# ---------------------------------------------------------------------------
+
+
+class TestTemperatureRule:
+    """Newer OpenAI families reject any explicit temperature with HTTP 400;
+    the provider must omit the argument for them and keep it for the
+    families that accept it."""
+
+    def test_known_families_accept_temperature(self) -> None:
+        from providers.llm import get_temperature, supports_temperature
+
+        for model in ("gpt-4o-mini", "gpt-5.4-mini", "gpt-5.4-nano", "claude-sonnet-4-6"):
+            assert supports_temperature(model), model
+            assert get_temperature(model) == 0.0
+
+    def test_default_only_families_get_no_temperature(self) -> None:
+        from providers.llm import get_temperature, supports_temperature
+
+        for model in ("gpt-6.1-terra", "gpt-6.1-sol", "gpt-6-luna", "gpt-5.6-luna", "gpt-5.5", "o3-mini"):
+            assert not supports_temperature(model), model
+            assert get_temperature(model) is None
+
+    def test_unknown_model_is_treated_as_default_only(self) -> None:
+        from providers.llm import get_temperature
+
+        assert get_temperature("some-future-model") is None
+
+    def test_explicit_temperature_is_passed_through_when_supported(self) -> None:
+        from providers.llm import get_temperature
+
+        assert get_temperature("gpt-5.4-mini", temperature=0.7) == 0.7

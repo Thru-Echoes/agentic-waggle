@@ -14,15 +14,26 @@ from typing import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
+from app.config import get_settings
 from app.main import create_app
 
 
 @pytest.fixture
-def client() -> Iterator[TestClient]:
-    """FastAPI TestClient for template-only routes (no DB override needed)."""
+def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    """FastAPI TestClient for template-only routes (no DB override needed).
+
+    The internal render routes are off in production; enable them for the
+    app built here and clear the cached Settings so the flag is read.
+    """
+    monkeypatch.setenv("WAGGLE_INTERNAL_ROUTES_ENABLED", "1")
+    monkeypatch.setenv("WAGGLE_SKIP_PROVIDER_PROBE", "1")
+    get_settings.cache_clear()
     app = create_app()
-    with TestClient(app) as c:
-        yield c
+    try:
+        with TestClient(app) as c:
+            yield c
+    finally:
+        get_settings.cache_clear()
 
 
 def test_confirm_match_partial_renders_yes_no_form(client: TestClient) -> None:

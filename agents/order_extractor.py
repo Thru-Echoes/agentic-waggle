@@ -58,6 +58,7 @@ from agents.schemas import (
     SkuContext,
 )
 from providers import semantic_matcher
+from providers.llm import usage_scope
 
 log = logging.getLogger(__name__)
 
@@ -96,34 +97,35 @@ def _build_chat_model(model_name: str | None = None) -> BaseChatModel:
     is single-sourced. Raises ``LLMConfigurationError`` if no key is set.
     """
     from app.config import get_settings
-    from providers.llm import resolve_provider
+    from providers.llm import get_temperature, resolve_provider
 
     settings = get_settings()
     provider = resolve_provider()  # raises LLMConfigurationError on no keys
 
     if provider == "openai":
-        openai_kwargs: dict[str, Any] = {
-            "model": model_name or settings.openai_model,
-            "temperature": 0.0,
-            "timeout": 60,
-            "max_retries": 2,
-        }
-        return ChatOpenAI(**openai_kwargs)
-    anthropic_kwargs: dict[str, Any] = {
-        "model": model_name or settings.anthropic_model,
-        "temperature": 0.0,
-        "timeout": 60,
-        "max_retries": 2,
-    }
-    return ChatAnthropic(**anthropic_kwargs)
+        openai_model = model_name or settings.openai_model
+        return ChatOpenAI(
+            model=openai_model,
+            temperature=get_temperature(openai_model),
+            timeout=60,
+            max_retries=2,
+        )
+    anthropic_model = model_name or settings.anthropic_model
+    return ChatAnthropic(
+        model_name=anthropic_model,
+        temperature=get_temperature(anthropic_model),
+        timeout=60,
+        max_retries=2,
+        stop=None,
+    )
 
 
 def _build_stage_models() -> dict[str, BaseChatModel]:
     """Build one model per extraction stage, keyed by stage name.
 
-    Stages: ``intent``, ``customer``, ``items``, ``resolver_fallback``.
-    Each pulls its model name from Settings so per-stage tuning happens
-    in one place.
+    Stages: ``intent``, ``customer``, ``items``. Each pulls its model name
+    from Settings so per-stage tuning happens in one place. SKU resolution
+    goes through the semantic matcher, which owns its own model setting.
     """
     from app.config import get_settings
 
@@ -132,7 +134,6 @@ def _build_stage_models() -> dict[str, BaseChatModel]:
         "intent": _build_chat_model(s.extract_intent_model),
         "customer": _build_chat_model(s.extract_customer_model),
         "items": _build_chat_model(s.extract_items_model),
-        "resolver_fallback": _build_chat_model(s.extract_resolver_fallback_model),
     }
 
 
@@ -529,7 +530,8 @@ def run_order_extraction(email: EmailInput, db: Session) -> ExtractionResult:
         "models": _build_stage_models(),
         "notes": [],
     }
-    final_state: _State = graph.invoke(initial)  # type: ignore[assignment]
+    with usage_scope("order_extraction"):
+        final_state: _State = graph.invoke(initial)  # type: ignore[assignment]
     result = final_state.get("result")
     if result is None:
         # Defensive: should never happen because every node either populates

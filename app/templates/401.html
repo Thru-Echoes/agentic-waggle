@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ product }} — sign in</title>
+  <link rel="stylesheet" href="/static/waggle.css">
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <span class="brand">
+        <span class="brand-mark"><img src="/static/logo.svg" width="36" height="36" alt="{{ product }}"></span>
+        <span class="brand-name">{{ product }}</span>
+        <span class="brand-tagline">{{ tagline }}</span>
+      </span>
+    </div>
+  </header>
+  <main>
+    <div class="card signin-card">
+      <h1>This demo asks for a username and password</h1>
+      <p>
+        {{ product }} is a portfolio demo of an agentic CRM for a fictional
+        commercial-beekeeping business ({{ company }}). Everything inside is
+        synthetic data. The sign-in exists only to keep automated traffic
+        away from the language-model features; it is not protecting
+        anything private.
+      </p>
+      {% if demo_user and demo_pass %}
+        <p>Reload the page and enter these when your browser asks:</p>
+        <table class="rows signin-credentials">
+          <tbody>
+            <tr><th>Username</th><td><code>{{ demo_user }}</code></td></tr>
+            <tr><th>Password</th><td><code>{{ demo_pass }}</code></td></tr>
+          </tbody>
+        </table>
+      {% else %}
+        <p>The credentials are listed next to the demo link that brought you here.</p>
+      {% endif %}
+      <p class="muted">
+        {% if portfolio_url %}<a href="{{ portfolio_url }}">Back to the portfolio page</a> ·{% endif %}
+        <a href="/health">Server status</a>
+      </p>
+    </div>
+  </main>
+</body>
+</html>

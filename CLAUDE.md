@@ -20,7 +20,9 @@ Jinja/HTMX, LangGraph + MCP, real LLM (OpenAI default; Anthropic toggle).
 - **MCP servers** at `mcp_servers/sales_copilot_server.py` and
   `mcp_servers/customer_reports_server.py`.
 - **Real LLM only** — `providers/llm.py` raises if no API key. Default
-  `gpt-5.4-mini`; switch to Claude with `LLM_PROVIDER=anthropic`.
+  `gpt-6.1-terra` (per-stage fields in `app/config.py`, chosen on
+  `docs/benchmarks/2026-11-02-extract-models.md`); switch to Claude with
+  `LLM_PROVIDER=anthropic`.
   `resolve_provider()` is the single source of truth for both `LLMClient` and
   `agents/order_extractor._build_chat_model`.
 - **Jinja + HTMX** server-rendered frontend (no React, no SPA).
