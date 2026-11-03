@@ -824,6 +824,19 @@ class TestVisitorScoping:
         listing = api.get("/api/copilot/conversations").json()
         assert [i["id"] for i in listing["items"]] == [created["id"]]
 
+    def test_api_create_with_browser_cookie_lands_in_that_visitors_rail(self, db) -> None:
+        a, b = self._two_clients(db)
+        a.get("/copilot")  # mints A's cookie and A's first conversation
+        created = a.post("/api/copilot/conversations", json={}).json()
+        assert f"/copilot/{created['id']}" in a.get("/copilot").text
+        assert created["id"] in [i["id"] for i in a.get("/api/copilot/conversations").json()["items"]]
+        # Another visitor neither lists it nor reaches it by URL.
+        assert f"/copilot/{created['id']}" not in b.get("/copilot").text
+        assert b.get(f"/copilot/{created['id']}").status_code == 404
+        # A cookie-less API client does not list it either.
+        api = TestClient(a.app)
+        assert created["id"] not in [i["id"] for i in api.get("/api/copilot/conversations").json()["items"]]
+
     def test_turn_post_to_another_visitors_conversation_is_404(self, db) -> None:
         a, b = self._two_clients(db)
         a.get("/copilot")

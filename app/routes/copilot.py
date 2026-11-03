@@ -1562,11 +1562,20 @@ def get_conversation(
     "/conversations", response_model=ConversationOut, status_code=201
 )
 def post_create_conversation(
+    request: Request,
     body: ConversationCreateIn,
     db: Session = Depends(get_db_session),
 ) -> ConversationOut:
-    """Programmatic create-conversation endpoint (mirrors the HTMX one)."""
-    conv = Conversation(active_account_id=body.active_account_id)
+    """Programmatic create-conversation endpoint (mirrors the HTMX one).
+
+    A browser that already holds the visitor cookie gets the conversation
+    in its own rail; a cookie-less client (curl, scripts) creates an
+    API-only conversation, matching what the list endpoint shows it.
+    """
+    visitor_id = request.cookies.get("waggle_visitor") and get_visitor_id(request)
+    conv = Conversation(
+        active_account_id=body.active_account_id, visitor_id=visitor_id or None
+    )
     db.add(conv)
     db.commit()
     db.refresh(conv)
