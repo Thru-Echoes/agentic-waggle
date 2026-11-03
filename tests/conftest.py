@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator
 
 import pytest
 from faker import Faker
@@ -23,6 +23,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from seed.faker_providers import BeekeepingProvider
+
+if TYPE_CHECKING:
+    from playwright.sync_api import Browser, Page
+from db.url import get_sqlalchemy_url
 
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
@@ -59,7 +63,7 @@ def _resolve_db_url() -> str:
             "agentic_mcp_crm_test) or set SKIP_DB_TESTS=1 to deliberately skip.",
             pytrace=False,
         )
-    return url
+    return get_sqlalchemy_url(url)
 
 
 @pytest.fixture(scope="session")
@@ -252,3 +256,59 @@ def db_session_with_search_entries(db_session_with_seed: Session) -> Session:
 
     semantic_matcher.backfill_all(db_session_with_seed)
     return db_session_with_seed
+
+
+# ---------------------------------------------------------------------------
+# Browser fixtures (Playwright, sync API) — shared by every browser module
+# ---------------------------------------------------------------------------
+#
+# Exactly one ``sync_playwright()`` context may be open per process: the
+# sync API parks its event loop as the thread's running loop while the
+# context is alive. Two consequences shape this fixture:
+#
+#   * a second ``sync_playwright()`` while one is open fails with
+#     "Playwright Sync API inside the asyncio loop", so the fixture lives
+#     here once instead of one copy per browser module;
+#   * while the context is open, pytest-asyncio cannot start its own loop
+#     ("Runner.run() cannot be called from a running event loop"), so the
+#     fixture is module-scoped, not session-scoped: the context closes when
+#     a browser module finishes and the async MCP modules run afterwards on
+#     a clean thread. Launching Chromium once per browser module costs about
+#     a second.
+
+
+@pytest.fixture(scope="module")
+def browser() -> Iterator["Browser"]:
+    """One headless Chromium instance per test module.
+
+    Skips with an actionable message when the Chromium binary is not
+    installed (``uv run playwright install chromium``). The Python package
+    alone is not enough.
+
+    Side effects: launches a browser process for the session.
+    """
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as pw:
+        try:
+            b = pw.chromium.launch(headless=True)
+        except Exception as exc:
+            pytest.skip(
+                "Chromium binary not available — run `uv run playwright install "
+                f"chromium` first. Error: {exc.__class__.__name__}"
+            )
+        try:
+            yield b
+        finally:
+            b.close()
+
+
+@pytest.fixture
+def page(browser: "Browser") -> Iterator["Page"]:
+    """Fresh browser context + page per test (isolated cookies and storage)."""
+    ctx = browser.new_context()
+    p = ctx.new_page()
+    try:
+        yield p
+    finally:
+        ctx.close()

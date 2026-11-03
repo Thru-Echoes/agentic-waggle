@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -44,13 +44,12 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
-from sqlalchemy import desc, func, select, text
+from sqlalchemy import func, select, text
 from sqlmodel import Session
 
 from agents.copilot.conversation_schemas import (
     CopilotResponse,
     CustomerReportDraft,
-    ToolCallRecord,
 )
 from agents.copilot.orchestrator import get_copilot_response
 from agents.order_extractor import _build_chat_model
@@ -63,7 +62,6 @@ from app.routes._order_persistence import (
 )
 from app.schemas.copilot import (
     ChatTurnOut,
-    CitationOut,
     ConfirmResultOut,
     ConversationCreateIn,
     ConversationListItem,

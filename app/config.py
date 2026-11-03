@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     # -- Database ----------------------------------------------------------
     database_url: str = Field(
-        default="postgresql://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm"
+        default="postgresql+psycopg2://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm"
     )
     redis_url: str = Field(default="redis://redis:6379/0")
 

@@ -84,6 +84,10 @@ def _seed_min_for_orchestrator(db, faker_instance) -> None:
     products_gen.persist(db, products_gen.generate(faker_instance))
     services_gen.persist(db, services_gen.generate())
     embeddings_gen.run(db)
+    # Matcher search index (Phase I): required before any customer/SKU match.
+    from providers import semantic_matcher
+
+    semantic_matcher.backfill_all(db)
 
 
 def _count(db, table: str) -> int:
@@ -144,7 +148,9 @@ class TestPostTurn:
     ) -> None:
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
 
         before_turns = _count(db, "chat_turns")
         resp = client.post(
@@ -179,7 +185,9 @@ class TestPostTurn:
     ) -> None:
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
 
         # Pull a real customer name so the orchestrator can actually match.
         cust_name = db.execute(
@@ -190,9 +198,12 @@ class TestPostTurn:
             "/copilot/turns",
             data={
                 "conversation_id": str(conv.id),
+                # Cite the SKU code: this test is about the create_order
+                # intent stashing a draft, not about SKU disambiguation, and
+                # "queens" alone is ambiguous across five queen SKUs.
                 "text": (
-                    f"Draft an order for {cust_name}: 24 Italian queens, "
-                    "they need them by next Friday."
+                    f"Draft an order for {cust_name}: 24 Italian mated queens "
+                    "(SKU QUEEN-ITA-MATED), they need them by next Friday."
                 ),
             },
         )
@@ -221,7 +232,9 @@ class TestPostTurn:
     ) -> None:
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
 
         resp = client.post(
             "/copilot/turns",
@@ -252,7 +265,9 @@ class TestPostTurn:
     ) -> None:
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
 
         resp = client.post(
             "/copilot/turns",
@@ -270,7 +285,9 @@ class TestPostTurn:
     ) -> None:
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
         assert conv.title is None
 
         client.post(
@@ -289,7 +306,9 @@ class TestPostTurn:
     ) -> None:
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
         assert conv.active_account_id is None
 
         cust_name = db.execute(
@@ -326,7 +345,9 @@ class TestStreamingTurn:
     ) -> None:
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
 
         resp = client.post(
             "/copilot/turns",
@@ -366,7 +387,9 @@ class TestStreamingTurn:
         """Sanity: clients that don't ask for SSE still get the partial."""
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
 
         resp = client.post(
             "/copilot/turns",
@@ -391,7 +414,9 @@ class TestConfirmDrafts:
     ) -> None:
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
 
         cust_name = db.execute(
             text("SELECT name FROM customers ORDER BY name LIMIT 1")
@@ -460,7 +485,9 @@ class TestConfirmDrafts:
     ) -> None:
         _seed_min_for_orchestrator(db, faker_instance)
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
 
         cust_name = db.execute(
             text("SELECT name FROM customers ORDER BY name LIMIT 1")
@@ -522,7 +549,9 @@ class TestConversationRail:
         ids = []
         for title in ("oldest", "middle", "newest"):
             conv = Conversation(title=title)
-            db.add(conv); db.commit(); db.refresh(conv)
+            db.add(conv)
+            db.commit()
+            db.refresh(conv)
             ids.append(conv.id)
             # nudge updated_at via raw SQL — cleanest deterministic path
             db.execute(
@@ -553,9 +582,11 @@ class TestConversationRail:
 
 class TestJsonApi:
     def test_get_conversations_lists(self, client, db) -> None:
-        Conversation(); db.commit()
+        Conversation()
+        db.commit()
         for _ in range(3):
-            db.add(Conversation()); db.commit()
+            db.add(Conversation())
+            db.commit()
 
         resp = client.get("/api/copilot/conversations")
         assert resp.status_code == 200
@@ -567,7 +598,9 @@ class TestJsonApi:
 
     def test_get_conversation_with_turns(self, client, db) -> None:
         conv = Conversation(title="api-test")
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
 
         # Add a couple of plain turns directly (no LLM needed).
         db.add(ChatTurn(conversation_id=conv.id, role="user", text="hi"))
@@ -646,7 +679,9 @@ class TestLegacyDraftRegression:
         del legacy_draft["customer"]["evidence"]
 
         conv = Conversation()
-        db.add(conv); db.commit(); db.refresh(conv)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
         turn = ChatTurn(
             conversation_id=conv.id,
             role="assistant",
@@ -660,7 +695,9 @@ class TestLegacyDraftRegression:
                  "arguments": {"draft_data": legacy_draft}},
             ],
         )
-        db.add(turn); db.commit(); db.refresh(turn)
+        db.add(turn)
+        db.commit()
+        db.refresh(turn)
         return conv.id, turn.id
 
     def test_legacy_payload_is_genuinely_rejected(

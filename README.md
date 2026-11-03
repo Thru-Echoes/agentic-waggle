@@ -14,7 +14,7 @@ All three share the same first-class providers (`vector_search`, `inbox`, `erp`,
 
 The name comes from the **waggle dance** — how bees tell each other where the nectar is. In Waggle, it's how agents tell each other where the data is.
 
-Clone the repo, set an `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`) in `.env`, and run `make build && make up && make migrate && make seed && make demo`. Postgres + pgvector + Redis come up under Docker; no other external dependencies.
+Clone the repo, set an `OPENAI_API_KEY` (or `ANTHROPIC_API_KEY`) in `.env`, and run `make build && make up && make migrate && make seed && make demo`. Postgres + pgvector + Redis come up under Docker; no other external dependencies. Dependencies are locked (`pyproject.toml` + `uv.lock`), the image is built from the lock, and CI builds and boots that same image on every pull request.
 
 ## Live demo
 
@@ -54,12 +54,25 @@ Suggested walkthrough:
 
 ```bash
 cp .env.example .env             # then add OPENAI_API_KEY (or ANTHROPIC_API_KEY)
-make build                        # build the api/seed image
+make build                        # build the image from uv.lock (runtime + test stages)
 make up                           # boot Postgres (with pgvector) + Redis via Docker
 make migrate                      # run alembic migrations against the local DB
 make seed                         # populate 40 customers, 150 orders, 40 inspections, embeddings
 make demo                         # start the api at http://localhost:5001
 ```
+
+Local development without the app container (tests, linters, editors) uses
+[uv](https://docs.astral.sh/uv/):
+
+```bash
+make sync                         # uv sync --frozen → .venv from uv.lock
+make lint                         # ruff + pyright
+make test-unit                    # every test that needs no database
+uv run playwright install chromium   # once, for the browser-driven tests
+```
+
+Edit `pyproject.toml` to change a dependency, then `make lock` to refresh
+`uv.lock`; the Dockerfile and CI install only from the lock.
 
 Open `http://localhost:5001` and click around:
 
@@ -81,9 +94,13 @@ make down
 
 Run tests:
 ```bash
-make test       # full E2E suite (real pgvector, real sentence-transformers, real LLM)
-make test-unit  # Pydantic-only tests (no DB needed)
+make test       # full E2E suite in the test image (real pgvector, real sentence-transformers, real LLM when a key is set)
+make test-unit  # every test that needs no database, in the local uv environment
 ```
+
+CI (`.github/workflows/ci.yml`) runs ruff, pyright, the suite against a
+pgvector Postgres service, a build of the production image that it then
+boots (migrate + seed + `/health` + `/ready`), and `pip-audit` on the lock.
 
 ## Architecture
 
@@ -157,8 +174,9 @@ agentic-mcp-crm/
 ├── seed/               16 generators that populate synthetic data
 ├── tests/              21-module E2E suite (real pgvector, real LLM)
 ├── scripts/demo.py     CLI orchestrator: email → FSM → ERP → Copilot
-├── Dockerfile          single image used by api, seed, and MCP servers
-├── docker-compose.yml  postgres + redis + api
+├── Dockerfile          one image, three stages: base → test (dev deps + tests/) → runtime (non-root)
+├── docker-compose.yml  postgres + redis + api (runtime stage) + seed (test stage)
+├── pyproject.toml      dependencies (locked in uv.lock) + ruff/pytest config
 └── Makefile            command entry points (`make help`)
 ```
 
@@ -249,7 +267,7 @@ Then fill in:
 
 - `cwd` — absolute path to your local clone of this repo.
 - `DATABASE_URL` — point at the host-mapped Postgres
-  (`postgresql://agentic_mcp_crm:agentic_mcp_crm@localhost:5433/agentic_mcp_crm`
+  (`postgresql+psycopg2://agentic_mcp_crm:agentic_mcp_crm@localhost:5433/agentic_mcp_crm`
   when running via `make up`).
 - `OPENAI_API_KEY` — for tools that call the LLM
   (`draft_followup_email`, `extract_from_narrative`).

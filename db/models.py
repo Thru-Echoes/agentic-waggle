@@ -34,6 +34,20 @@ from sqlalchemy import CheckConstraint, Column, ForeignKey, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped
+from db.enums import (
+    ApprovalRole,
+    DocumentSourceType,
+    MarketSegment,
+    OrderState,
+    PricingModel,
+    ProductCategory,
+    RedFlagScope,
+    RedFlagSeverity,
+    RestrictionType,
+    ServiceCategory,
+    UserRole,
+)
+
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -59,19 +73,6 @@ def _enum_col(enum_cls: type[PyEnum], **kwargs: Any) -> Column:
         **kwargs,
     )
 
-from db.enums import (
-    ApprovalRole,
-    DocumentSourceType,
-    MarketSegment,
-    OrderState,
-    PricingModel,
-    ProductCategory,
-    RedFlagScope,
-    RedFlagSeverity,
-    RestrictionType,
-    ServiceCategory,
-    UserRole,
-)
 
 
 def utc_now() -> datetime:

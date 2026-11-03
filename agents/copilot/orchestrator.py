@@ -33,6 +33,25 @@ from langchain_core.language_models import BaseChatModel
 from sqlalchemy.orm import Session
 
 
+from agents.copilot.context_builder import ContextBundle, build_context
+from agents.copilot.conversation_schemas import (
+    Citation,
+    CopilotResponse,
+    CustomerReportDraft,
+    IntentRoute,
+    ToolCallRecord,
+)
+from agents.copilot.intent_router import get_intent_route
+from agents.copilot.tools import (
+    draft_order_from_text,
+    log_customer_report,
+)
+from agents.schemas import ConversationContext, CustomerMatch, ExtractionFailure, OrderDraft
+from providers import semantic_matcher
+
+log = logging.getLogger(__name__)
+
+
 #: Stage names emitted via the optional ``on_step`` callback during one
 #: chat turn. The streaming /copilot/turns SSE branch maps these to
 #: front-end "thinking..." status updates.
@@ -50,24 +69,6 @@ StreamStage = Literal[
 #: them. The streaming SSE endpoint pushes events into an asyncio queue
 #: from within this callback.
 OnStepFn = Callable[[StreamStage, Any], None]
-
-from agents.copilot.context_builder import ContextBundle, build_context
-from agents.copilot.conversation_schemas import (
-    Citation,
-    CopilotResponse,
-    CustomerReportDraft,
-    IntentRoute,
-    ToolCallRecord,
-)
-from agents.copilot.intent_router import get_intent_route
-from agents.copilot.tools import (
-    draft_order_from_text,
-    log_customer_report,
-)
-from agents.schemas import ConversationContext, OrderDraft, ExtractionFailure
-from providers import semantic_matcher
-
-log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -183,27 +184,34 @@ def get_copilot_response(
     customer_id: uuid.UUID | None = active_account_id
     matcher_tool_calls: list[dict[str, Any]] = []
 
-    hint = intent.target_account_hint or user_text
+    hint = intent.target_account_hint or ""
     _effective_conv_id = conv_id if conv_id is not None else uuid.uuid4()
     ctx = ConversationContext(
         active_account_id=active_account_id,
         last_3_customer_ids=list(last_3_customer_ids or [])[:3],
     )
 
-    try:
-        match = semantic_matcher.match_customer(
-            hint,
-            conversation_ctx=ctx,
-            conversation_id=_effective_conv_id,
-            db=db,
-        )
-    except semantic_matcher.MatcherIndexEmpty:
-        # Index not yet backfilled — fall back to active_account_id silently.
-        log.warning(
-            "semantic_matcher index empty; falling back to active_account_id=%s",
-            active_account_id,
-        )
-        match = None  # type: ignore[assignment]
+    match: CustomerMatch | None = None
+    if hint.strip():
+        # Only consult the matcher when the router found a customer
+        # reference. A general question carries no hint and proceeds with
+        # the conversation's active account (or none) instead of being fed
+        # verbatim to the matcher, which would either ask the user to pick a
+        # customer or latch onto a spurious match.
+        try:
+            match = semantic_matcher.match_customer(
+                hint,
+                conversation_ctx=ctx,
+                conversation_id=_effective_conv_id,
+                db=db,
+            )
+        except semantic_matcher.MatcherIndexEmpty:
+            # Index not yet backfilled — fall back to active_account_id.
+            log.warning(
+                "semantic_matcher index empty; falling back to active_account_id=%s",
+                active_account_id,
+            )
+            match = None
 
     if match is not None and (match.customer_id is None or match.confidence < 0.50):
         # Low confidence — ask the user to pick from alternatives.
@@ -519,7 +527,7 @@ def _resume_log_report(
     Side effects: one SELECT on customers, one INSERT on chat_turns.
     """
     from sqlalchemy import text as sa_text
-    from db.models import ChatTurn, utc_now
+    from db.models import ChatTurn
     from decimal import Decimal
 
     # Resolve customer name for the user-facing message.
@@ -582,7 +590,7 @@ def _resume_create_order(
     Side effects: one SELECT on customers, one INSERT on chat_turns.
     """
     from sqlalchemy import text as sa_text
-    from db.models import ChatTurn, utc_now
+    from db.models import ChatTurn
     from decimal import Decimal
 
     row = db.execute(

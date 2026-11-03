@@ -1,0 +1,136 @@
+# Waggle CI.
+#
+# Four jobs, all required:
+#   lint   — ruff + pyright on the whole tree.
+#   test   — the E2E suite against a real pgvector Postgres and real
+#            sentence-transformers. LLM-backed tests skip without a key
+#            (explicit skip reason, per tests/conftest.py); everything else
+#            must pass. Chromium is installed so the Playwright tests run.
+#   image  — build the production image from the lock and boot it against
+#            Postgres: migrations + seed + /health + /ready. This is the
+#            artifact that ships to Fly, tested in the form it ships.
+#   audit  — pip-audit over the locked dependency set.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1"
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run pyright
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: agentic_mcp_crm
+          POSTGRES_PASSWORD: agentic_mcp_crm
+          POSTGRES_DB: agentic_mcp_crm_test
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U agentic_mcp_crm -d agentic_mcp_crm_test"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg2://agentic_mcp_crm:agentic_mcp_crm@localhost:5433/agentic_mcp_crm_test
+      DATABASE_URL: postgresql+psycopg2://agentic_mcp_crm:agentic_mcp_crm@localhost:5433/agentic_mcp_crm_test
+      # A copy: the seed generators rewrite the inbox fixture files they
+      # read, and the committed snapshot must stay untouched.
+      INBOX_FIXTURE_ROOT: /tmp/waggle/gmail-fixtures
+      ERP_LOG_ROOT: /tmp/waggle/erp-sync-log
+      STORAGE_ROOT: /tmp/waggle/local-storage
+      SENT_MAIL_ROOT: /tmp/waggle/sent-mail
+      HF_HOME: /home/runner/.cache/huggingface
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --frozen
+      - name: Cache sentence-transformers weights
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/.cache/huggingface
+          key: hf-all-MiniLM-L6-v2-v1
+      - run: uv run playwright install --with-deps chromium
+      - run: mkdir -p /tmp/waggle/erp-sync-log /tmp/waggle/local-storage /tmp/waggle/sent-mail && cp -r gmail-fixtures /tmp/waggle/gmail-fixtures
+      - run: uv run pytest tests -q -p no:cacheprovider -rsf --durations=10
+
+  image:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: agentic_mcp_crm
+          POSTGRES_PASSWORD: agentic_mcp_crm
+          POSTGRES_DB: agentic_mcp_crm
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U agentic_mcp_crm -d agentic_mcp_crm"
+          --health-interval 2s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the production image from the lock
+        run: >-
+          docker build --target runtime
+          --build-arg GIT_SHA=${{ github.sha }}
+          --build-arg BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          -t waggle:ci .
+      - name: Image size
+        run: docker image inspect waggle:ci --format 'size={{.Size}} bytes'
+      - name: Imports resolve inside the image
+        run: docker run --rm --entrypoint python waggle:ci -c "import app.main, mcp_servers.sales_copilot_server, mcp_servers.customer_reports_server, psycopg2, sqlalchemy; print('imports ok', sqlalchemy.__version__)"
+      - name: Boot the image (migrate + seed + serve) and probe it
+        run: |
+          docker run -d --name waggle --network host \
+            -e DATABASE_URL=postgresql://agentic_mcp_crm:agentic_mcp_crm@localhost:5432/agentic_mcp_crm \
+            -e OPENAI_API_KEY=ci-placeholder-not-a-real-key \
+            waggle:ci
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost:5001/health >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS http://localhost:5001/health
+          curl -fsS http://localhost:5001/ready
+          docker logs waggle | tail -20
+      - name: Server process runs as the non-root user (PID 1 after the entrypoint drops privileges)
+        run: |
+          docker exec waggle sh -c 'grep "^Uid:" /proc/1/status; tr "\0" " " < /proc/1/cmdline; echo'
+          docker exec waggle sh -c 'test "$(awk "/^Uid:/ {print \$2}" /proc/1/status)" = "10001"'
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs waggle || true
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --frozen --no-dev
+      - run: uv run --with pip-audit pip-audit --progress-spinner off

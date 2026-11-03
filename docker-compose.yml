@@ -8,7 +8,8 @@
 #   seed      — one-shot runner for migrations + synthetic data generation.
 #   api       — FastAPI app serving routes + Jinja/HTMX templates on :5001.
 #
-# MCP servers are added as separate services in Phase D.
+# The `seed` service builds the image's `test` stage (dev dependencies +
+# tests/); `api` builds the `runtime` stage, the same stage Fly deploys.
 #
 # Runtime volumes persist provider artifacts across restarts:
 #   local-storage/, sent-mail/, erp-sync-log/, gmail-fixtures/
@@ -46,10 +47,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: test
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     entrypoint: []
     working_dir: /app
     environment:
-      DATABASE_URL: postgresql://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm
+      DATABASE_URL: postgresql+psycopg2://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     volumes:
@@ -70,10 +74,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: runtime
+      args:
+        GIT_SHA: ${GIT_SHA:-dev}
     ports:
       - "5001:5001"
     environment:
-      DATABASE_URL: postgresql://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm
+      DATABASE_URL: postgresql+psycopg2://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/agentic_mcp_crm
       REDIS_URL: redis://redis:6379/0
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

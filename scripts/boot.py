@@ -39,6 +39,8 @@ import sys
 
 from sqlalchemy import create_engine, text
 
+from db.url import get_sqlalchemy_url
+
 log = logging.getLogger("boot")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -59,7 +61,7 @@ def seed_if_empty() -> None:
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
         raise RuntimeError("DATABASE_URL is not set; cannot check seed state")
-    engine = create_engine(db_url)
+    engine = create_engine(get_sqlalchemy_url(db_url))
     with engine.connect() as conn:
         count = conn.execute(text("SELECT COUNT(*) FROM customers")).scalar_one()
     if count and int(count) > 0:

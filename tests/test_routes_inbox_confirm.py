@@ -342,7 +342,6 @@ class TestInboxExtractRendersConfirmButton:
         from pathlib import Path
 
         from fastapi.templating import Jinja2Templates
-        from starlette.requests import Request
 
         _seed_min(db, faker_instance)
         db.commit()

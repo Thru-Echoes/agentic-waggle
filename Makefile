@@ -8,10 +8,11 @@ SHELL := /bin/bash
 COMPOSE := docker compose
 
 TEST_DB := agentic_mcp_crm_test
-TEST_DB_URL := postgresql://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/$(TEST_DB)
+TEST_DB_URL := postgresql+psycopg2://agentic_mcp_crm:agentic_mcp_crm@postgres:5432/$(TEST_DB)
+export GIT_SHA ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 
 .PHONY: help up down build migrate seed reseed embed demo logs psql reset-db check \
-        test test-unit test-db-create test-db-drop
+        test test-unit test-db-create test-db-drop lint lock sync
 
 help:
 	@echo "Waggle (agentic-mcp-crm) — local launcher"
@@ -26,7 +27,8 @@ help:
 	@echo ""
 	@echo "Tests:"
 	@echo "  make test              full E2E suite (creates test DB if missing)"
-	@echo "  make test-unit         only non-DB tests (SKIP_DB_TESTS=1)"
+	@echo "  make test-unit         only non-DB tests (SKIP_DB_TESTS=1), no Docker needed"
+	@echo "  make lint              ruff + pyright (local uv environment)"
 	@echo "  make test-db-create    CREATE DATABASE $(TEST_DB) if missing"
 	@echo "  make test-db-drop      DROP DATABASE $(TEST_DB)"
 	@echo ""
@@ -37,6 +39,8 @@ help:
 	@echo "  make psql              open a psql prompt against the local DB"
 	@echo "  make logs              tail compose logs"
 	@echo "  make check             verify prerequisites"
+	@echo "  make sync              create/refresh the local uv environment (.venv)"
+	@echo "  make lock              re-resolve uv.lock after editing pyproject.toml"
 
 check:
 	@command -v docker >/dev/null 2>&1 || { echo "docker not found"; exit 1; }
@@ -114,8 +118,22 @@ test: test-db-create
 		-e OPENAI_API_KEY=$${OPENAI_API_KEY:-} \
 		seed pytest tests/ -vv --tb=short
 
-# Only tests that do not require a DB.
-test-unit:
-	$(COMPOSE) run --rm \
-		-e SKIP_DB_TESTS=1 \
-		seed pytest tests/test_seed_models.py -vv
+# Every test that does not need a DB (schema/model/unit tests). Runs in the
+# local uv environment so it works without Docker. DB-backed tests skip with
+# an explicit reason; LLM-backed tests skip without a key.
+test-unit: sync
+	SKIP_DB_TESTS=1 uv run pytest tests -q -p no:cacheprovider
+
+# -------------------------------------------------------------------
+# Local environment + static checks
+# -------------------------------------------------------------------
+
+sync:
+	uv sync --frozen
+
+lock:
+	uv lock
+
+lint: sync
+	uv run ruff check .
+	uv run pyright
