@@ -145,11 +145,14 @@ class Settings(BaseSettings):
         ),
     )
     copilot_matcher_disambig_model: str = Field(
-        default="gpt-5.4-mini",
+        default="gpt-6-luna",
         description=(
             "OpenAI chat model for the semantic matcher's Stage B "
-            "disambiguator. Chosen by tests/test_matcher_eval.py, not by "
-            "the extraction benchmark; see STATUS.md for the current eval."
+            "disambiguator. Chosen on the full 281-case corpus eval "
+            "(docs/benchmarks/2026-11-03-matcher-stage-b.md): gpt-6-luna "
+            "and gpt-6.1-terra tie at 201-202/210 customers and 70/71 SKUs, "
+            "within one case of gpt-5.4-mini, and luna is the cheapest "
+            "current-generation model that holds that score."
         ),
     )
 
