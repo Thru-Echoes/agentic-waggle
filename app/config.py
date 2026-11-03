@@ -83,7 +83,9 @@ class Settings(BaseSettings):
     # report it supersedes). Every candidate hit 100% accuracy on these
     # stages; the deciding metric is the share of evidence quotes that
     # appear verbatim in the source email, because those quotes are what
-    # the UI renders as "Source" tooltips and Evidence blocks.
+    # the UI renders as "Source" tooltips and Evidence blocks. One model is
+    # kept across the three stages: the report's per-stage picks come from a
+    # 10-case sample, and a tie there is not enough to split the extractor.
     extract_intent_model: str = Field(
         default="gpt-6.1-terra",
         description=(
@@ -96,7 +98,9 @@ class Settings(BaseSettings):
         description=(
             "Model for the customer-reference extraction stage. The quoted "
             "evidence is shown next to the matched customer, so grounding "
-            "matters (100% vs 20% for gpt-5.4-mini)."
+            "matters (100% vs 20% for gpt-5.4-mini). gpt-6-luna also "
+            "grounded 100% here on the 10-case sample at a tenth of the "
+            "price; terra is kept so the extractor runs one model."
         ),
     )
     extract_items_model: str = Field(
