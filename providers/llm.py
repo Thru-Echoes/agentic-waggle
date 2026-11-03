@@ -232,7 +232,7 @@ def _openai_complete(
 ) -> LLMResponse:
     """Call the OpenAI Chat Completions API and coerce to an LLMResponse.
 
-    Default model: `Settings.openai_model` (currently `gpt-5.4-mini`).
+    Default model: `Settings.openai_model`.
     """
     from app.config import get_settings
 
@@ -588,7 +588,7 @@ def usage_scope(scope: str) -> Iterator[UsageCollector]:
 class LLMClient:
     """Real Anthropic / OpenAI client, chosen by `Settings.llm_provider`.
 
-    Defaults to OpenAI (gpt-5.4-mini). Falls back to the non-primary provider
+    Defaults to OpenAI (`Settings.openai_model`). Falls back to the non-primary provider
     only if the primary's API key is missing at construction time; if both
     are missing, raises `LLMConfigurationError`.
     """
