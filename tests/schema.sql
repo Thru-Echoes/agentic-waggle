@@ -209,11 +209,13 @@ CREATE TABLE conversations (
     active_account_id UUID REFERENCES customers(id) ON DELETE SET NULL,
     title TEXT,
     model_used TEXT,
+    visitor_id TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX ix_conversations_salesperson_id ON conversations (salesperson_id);
 CREATE INDEX ix_conversations_updated_at ON conversations (updated_at);
+CREATE INDEX ix_conversations_visitor_id ON conversations (visitor_id);
 
 CREATE TABLE chat_turns (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -222,6 +224,7 @@ CREATE TABLE chat_turns (
     text TEXT NOT NULL,
     tool_calls JSONB NOT NULL DEFAULT '[]'::jsonb,
     evidence_used JSONB NOT NULL DEFAULT '[]'::jsonb,
+    citations JSONB NOT NULL DEFAULT '[]'::jsonb,
     model TEXT,
     tokens_input INT NOT NULL DEFAULT 0,
     tokens_output INT NOT NULL DEFAULT 0,

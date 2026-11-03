@@ -5,7 +5,8 @@ routers mounted, the middleware stack registered, startup hooks, and the
 exception handlers that turn failures into something a reader can act on.
 
 Middleware order (outermost first): request context + security headers,
-HTTP Basic auth, LLM rate limit + daily budget, cross-site origin check. Security headers therefore apply
+HTTP Basic auth, LLM rate limit + daily budget, visitor cookie, cross-site
+origin check. Security headers therefore apply
 to 401 and 403 responses too.
 
 Exception handling:
@@ -42,6 +43,7 @@ from app.auth import BasicAuthMiddleware
 from app.config import Settings, get_settings
 from app.middleware import CsrfOriginMiddleware, RequestContextMiddleware
 from app.ratelimit import LlmRateLimiter, LlmRateLimitMiddleware
+from app.visitor import VisitorIdMiddleware
 from app.routes import (
     agent,
     copilot,
@@ -158,6 +160,7 @@ def create_app() -> FastAPI:
     )
     app.state.llm_limiter = limiter
     app.add_middleware(CsrfOriginMiddleware)
+    app.add_middleware(VisitorIdMiddleware)
     app.add_middleware(LlmRateLimitMiddleware, limiter=limiter)
     app.add_middleware(BasicAuthMiddleware)
     app.add_middleware(RequestContextMiddleware)

@@ -10,6 +10,8 @@ E2E against real Postgres + real sentence-transformers.
 # pyright: reportMissingImports=false
 from __future__ import annotations
 
+import pytest
+
 import uuid
 
 from sqlalchemy import text
@@ -106,3 +108,42 @@ class TestContextBundle:
         assert small_bundle.estimated_tokens <= 200
         # Big budget allows more — strict ≥ given the same query
         assert big_bundle.estimated_tokens >= small_bundle.estimated_tokens
+
+
+class TestReportIdsAndMultiSite:
+    def test_recent_reports_carry_real_report_ids(self, db, faker_instance) -> None:
+        _seed_full(db, faker_instance)
+        row = db.execute(text(
+            "SELECT c.id FROM customers c JOIN customer_sites s ON s.customer_id=c.id "
+            "JOIN customer_reports r ON r.customer_site_id=s.id LIMIT 1"
+        )).mappings().one()
+        cid = row["id"]
+        if isinstance(cid, str):
+            cid = uuid.UUID(cid)
+        bundle = build_context(query="how are they doing?", customer_id=cid, db=db)
+        assert bundle.recent_reports, "customer with reports must get report summaries"
+        for rep in bundle.recent_reports:
+            assert isinstance(rep.report_id, uuid.UUID)
+            assert db.execute(text("SELECT 1 FROM customer_reports WHERE id=:id"), {"id": str(rep.report_id)}).first()
+
+    def test_rag_chunks_come_from_any_of_the_customers_sites(self, db, faker_instance) -> None:
+        """Pick the customer with chunks at the most sites and check the filter
+        does not collapse to a single site."""
+        _seed_full(db, faker_instance)
+        row = db.execute(text(
+            "SELECT s.customer_id, COUNT(DISTINCT ch.metadata->>'customer_site_id') AS n "
+            "FROM chunks ch JOIN customer_sites s ON s.id::text = ch.metadata->>'customer_site_id' "
+            "GROUP BY s.customer_id ORDER BY n DESC LIMIT 1"
+        )).mappings().one()
+        cid = row["customer_id"]
+        if isinstance(cid, str):
+            cid = uuid.UUID(cid)
+        if int(row["n"]) < 2:
+            pytest.skip("seed produced no customer with chunks at two or more sites")
+        from agents.copilot.context_builder import _rag_chunks
+
+        chunks = _rag_chunks("varroa mites brood inspection", db, top_k=50, customer_id=cid)
+        site_rows = db.execute(text(
+            "SELECT DISTINCT metadata->>'customer_site_id' FROM chunks WHERE content = ANY(:c)"
+        ), {"c": chunks}).scalars().all()
+        assert len(site_rows) >= 2, "chunks must span more than one of the customer's sites"

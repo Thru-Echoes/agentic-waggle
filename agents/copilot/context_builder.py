@@ -48,6 +48,7 @@ def _estimate_tokens(s: str) -> int:
 class ReportSummary:
     """One customer report rendered down to its essentials for prompt context."""
 
+    report_id: uuid.UUID     # customer_reports.id — cited back to the user
     visit_date: str          # ISO date string
     site_name: str | None
     excerpt: str             # first ~500 chars of narrative
@@ -95,7 +96,7 @@ def _load_recent_reports(
     rows = db.execute(
         text(
             """
-            SELECT cr.visit_date, cs.name AS site_name,
+            SELECT cr.id, cr.visit_date, cs.name AS site_name,
                    cr.narrative, cr.varroa_count
             FROM customer_reports cr
             JOIN customer_sites cs ON cs.id = cr.customer_site_id
@@ -112,6 +113,7 @@ def _load_recent_reports(
         excerpt = narrative[:500]
         out.append(
             ReportSummary(
+                report_id=uuid.UUID(str(r["id"])),
                 visit_date=str(r["visit_date"]),
                 site_name=r.get("site_name"),
                 excerpt=excerpt,
@@ -129,23 +131,21 @@ def _rag_chunks(
 ) -> list[str]:
     """Cosine search via the existing VectorSearchProvider.
 
-    When a customer is known, we filter by their site (if any). When
-    unknown, we let the search range over everything.
+    When a customer is known, the search is restricted to chunks from any
+    of that customer's sites (a multi-site customer used to lose every
+    site but one). When unknown, the search ranges over everything.
     """
     provider = VectorSearchProvider(db=db)
     filters: dict[str, Any] = {}
     if customer_id is not None:
-        # Best-effort site filter: pick any one of the customer's sites
-        # to constrain the search. If the customer has many sites or the
-        # filter shape doesn't apply cleanly, fall through unfiltered.
-        site_row = db.execute(
-            text(
-                "SELECT id FROM customer_sites WHERE customer_id = :cid LIMIT 1"
-            ),
-            {"cid": str(customer_id)},
-        ).mappings().first()
-        if site_row is not None:
-            filters["customer_site_id"] = str(site_row["id"])
+        site_ids = [
+            str(r["id"]) for r in db.execute(
+                text("SELECT id FROM customer_sites WHERE customer_id = :cid ORDER BY name"),
+                {"cid": str(customer_id)},
+            ).mappings().all()
+        ]
+        if site_ids:
+            filters["customer_site_ids"] = site_ids
     results: list[SearchResult] = provider.search(
         query=query, top_k=top_k, filters=filters or None
     )

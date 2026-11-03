@@ -240,3 +240,34 @@ class TestHybridFilters:
             filters={"tag": "this_tag_does_not_exist_xyz_12345"},
         )
         assert results == []
+
+
+class TestCustomerSiteIdsFilter:
+    def test_customer_site_ids_filter_accepts_any_of_the_sites(
+        self, db, faker_instance, inbox_fixture_root
+    ) -> None:
+        """A multi-site customer must get chunks from every one of its sites."""
+        p = TestHybridFilters._full_corpus(TestHybridFilters(), db, faker_instance, inbox_fixture_root)
+        site_ids = db.execute(
+            text(
+                "SELECT DISTINCT metadata->>'customer_site_id' FROM chunks "
+                "WHERE metadata->>'source_type' = 'customer_report' "
+                "AND metadata->>'customer_site_id' IS NOT NULL LIMIT 2"
+            )
+        ).scalars().all()
+        assert len(site_ids) == 2, "need two sites with chunks for this test"
+        results = p.search("field inspection", top_k=20, filters={"customer_site_ids": site_ids})
+        assert results
+        seen = {r.metadata.get("customer_site_id") for r in results}
+        assert seen <= set(site_ids), f"filter leaked other sites: {seen - set(site_ids)}"
+        # Sanity: restricting to one of the two never returns the other.
+        only_first = p.search("field inspection", top_k=20, filters={"customer_site_ids": [site_ids[0]]})
+        assert {r.metadata.get("customer_site_id") for r in only_first} <= {site_ids[0]}
+
+    def test_empty_customer_site_ids_means_no_filter(
+        self, db, faker_instance, inbox_fixture_root
+    ) -> None:
+        p = TestHybridFilters._full_corpus(TestHybridFilters(), db, faker_instance, inbox_fixture_root)
+        unfiltered = p.search("field inspection", top_k=5)
+        same = p.search("field inspection", top_k=5, filters={"customer_site_ids": []})
+        assert [r.chunk_id for r in unfiltered] == [r.chunk_id for r in same]

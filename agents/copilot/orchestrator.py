@@ -135,6 +135,7 @@ def _get_copilot_response_inner(
     active_account_id: uuid.UUID | None = None,
     last_3_customer_ids: list[uuid.UUID] | None = None,
     on_step: OnStepFn | None = None,
+    pinned_customer_id: uuid.UUID | None = None,
 ) -> CopilotResponse:
     """Handle one chat turn end-to-end.
 
@@ -193,7 +194,17 @@ def _get_copilot_response_inner(
     )
 
     match: CustomerMatch | None = None
-    if hint.strip():
+    if pinned_customer_id is not None:
+        # The user confirmed or picked the customer on the previous turn
+        # (confirm-match flow): no matching, no second confirmation.
+        customer_id = pinned_customer_id
+        matcher_tool_calls = [{
+            "tool_name": "pinned_customer",
+            "customer_id": str(pinned_customer_id),
+            "confidence": 1.0,
+            "alternatives_count": 0,
+        }]
+    elif hint.strip():
         # Only consult the matcher when the router found a customer
         # reference. A general question carries no hint and proceeds with
         # the conversation's active account (or none) instead of being fed
@@ -224,6 +235,7 @@ def _get_copilot_response_inner(
             "tool_name": "pending_customer_match",
             "target_intent": intent.intent,
             "hint": hint,
+            "user_text": user_text,
             "alternatives": alt_list,
         }
         if match.alternatives:
@@ -256,6 +268,7 @@ def _get_copilot_response_inner(
             "tool_name": "pending_customer_match",
             "target_intent": intent.intent,
             "hint": hint,
+            "user_text": user_text,
             "alternatives": [
                 [str(match.customer_id), match.customer_name or "", match.confidence]
             ],
@@ -340,8 +353,8 @@ def _get_copilot_response_inner(
         for rep in bundle.recent_reports[:3]:
             citations.append(Citation(
                 kind="customer_report",
-                id=uuid.uuid4(),  # placeholder; real impl pulls report_id
-                label=f"Report {rep.visit_date}",
+                id=rep.report_id,
+                label=f"Report {rep.visit_date}" + (f" · {rep.site_name}" if rep.site_name else ""),
                 excerpt=rep.excerpt[:200],
             ))
 
@@ -369,7 +382,9 @@ def _get_copilot_response_inner(
 
     elif intent.intent == "create_order":
         _emit("answer_drafting", {"intent": "create_order"})
-        order_result = draft_order_from_text(db=db, text_in=user_text)
+        order_result = draft_order_from_text(
+            db=db, text_in=user_text, pinned_customer_id=pinned_customer_id,
+        )
         if isinstance(order_result, OrderDraft):
             _emit("draft_ready", {"kind": "order"})
             evidence_used.extend(order_result.customer_evidence)
@@ -436,6 +451,7 @@ def get_copilot_response(
     active_account_id: uuid.UUID | None = None,
     last_3_customer_ids: list[uuid.UUID] | None = None,
     on_step: OnStepFn | None = None,
+    pinned_customer_id: uuid.UUID | None = None,
 ) -> CopilotResponse:
     """Handle one chat turn and attribute every LLM call made to it.
 
@@ -455,6 +471,7 @@ def get_copilot_response(
             active_account_id=active_account_id,
             last_3_customer_ids=last_3_customer_ids,
             on_step=on_step,
+            pinned_customer_id=pinned_customer_id,
         )
     s = usage.summary
     return response.model_copy(update={
@@ -500,178 +517,58 @@ def _record(
 
 
 # ---------------------------------------------------------------------------
-# Resume helpers — re-dispatch a paused turn with a user-confirmed customer
+# Resume — re-dispatch a paused turn with a user-confirmed customer
 # ---------------------------------------------------------------------------
+
+
+def get_pending_match(turn_tool_calls: list[dict[str, Any]] | None) -> dict[str, Any] | None:
+    """Return the ``pending_customer_match`` marker from a turn's tool_calls, if any."""
+    for tc in turn_tool_calls or []:
+        if tc.get("tool_name") == "pending_customer_match":
+            return tc
+    return None
 
 
 def resume_with_customer(
     *,
-    conv_id: uuid.UUID,
-    paused_turn: Any,
+    pending: dict[str, Any],
+    user_text: str,
     chosen_customer_id: uuid.UUID,
     db: Session,
-) -> Any:
-    """Re-dispatch the paused turn's original intent with the user-picked customer_id.
+    models: dict[str, BaseChatModel],
+    conv_id: uuid.UUID | None = None,
+    last_3_customer_ids: list[uuid.UUID] | None = None,
+) -> CopilotResponse:
+    """Re-run the paused turn's original request with the customer pinned.
 
-    Reads the ``pending_customer_match`` marker stored in the paused turn's
-    ``tool_calls`` JSONB to recover the original intent and hint, then
-    dispatches to the appropriate resume helper.
+    ``pending`` is the ``pending_customer_match`` marker the paused turn
+    stored; ``user_text`` is the message that produced it (the marker's
+    ``user_text`` when present, else the preceding user turn, resolved by
+    the caller). The whole pipeline runs again with ``pinned_customer_id``
+    set, so a create_order turn now yields a draft for that customer and a
+    log_customer_report turn yields its report draft. Returns the new
+    ``CopilotResponse``; the route persists it.
 
-    Does NOT clear the pending marker — that is the route handler's
-    responsibility so it can do it in a single commit alongside other
-    changes.
+    Raises ``RuntimeError`` when the marker names an intent this flow does
+    not support.
 
-    Raises ``RuntimeError`` if the pending marker is missing or the intent
-    is unrecognised.
-
-    Side effects: INSERTs one assistant ChatTurn row, depending on the
-    intent dispatched to the resume helper.
+    Side effects: those of ``get_copilot_response`` (LLM calls, SELECTs).
     """
-    pending = next(
-        (
-            tc for tc in (paused_turn.tool_calls or [])
-            if tc.get("tool_name") == "pending_customer_match"
-        ),
-        None,
-    )
-    if pending is None:
-        raise RuntimeError("resume_with_customer: no pending_customer_match on this turn")
     target_intent = pending.get("target_intent")
-    if target_intent == "log_customer_report":
-        return _resume_log_report(conv_id, chosen_customer_id, pending, db)
-    if target_intent == "create_order":
-        return _resume_create_order(conv_id, chosen_customer_id, pending, db)
-    raise RuntimeError(
-        f"resume_with_customer: unknown intent {target_intent!r} — "
-        f"expected 'log_customer_report' or 'create_order'"
+    if target_intent not in ("log_customer_report", "create_order", "query"):
+        raise RuntimeError(
+            f"resume_with_customer: unknown intent {target_intent!r} — "
+            "expected 'query', 'log_customer_report' or 'create_order'"
+        )
+    return get_copilot_response(
+        user_text=user_text,
+        db=db,
+        models=models,
+        conv_id=conv_id,
+        active_account_id=chosen_customer_id,
+        last_3_customer_ids=last_3_customer_ids,
+        pinned_customer_id=chosen_customer_id,
     )
 
 
-def _resume_log_report(
-    conv_id: uuid.UUID,
-    customer_id: uuid.UUID,
-    pending: dict[str, Any],
-    db: Session,
-) -> Any:
-    """Create a minimal assistant ChatTurn for a resumed log_customer_report.
-
-    Looks up the customer name and inserts an assistant turn that signals
-    the intent is now pinned to the chosen customer. The full extraction
-    (including any pending_report_draft stash) is deferred — Task 12 wires
-    the actual re-run when the orchestrator integration lands. For now this
-    produces a lightweight confirmation turn so the UI has something to
-    show.
-
-    Side effects: one SELECT on customers, one INSERT on chat_turns.
-    """
-    from sqlalchemy import text as sa_text
-    from db.models import ChatTurn
-    from decimal import Decimal
-
-    # Resolve customer name for the user-facing message.
-    row = db.execute(
-        sa_text("SELECT name FROM customers WHERE id = :cid"),
-        {"cid": str(customer_id)},
-    ).mappings().first()
-    customer_name = row["name"] if row else str(customer_id)
-
-    hint = pending.get("hint") or ""
-    answer = (
-        f"Got it — logging this for {customer_name}. "
-        "I'll extract the visit report now."
-        + (f" (You mentioned: \"{hint}\")" if hint else "")
-    )
-
-    tool_call_records: list[dict[str, Any]] = [
-        {
-            "tool_name": "resume_log_report",
-            "arguments": {
-                "customer_id": str(customer_id),
-                "customer_name": customer_name,
-            },
-            "result_excerpt": f"Resumed log_customer_report for {customer_name}",
-            "latency_ms": 0,
-            "tokens": 0,
-        }
-    ]
-
-    turn = ChatTurn(
-        conversation_id=conv_id,
-        role="assistant",
-        text=answer,
-        tool_calls=tool_call_records,
-        evidence_used=[],
-        model="resume",
-        tokens_input=0,
-        tokens_output=0,
-        cost_usd=Decimal("0"),
-        latency_ms=0,
-    )
-    db.add(turn)
-    db.commit()
-    db.refresh(turn)
-    return turn
-
-
-def _resume_create_order(
-    conv_id: uuid.UUID,
-    customer_id: uuid.UUID,
-    pending: dict[str, Any],
-    db: Session,
-) -> Any:
-    """Create a minimal assistant ChatTurn for a resumed create_order intent.
-
-    Mirrors ``_resume_log_report`` — lightweight confirmation turn that
-    signals the customer is now pinned. The full order extraction re-run
-    lands in Task 12 when the orchestrator integration is wired.
-
-    Side effects: one SELECT on customers, one INSERT on chat_turns.
-    """
-    from sqlalchemy import text as sa_text
-    from db.models import ChatTurn
-    from decimal import Decimal
-
-    row = db.execute(
-        sa_text("SELECT name FROM customers WHERE id = :cid"),
-        {"cid": str(customer_id)},
-    ).mappings().first()
-    customer_name = row["name"] if row else str(customer_id)
-
-    hint = pending.get("hint") or ""
-    answer = (
-        f"Got it — drafting the order for {customer_name}."
-        + (f" (You mentioned: \"{hint}\")" if hint else "")
-    )
-
-    tool_call_records: list[dict[str, Any]] = [
-        {
-            "tool_name": "resume_create_order",
-            "arguments": {
-                "customer_id": str(customer_id),
-                "customer_name": customer_name,
-            },
-            "result_excerpt": f"Resumed create_order for {customer_name}",
-            "latency_ms": 0,
-            "tokens": 0,
-        }
-    ]
-
-    turn = ChatTurn(
-        conversation_id=conv_id,
-        role="assistant",
-        text=answer,
-        tool_calls=tool_call_records,
-        evidence_used=[],
-        model="resume",
-        tokens_input=0,
-        tokens_output=0,
-        cost_usd=Decimal("0"),
-        latency_ms=0,
-    )
-    db.add(turn)
-    db.commit()
-    db.refresh(turn)
-    return turn
-
-
-__all__ = ["get_copilot_response", "resume_with_customer"]
+__all__ = ["get_copilot_response", "get_pending_match", "resume_with_customer"]

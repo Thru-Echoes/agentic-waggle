@@ -16,6 +16,27 @@
       </div>
     {% endif %}
 
+    {% if turn.citations %}
+      <div class="meta citations">
+        {% for c in turn.citations %}
+          {% if c.kind == "customer_report" %}
+            <a class="tool-chip citation" href="/customer-reports/{{ c.id }}" title="{{ c.excerpt }}">
+              <span class="tool-name">{{ c.label }}</span>
+            </a>
+          {% else %}
+            <span class="tool-chip citation" title="{{ c.excerpt }}"><span class="tool-name">{{ c.label }}</span></span>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if turn.expired_draft %}
+      <div class="confirm-result error" role="status">
+        <span class="badge alarm">Draft expired</span>
+        <p>This {{ turn.expired_draft }} draft predates the current schema and can no longer be confirmed. Send the request again to get a fresh draft.</p>
+      </div>
+    {% endif %}
+
     {% if turn.evidence_used %}
       <details class="evidence">
         <summary class="muted">Evidence</summary>

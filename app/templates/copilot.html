@@ -46,10 +46,11 @@
         {% if not turns %}
           <div class="thread-empty" id="thread-empty">
             <h3>How can Waggle help?</h3>
+            <p class="muted">Three things to try (click one to load it into the composer):</p>
             <ul class="suggestions">
-              <li>"What's the varroa trend at our biggest customer?"</li>
-              <li>"Draft an order: 24 Italian queens for next week."</li>
-              <li>"Visited Cascade today — mites at 3.5%, queens healthy, follow up next week."</li>
+              <li><button type="button" class="suggestion" data-prompt="What's the varroa trend at Martinez &amp; Sons Orchards?">"What's the varroa trend at Martinez &amp; Sons Orchards?"</button> <span class="muted">· grounded answer with report citations</span></li>
+              <li><button type="button" class="suggestion" data-prompt="Log a visit for Foothill Orchards — mites at 3.5%, queens healthy, follow up next week.">"Log a visit for Foothill Orchards — mites at 3.5%, queens healthy, follow up next week."</button> <span class="muted">· visit-report draft</span></li>
+              <li><button type="button" class="suggestion" data-prompt="Draft an order for Martinez &amp; Sons Orchards — 20 Italian mated queens (QUEEN-ITA-MATED) at $48 each.">"Draft an order for Martinez &amp; Sons Orchards — 20 Italian mated queens at $48 each."</button> <span class="muted">· order draft you can confirm</span></li>
             </ul>
           </div>
         {% else %}
@@ -126,6 +127,14 @@
         event.preventDefault();
         if (ta.form && typeof ta.form.requestSubmit === 'function') ta.form.requestSubmit();
       }
+    });
+    // Example prompts: load into the composer and focus it (no auto-send).
+    document.querySelectorAll('button.suggestion').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        ta.value = btn.getAttribute('data-prompt') || '';
+        grow();
+        ta.focus();
+      });
     });
     grow();
   })();

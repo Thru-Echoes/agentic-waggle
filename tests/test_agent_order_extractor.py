@@ -16,6 +16,10 @@ sourced so we relax the assertion there.
 from __future__ import annotations
 
 
+import uuid
+
+import pytest
+
 from agents.order_extractor import run_order_extraction
 from agents.schemas import EmailInput, ExtractionFailure, OrderDraft
 from providers import semantic_matcher
@@ -200,3 +204,35 @@ class TestEvidenceGrounding:
                         f"no line-item evidence grounded in source for "
                         f"sku={li.sku!r}: evidence={li.evidence}"
                     )
+
+
+class TestPinnedCustomer:
+    def test_pinned_customer_skips_matching_and_is_fully_confident(
+        self, db, faker_instance, require_llm_api_key
+    ) -> None:
+        _seed_minimum(db, faker_instance)
+        from sqlalchemy import text as _t
+
+        row = db.execute(_t("SELECT id, name FROM customers ORDER BY name LIMIT 1")).mappings().one()
+        pinned = uuid.UUID(str(row["id"]))
+        email = EmailInput(
+            external_id=None,
+            from_address="copilot@waggle.local",
+            subject="Order draft from copilot",
+            body_text="Draft an order: 12 Italian mated queens (QUEEN-ITA-MATED) at $48 each.",
+        )
+        result = run_order_extraction(email, db, pinned_customer_id=pinned)
+        assert isinstance(result, OrderDraft), getattr(result, "reason", result)
+        assert result.customer.customer_id == pinned
+        assert result.customer.customer_name == row["name"]
+        assert result.customer.confidence == 1.0
+        assert result.customer.evidence == ["customer confirmed by the user"]
+
+    def test_unknown_pinned_customer_raises(self, db, faker_instance, require_llm_api_key) -> None:
+        _seed_minimum(db, faker_instance)
+        email = EmailInput(
+            external_id=None, from_address="copilot@waggle.local", subject="x",
+            body_text="Draft an order: 12 Italian mated queens (QUEEN-ITA-MATED) at $48 each.",
+        )
+        with pytest.raises(LookupError, match="does not exist in customers"):
+            run_order_extraction(email, db, pinned_customer_id=uuid.uuid4())
