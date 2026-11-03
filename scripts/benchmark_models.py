@@ -21,6 +21,10 @@ Usage:
     python -m scripts.benchmark_models --stages intent
     python -m scripts.benchmark_models --models gpt-4o-mini,gpt-5.4-mini
 
+    # Regenerate the markdown from a saved JSON report. No API calls; costs
+    # are recomputed from the recorded token counts with the current prices:
+    python -m scripts.benchmark_models --from-json docs/benchmarks/2026-11-02-extract-models.json
+
 Requires:
     - OPENAI_API_KEY in env
     - gmail-fixtures available at /gmail-fixtures (in container)
@@ -417,6 +421,43 @@ class ModelReport:
     cases: list[CaseResult] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class LoadedReport:
+    """A benchmark run rebuilt from its JSON report."""
+
+    reports: dict[str, ModelReport]
+    started_at: datetime
+    n_cases: int
+
+
+def load_json_report(path: Path) -> LoadedReport:
+    """Rebuild per-model reports from a JSON file written by ``write_json_report``.
+
+    Costs are recomputed from the recorded token counts with the current
+    ``PRICING_USD_PER_M_TOKENS`` table, so a report can be regenerated after a
+    price change, or after a model was added to the table, without new LLM
+    calls. Side effects: reads ``path`` only.
+    """
+    payload = json.loads(path.read_text())
+    reports: dict[str, ModelReport] = {}
+    for model, body in payload["models"].items():
+        report = ModelReport(model=model)
+        for stage, stats_payload in body["by_stage"].items():
+            stats = StageStats(**stats_payload)
+            stats.total_cost_usd = _compute_cost(
+                model, stats.total_input_tokens, stats.total_output_tokens
+            )
+            report.by_stage[stage] = stats
+        report.cases = [CaseResult(**c) for c in body["cases"]]
+        reports[model] = report
+    n_cases = max((len(r.cases) for r in reports.values()), default=0)
+    return LoadedReport(
+        reports=reports,
+        started_at=datetime.fromisoformat(payload["started_at"]),
+        n_cases=n_cases,
+    )
+
+
 def run_benchmark(
     client: OpenAI,
     models: list[str],
@@ -559,7 +600,11 @@ def write_markdown_report(
         f"Ran {len(reports)} candidate models against {n_cases} ground-truth "
         f"cases across {len(STAGE_NAMES)} stages."
     )
-    lines.append(f"Started at {started_at.isoformat()}.\n")
+    lines.append(f"Started at {started_at.isoformat()}.")
+    lines.append(
+        "Costs are derived from the recorded token counts and the price table "
+        "in `scripts/benchmark_models.py` at the time the report was written.\n"
+    )
 
     # Per-stage comparison table
     for stage in STAGE_NAMES:
@@ -605,23 +650,44 @@ def write_markdown_report(
 
     # Picks
     lines.append("\n## Recommended per-stage assignment\n")
+    lines.append(RECOMMENDATION_RULE + "\n")
     lines.append(_pick_recommendations(reports))
 
     out_path.write_text("\n".join(lines) + "\n")
     log.info("wrote markdown report → %s", out_path)
 
 
+RECOMMENDATION_RULE = (
+    "Ranked by accuracy, then evidence grounding (the share of quoted evidence "
+    "that appears verbatim in the email), then total cost, then latency. "
+    "Grounding ranks above cost because the UI shows the quotes to the "
+    "reviewer: an accurate answer with fabricated quotes fails review. "
+    "Picks are per stage and mechanical; the shipped defaults in "
+    "`app/config.py` keep one model across the three extraction stages "
+    "unless the full-corpus eval, not this sample, confirms a split."
+)
+
+
+def _stage_rank_key(stats: StageStats) -> tuple[float, float, float, int]:
+    """Sort key for one stage: more accurate and better grounded first, then cheaper, then faster."""
+    return (
+        -stats.accuracy(),
+        -stats.evidence_groundedness(),
+        stats.total_cost_usd,
+        stats.avg_latency_ms(),
+    )
+
+
 def _pick_recommendations(reports: dict[str, ModelReport]) -> str:
-    """Pick the best model per stage by (accuracy, then latency, then cost)."""
+    """Pick the best model per stage using ``RECOMMENDATION_RULE``.
+
+    Pure function: returns one markdown bullet per stage.
+    """
     lines = []
     for stage in STAGE_NAMES:
         ranked = sorted(
             reports.items(),
-            key=lambda kv: (
-                -kv[1].by_stage.get(stage, StageStats(stage)).accuracy(),
-                kv[1].by_stage.get(stage, StageStats(stage)).avg_latency_ms(),
-                kv[1].by_stage.get(stage, StageStats(stage)).total_cost_usd,
-            ),
+            key=lambda kv: _stage_rank_key(kv[1].by_stage.get(stage, StageStats(stage))),
         )
         if not ranked:
             continue
@@ -630,6 +696,7 @@ def _pick_recommendations(reports: dict[str, ModelReport]) -> str:
         lines.append(
             f"- **{stage}** → `{winner_name}` "
             f"(accuracy {s.accuracy():.0%}, "
+            f"evidence-grounded {s.evidence_groundedness():.0%}, "
             f"avg {s.avg_latency_ms()}ms, "
             f"${s.total_cost_usd:.4f} for {s.n_calls} calls)"
         )
@@ -671,7 +738,21 @@ def main() -> None:
         "--out-dir", default="docs/benchmarks",
         help="Where to write the markdown + JSON outputs.",
     )
+    parser.add_argument(
+        "--from-json", default=None,
+        help="Regenerate the markdown report next to this JSON report "
+             "(no API calls; costs recomputed from recorded token counts).",
+    )
     args = parser.parse_args()
+
+    if args.from_json:
+        source = Path(args.from_json)
+        loaded = load_json_report(source)
+        write_markdown_report(
+            loaded.reports, source.with_suffix(".md"),
+            n_cases=loaded.n_cases, started_at=loaded.started_at,
+        )
+        return
 
     if not os.environ.get("OPENAI_API_KEY"):
         raise SystemExit("OPENAI_API_KEY must be set")
