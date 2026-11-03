@@ -11,7 +11,7 @@ point.
 | Inbox → LangGraph extraction → Confirm | works; drafts carry verbatim evidence; failures (including a rejected LLM key) render as cards | `tests/test_agent_order_extractor.py`, `tests/test_routes_inbox_confirm.py`, `tests/test_e2e_inbox_browser.py`, `tests/test_e2e_error_surfaces_browser.py` |
 | Copilot (query / order draft / report draft) | works; conversations are scoped per visitor; low-confidence matches ask, then resume with the chosen customer; answers cite real report rows | `tests/test_routes_copilot.py`, `tests/test_routes_confirm_match.py`, `tests/test_agent_copilot_*.py`, `tests/test_e2e_copilot_*_browser.py` |
 | Order FSM | enforced in `db/fsm.py`; visible on `/orders` (history, next steps, stale-state guard) | `tests/test_fsm.py`, `tests/test_routes_orders_fsm.py`, `tests/test_e2e_orders_browser.py` |
-| Semantic matcher (Stage A hybrid retrieve + Stage B LLM disambiguation) | v5.1 corpus eval: customer 95.2%, SKU 95.8% (full mode); sample-mode eval runs in `make test` with a key | `tests/test_provider_semantic_matcher.py`, `tests/test_matcher_eval.py`, `.reports/` |
+| Semantic matcher (Stage A hybrid retrieve + Stage B LLM disambiguation) | 2026-11-03 full-corpus eval with `gpt-6-luna`: customer 95.7–96.2% (201–202/210, three runs), SKU 98.6% (70/71); sample-mode eval runs in `make test` with a key | `tests/test_provider_semantic_matcher.py`, `tests/test_matcher_eval.py`, `.reports/` |
 | MCP servers (2 servers, 9 tools) | work over stdio; smoke-tested and tool-tested | `tests/test_mcp_*.py` |
 | HTTP surface | Basic auth with an HTML 401, nonce CSP + security headers, CSRF origin check, per-client rate limit + daily LLM budget, generic 500s with request ids, `/ready` reports the provider probe | `tests/test_security_surfaces.py`, `tests/test_ratelimit.py`, `tests/test_provider_probe.py` |
 | Build | locked dependencies (`pyproject.toml` + `uv.lock`), multi-stage non-root image (2.75 GB), CI builds and boots the image | `.github/workflows/ci.yml` |
@@ -39,8 +39,11 @@ Chosen on the repository's own benchmark (`scripts/benchmark_models.py`,
 25/25 accuracy; `gpt-6.1-terra` was the smallest model to ground 100% of
 its evidence quotes verbatim on every stage, so it is the default for the
 extraction stages and the copilot router/main/report stages; `gpt-6-luna`
-titles conversations; the matcher's Stage B stays on `gpt-5.4-mini` (no
-measured gain from the newer families on the sample eval, one regression).
+titles conversations and runs the matcher's Stage B disambiguator, chosen on
+the full 281-case corpus eval (`docs/benchmarks/2026-11-03-matcher-stage-b.md`):
+`gpt-6-luna` (201–202/210 customers over three runs, 70/71 SKUs) and
+`gpt-6.1-terra` (201/210, 70/71) tie,
+within one customer case of `gpt-5.4-mini`, and luna costs a tenth of terra.
 Every stage is a `Settings` field and an environment variable. Newer OpenAI
 families reject an explicit temperature; `providers/llm.py` sends one only
 to families known to accept it.
@@ -67,6 +70,6 @@ to families known to accept it.
 - Always-on web machine vs scale-to-zero (cost vs cold start).
 - Keep Basic auth with the HTML 401 page, or an auth-exempt landing page with an "Enter demo" button.
 - Whether to purge the pre-scoping conversations and the one visitor-confirmed order from the live database by hand.
-- Full-corpus matcher eval before any Stage B model change.
+- The matcher corpus case for a bare "Cascade" (expected ambiguous, resolved to Cascade Orchard Partners by every evaluated model): fix the corpus or the matcher.
 - A 60–90 s screen capture of the working flow for the portfolio page.
 - Visual polish pass on the UI (sequenced after the above lands).

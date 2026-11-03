@@ -19,8 +19,9 @@ Pipeline (both customer + SKU paths):
           rrf_score DESC; keep rank-1) -> top 5 distinct targets
 
     Stage B — LLM disambiguate (added in Task 4):
-        gpt-5.4-nano with structured output (response_format=json_schema)
-        bound to CustomerMatch / SkuMatch.
+        the model named by ``Settings.copilot_matcher_disambig_model`` with
+        structured output (response_format=json_schema) bound to
+        CustomerMatch / SkuMatch.
 
     Stage C — Cache + observability (added in Task 5).
 
@@ -598,8 +599,9 @@ def _llm_disambiguate(
     ctx: "ConversationContext | SkuContext",
     db: Session,
 ) -> "CustomerMatch | SkuMatch":
-    """Stage B — call gpt-5.4-nano with structured output bound to the
-    matcher's Pydantic schema. Raises on auth failure; retries once on
+    """Stage B — call the configured disambiguation model
+    (``Settings.copilot_matcher_disambig_model``) with structured output
+    bound to the matcher's Pydantic schema. Raises on auth failure; retries once on
     network glitch; returns a low-confidence null on terminal failure.
 
     Parameters:
@@ -732,8 +734,8 @@ def _llm_disambiguate(
                     if not isinstance(alt, dict):
                         continue
                     # Remap plausibility_score → confidence when the LLM uses
-                    # the wrong field name (gpt-5.4-nano + json_schema mode
-                    # echoes fused_score as plausibility_score sometimes).
+                    # the wrong field name (json_schema mode sometimes echoes
+                    # fused_score as plausibility_score).
                     if "confidence" not in alt and "plausibility_score" in alt:
                         alt = dict(alt)
                         alt["confidence"] = alt.pop("plausibility_score")

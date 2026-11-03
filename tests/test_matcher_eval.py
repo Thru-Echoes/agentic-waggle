@@ -69,17 +69,29 @@ require_openai_key = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 
 KNOWN_ACCEPTABLE_CUSTOMER: dict[str, str] = {
-    "abbreviation": "mini misses single colloquial cases (e.g. 'Pacific Honey'); follow-up",
-    "alias": "mini misses numeric-to-word aliases (e.g. '7 Acres Farms'); follow-up",
-    "apostrophe_variant": "mini misses 'Company'→'Co.' normalization edge cases; follow-up",
-    "casual_colloquial": "mini misses some casual-phrase resolutions; follow-up",
+    "alias": (
+        "nondeterministic: the numeric-to-word alias '7 Acres Farms' resolves "
+        "in two of three gpt-6-luna full runs; follow-up"
+    ),
+    "ambiguous_reference": (
+        "single case: bare 'Cascade' is expected to stay null with two "
+        "alternatives, but every evaluated model commits to Cascade Orchard "
+        "Partners (Cascadia Honey Co. is the other candidate); decide corpus "
+        "vs matcher"
+    ),
+    "casual_colloquial": (
+        "gpt-6 models return null on two or three casual phrasings "
+        "('the Cascadia honey crew', 'Wenatchee family guys'); follow-up"
+    ),
     "site_reference": "Stage A FTS tokenization — Cobblestone/Drakestone Main Warehouse swap",
-    "site_shortform": "mini under-commits to null on single-customer block disambiguators",
+    "site_shortform": (
+        "Stage B returns null on single-customer block disambiguators "
+        "('Martinez hilltop'); same two cases for every evaluated model"
+    ),
 }
 
 KNOWN_ACCEPTABLE_SKU: dict[str, str] = {
     "sku_ambiguous": "alts-assertion exposes matcher should surface alts on varroa/honey-drum queries; follow-up",
-    "sku_negative": "single-case over-match (entrance reducer→EQ-FEED-ENT); investigate corpus vs seed",
 }
 
 
