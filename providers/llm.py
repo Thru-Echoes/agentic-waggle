@@ -20,6 +20,9 @@ Public surface:
         def complete(prompt, system=None, tools=None, **kwargs) -> LLMResponse
         def stream(prompt, **kwargs) -> Iterator[str]
 
+    supports_temperature(model) -> bool
+    get_temperature(model, temperature=0.0) -> float | None
+
 Side effects: `complete` makes a real HTTP call to Anthropic or OpenAI.
 """
 # pyright: reportMissingImports=false
@@ -47,6 +50,51 @@ class LLMConfigurationError(RuntimeError):
     Intentional. The stack requires a real LLM; there is no canned-response
     fallback.
     """
+
+
+#: Model-name prefixes known to accept an explicit ``temperature``. Newer
+#: OpenAI families (gpt-5.5, gpt-5.6, gpt-6.x, the o-series) accept only the
+#: provider default and reject any other value with HTTP 400
+#: ("'temperature' does not support 0 with this model"). Anything not listed
+#: here is sent without a temperature argument: omitting it never fails,
+#: while sending it to the wrong family fails every call.
+TEMPERATURE_ACCEPTING_PREFIXES: tuple[str, ...] = ("gpt-4", "gpt-5.4", "claude-")
+
+#: Sampling temperature used for every structured-extraction call when the
+#: model accepts one. Deterministic output is the goal; grounding is audited
+#: separately.
+DEFAULT_TEMPERATURE = 0.0
+
+
+def supports_temperature(model: str) -> bool:
+    """Return True when ``model`` is known to accept an explicit temperature.
+
+    Parameters:
+        model: Provider model id (for example ``gpt-6.1-terra``).
+
+    Returns:
+        True for the families in ``TEMPERATURE_ACCEPTING_PREFIXES``; False
+        otherwise, including for unknown models.
+
+    Side effects: none.
+    """
+    return model.startswith(TEMPERATURE_ACCEPTING_PREFIXES)
+
+
+def get_temperature(model: str, temperature: float = DEFAULT_TEMPERATURE) -> float | None:
+    """Return the temperature to request for ``model``, or ``None`` to omit it.
+
+    ``None`` is what LangChain's chat models treat as "do not send"; the raw
+    OpenAI client needs its ``NOT_GIVEN`` sentinel instead (see
+    ``omit_if_none``).
+
+    Parameters:
+        model: Provider model id.
+        temperature: Desired temperature when supported.
+
+    Side effects: none.
+    """
+    return temperature if supports_temperature(model) else None
 
 
 def get_openai_client() -> "openai.OpenAI":
@@ -183,6 +231,9 @@ def _openai_complete(
     if tools:
         call_kwargs["tools"] = tools
     call_kwargs.update(kwargs)
+    if "temperature" in call_kwargs and not supports_temperature(model):
+        # Families that only accept the default reject the argument outright.
+        call_kwargs.pop("temperature")
 
     # gpt-5.x family rejects ``max_tokens`` and requires
     # ``max_completion_tokens``. Translate transparently so callers can

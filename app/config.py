@@ -47,11 +47,14 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://redis:6379/0")
 
     # -- LLM --------------------------------------------------------------
-    # Waggle defaults to OpenAI gpt-5.4-mini — optimized for structured
-    # extraction, fast, cheap per call, and supports OpenAI's native
-    # structured-outputs feature that LangChain's `with_structured_output`
-    # uses under the hood. Anthropic is kept as a toggle for demo resilience
-    # but `llm_provider` decides which one actually runs.
+    # Waggle defaults to OpenAI gpt-6.1-terra for every stage whose output a
+    # user reads. On the 2026-11-02 extraction benchmark
+    # (docs/benchmarks/2026-11-02-extract-models.md) it matched the cheaper
+    # families on accuracy (25/25) and was the smallest model to ground
+    # 100% of its evidence quotes verbatim in the source on all three
+    # stages; gpt-6.1-sol showed no measured gain at twice the price.
+    # Anthropic is kept as a toggle for demo resilience but `llm_provider`
+    # decides which one actually runs.
     #
     # Keys are optional at settings load — `providers/llm.py` raises at
     # client construction if the selected provider's key is missing, so the
@@ -63,11 +66,11 @@ class Settings(BaseSettings):
         description="Which LLM provider powers the agent + MCP + follow-up email.",
     )
     openai_model: str = Field(
-        default="gpt-5.4-mini",
+        default="gpt-6.1-terra",
         description=(
             "Default OpenAI chat model when no per-stage override is set. "
-            "Acts as a fallback for code paths that don't yet read a "
-            "per-stage field (e.g. MCP tools, future copilot work)."
+            "Used by LLMClient (MCP tools, the demo script) and as the "
+            "fallback for any stage without its own field."
         ),
     )
     anthropic_model: str = Field(
@@ -76,41 +79,32 @@ class Settings(BaseSettings):
     )
 
     # -- Per-stage model assignments (driven by the benchmark) ------------
-    # See docs/benchmarks/2026-05-08-extract-models.md for the rationale.
-    # Each stage gets the cheapest model that hits 100% accuracy at its
-    # complexity level, with evidence-grounding as a tie-breaker for
-    # stages whose output is rendered to the user.
+    # See docs/benchmarks/2026-11-02-extract-models.md (and the 2026-05-08
+    # report it supersedes). Every candidate hit 100% accuracy on these
+    # stages; the deciding metric is the share of evidence quotes that
+    # appear verbatim in the source email, because those quotes are what
+    # the UI renders as "Source" tooltips and Evidence blocks.
     extract_intent_model: str = Field(
-        default="gpt-5.4-mini",
+        default="gpt-6.1-terra",
         description=(
-            "Model for the intent-classification stage. Fast model — "
-            "task is binary-ish and 100% accurate across all benchmarked candidates."
+            "Model for the intent-classification stage. 100% accuracy and "
+            "100% verbatim evidence on the benchmark (gpt-5.4-mini: 0%)."
         ),
     )
     extract_customer_model: str = Field(
-        default="gpt-5.4-mini",
+        default="gpt-6.1-terra",
         description=(
-            "Model for the customer-reference extraction stage. Fast model "
-            "— output feeds a deterministic fuzzy match, so paraphrasing "
-            "in evidence is acceptable."
+            "Model for the customer-reference extraction stage. The quoted "
+            "evidence is shown next to the matched customer, so grounding "
+            "matters (100% vs 20% for gpt-5.4-mini)."
         ),
     )
     extract_items_model: str = Field(
-        default="gpt-5.4-nano",
+        default="gpt-6.1-terra",
         description=(
-            "Model for the line-items extraction stage. Nano variant chosen "
-            "because line-item evidence is rendered as user-facing 'Source' "
-            "tooltips and nano hit 90% verbatim-grounding in benchmark "
-            "(vs 0% for gpt-5.4-mini)."
-        ),
-    )
-    extract_resolver_fallback_model: str = Field(
-        default="gpt-5.5",
-        description=(
-            "Model for the LLM-fallback SKU resolver. Rare path (only when "
-            "deterministic fuzzy match misses) so the latency cost is "
-            "acceptable; gpt-5.5 chosen for highest evidence-grounding "
-            "rate (100%) on stages this complex."
+            "Model for the line-items extraction stage. Line-item evidence "
+            "is rendered as user-facing 'Source' tooltips; terra grounded "
+            "100% of quotes (gpt-5.4-nano 90%, gpt-5.4-mini 10%)."
         ),
     )
 
@@ -120,22 +114,22 @@ class Settings(BaseSettings):
     # reuses the items-extract model (highest verbatim-grounding rate at
     # low cost); report extraction uses the customer-extract model.
     copilot_router_model: str = Field(
-        default="gpt-5.4-mini",
+        default="gpt-6.1-terra",
         description=(
-            "Intent classifier for one chat turn. Single fast call per turn; "
-            "binary-ish classification + 1-2 evidence quotes."
+            "Intent classifier for one chat turn. Single call per turn; "
+            "classification + 1-2 evidence quotes (same profile as the "
+            "extraction intent stage)."
         ),
     )
     copilot_main_model: str = Field(
-        default="gpt-5.4-nano",
+        default="gpt-6.1-terra",
         description=(
-            "Main answer-generation model. Same nano variant as line-items — "
-            "answers are user-facing and need verbatim grounding from the "
-            "retrieved context. Cheap per call."
+            "Main answer-generation model. Answers are user-facing and must "
+            "stay grounded in the retrieved context."
         ),
     )
     copilot_report_model: str = Field(
-        default="gpt-5.4-mini",
+        default="gpt-6.1-terra",
         description=(
             "Report-extraction model for log_customer_report intent. Same "
             "profile as customer-reference extraction — short structured "
@@ -143,15 +137,20 @@ class Settings(BaseSettings):
         ),
     )
     copilot_title_model: str = Field(
-        default="gpt-5.4-mini",
+        default="gpt-6-luna",
         description=(
-            "Tiny model for auto-titling a new conversation from its first "
-            "user turn. One call, ~10 tokens output."
+            "Small model for auto-titling a new conversation from its first "
+            "user turn. One call, ~10 tokens output; grounding is irrelevant "
+            "so the cheapest current tier is enough."
         ),
     )
     copilot_matcher_disambig_model: str = Field(
         default="gpt-5.4-mini",
-        description="OpenAI chat model for the semantic matcher's LLM disambiguator.",
+        description=(
+            "OpenAI chat model for the semantic matcher's Stage B "
+            "disambiguator. Chosen by tests/test_matcher_eval.py, not by "
+            "the extraction benchmark; see STATUS.md for the current eval."
+        ),
     )
 
     # -- Provider filesystem roots ----------------------------------------
