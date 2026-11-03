@@ -2,6 +2,10 @@
 {% block title %}{{ product }} — orders{% endblock %}
 {% block content %}
 <h1>Orders</h1>
+<p class="muted">
+  Every order moves through an explicit state machine. Click a row to see its
+  history and advance it one legal step.
+</p>
 
 <div class="filter-bar">
   <a href="/orders" class="{{ 'active' if current_state is none else '' }}">All</a>
@@ -10,34 +14,51 @@
   {% endfor %}
 </div>
 
-<div class="card">
-  {% if orders %}
-    <table class="rows">
-      <thead>
-        <tr>
-          <th>Created</th>
-          <th>Customer</th>
-          <th>Apiarist</th>
-          <th>State</th>
-          <th>Pollination date</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for o in orders %}
+<div class="split">
+  <div class="card">
+    {% if orders %}
+      <p class="muted pagination" id="orders-pagination">
+        Showing {{ shown_from }}–{{ shown_to }} of {{ total }}
+        {% if prev_url %}· <a href="{{ prev_url }}">← Previous</a>{% endif %}
+        {% if next_url %}· <a href="{{ next_url }}">Next →</a>{% endif %}
+      </p>
+      <table class="rows">
+        <thead>
           <tr>
-            <td>{{ o.created_at.strftime("%Y-%m-%d") }}</td>
-            <td>{{ o.customer.name if o.customer else "(unknown)" }}</td>
-            <td>{{ o.apiarist.name if o.apiarist else "(unknown)" }}</td>
-            <td><span class="badge {{ o.state.value.lower() }}">{{ o.state.value }}</span></td>
-            <td>{{ o.pollination_date.isoformat() if o.pollination_date else "—" }}</td>
-            <td>${{ "{:,.2f}".format(o.total_usd) }}</td>
+            <th>Created</th>
+            <th>Customer</th>
+            <th>Apiarist</th>
+            <th>State</th>
+            <th>Pollination date</th>
+            <th>Total</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <div class="empty">No orders match this filter.</div>
-  {% endif %}
+        </thead>
+        <tbody>
+          {% for o in orders %}
+            <tr class="clickable"
+                tabindex="0"
+                role="button"
+                aria-label="Open order for {{ o.customer.name if o.customer else 'unknown customer' }}"
+                hx-get="/orders/{{ o.id }}/partial"
+                hx-target="#order-detail-pane"
+                hx-swap="innerHTML">
+              <td>{{ o.created_at.strftime("%Y-%m-%d") }}</td>
+              <td>{{ o.customer.name if o.customer else "(unknown)" }}</td>
+              <td>{{ o.apiarist.name if o.apiarist else "(unknown)" }}</td>
+              <td><span id="order-state-{{ o.id }}" class="badge {{ o.state.value.lower() }}">{{ o.state.value }}</span></td>
+              <td>{{ o.pollination_date.isoformat() if o.pollination_date else "—" }}</td>
+              <td>${{ "{:,.2f}".format(o.total_usd) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">No orders match this filter.</div>
+    {% endif %}
+  </div>
+
+  <div class="card" id="order-detail-pane">
+    <div class="empty">Select an order to see its line items, history, and next step.</div>
+  </div>
 </div>
 {% endblock %}

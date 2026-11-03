@@ -1,0 +1,86 @@
+{# Order detail pane: header, line items, FSM history, and the legal next
+   moves. Also re-emits the list row's state badge out-of-band so the table
+   updates in place after a transition. #}
+<span id="order-state-{{ order.id }}" hx-swap-oob="true"
+      class="badge {{ current_state.value.lower() }}">{{ current_state.value }}</span>
+
+<h3>{{ order.customer.name if order.customer else "(unknown customer)" }}</h3>
+<p class="muted">
+  Created {{ order.created_at.strftime("%Y-%m-%d") }} ·
+  {{ order.apiarist.name if order.apiarist else "(unknown apiarist)" }} ·
+  <span class="badge {{ current_state.value.lower() }}">{{ current_state.value }}</span>
+</p>
+
+{% if notice %}
+  <div class="confirm-result {{ 'ok' if notice.startswith('Moved') else 'error' }}" role="status">
+    <p>{{ notice }}</p>
+  </div>
+{% endif %}
+
+<div class="tile-row">
+  <div class="tile sap">
+    <div class="label">Total</div>
+    <div class="value">${{ "{:,.2f}".format(order.total_usd) }}</div>
+  </div>
+  <div class="tile">
+    <div class="label">Pollination date</div>
+    <div class="value">{{ order.pollination_date.isoformat() if order.pollination_date else "—" }}</div>
+  </div>
+</div>
+
+<h3>Line items</h3>
+{% if order.line_items %}
+  <table class="rows">
+    <thead><tr><th>SKU</th><th>Qty</th><th>Unit price</th></tr></thead>
+    <tbody>
+      {% for li in order.line_items %}
+        <tr>
+          <td><code>{{ li.sku }}</code></td>
+          <td>{{ li.quantity }}</td>
+          <td>${{ "{:,.2f}".format(li.unit_price_usd) }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <div class="empty">No line items recorded.</div>
+{% endif %}
+
+<h3>Transition history</h3>
+{% if history %}
+  <ol class="order-history">
+    {% for t in history %}
+      <li>
+        <span class="muted">{{ t.transitioned_at.strftime("%Y-%m-%d %H:%M") }}</span>
+        {% if t.from_state %}
+          <span class="badge {{ t.from_state.value.lower() }}">{{ t.from_state.value }}</span> →
+        {% else %}
+          created as
+        {% endif %}
+        <span class="badge {{ t.to_state.value.lower() }}">{{ t.to_state.value }}</span>
+        {% if t.metadata_ and t.metadata_.get("source") %}<span class="muted">· {{ t.metadata_.get("source") }}</span>{% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+{% else %}
+  <div class="empty">No transitions recorded for this order (seeded directly).</div>
+{% endif %}
+
+<h3>Next step</h3>
+{% if next_moves %}
+  <form class="advance-row"
+        hx-post="/orders/{{ order.id }}/transition"
+        hx-target="#order-detail-pane"
+        hx-swap="innerHTML"
+        hx-disabled-elt="find button">
+    <input type="hidden" name="expected_from_state" value="{{ current_state.value }}">
+    {% for m in next_moves %}
+      <button type="submit" name="to_state" value="{{ m.to_state.value }}"
+              class="action {{ 'ghost' if m.to_state.value == 'CANCELLED' else '' }}">
+        {{ m.label }} → {{ m.to_state.value }}
+      </button>
+    {% endfor %}
+  </form>
+{% else %}
+  <p class="muted">{{ current_state.value }} is a terminal state; no further transitions.</p>
+{% endif %}

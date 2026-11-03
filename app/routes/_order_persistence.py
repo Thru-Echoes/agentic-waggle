@@ -13,7 +13,9 @@ pollination date) without re-running extraction.
 Side effects (per call to ``persist_order_from_draft``):
     * One INSERT into ``orders``
     * One INSERT per line item into ``order_line_items``
-    * One INSERT into ``order_state_transitions``
+    * One INSERT into ``order_state_transitions`` (the creation record,
+      ``from_state`` NULL), written through ``db.fsm`` like every other
+      transition; the draft's state must be one of ``db.fsm.INITIAL_STATES``
 """
 # pyright: reportMissingImports=false
 from __future__ import annotations
@@ -29,7 +31,8 @@ from sqlmodel import Session
 
 from agents.schemas import OrderDraft, ResolvedLineItem
 from db.enums import UserRole
-from db.models import Order, OrderLineItem, OrderStateTransition, User
+from db.fsm import record_creation, validate_initial_state
+from db.models import Order, OrderLineItem, User
 
 log = logging.getLogger(__name__)
 
@@ -95,6 +98,7 @@ def persist_order_from_draft(
             "Make sure the customer-match step produced a non-None id "
             "before calling persist_order_from_draft."
         )
+    validate_initial_state(draft.state)
 
     user = resolve_default_apiarist(db)
 
@@ -122,14 +126,7 @@ def persist_order_from_draft(
         db.add(item)
     db.commit()
 
-    transition = OrderStateTransition(
-        order_id=order.id,
-        from_state=None,
-        to_state=draft.state,
-        actor_id=user.id,
-        metadata_=metadata or {},
-    )
-    db.add(transition)
+    record_creation(db, order, actor_id=user.id, metadata=metadata)
     db.commit()
 
     log.info(

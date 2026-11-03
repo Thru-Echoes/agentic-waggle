@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
@@ -24,11 +24,19 @@ from app.config import Settings, get_settings
 from app.routes._order_persistence import (
     apply_order_overrides,
     persist_order_from_draft,
+    resolve_default_apiarist,
 )
 from app.schemas.copilot import ConfirmResultOut
 from app.templating import get_templates
 from db.enums import OrderState
-from db.models import Customer, Order, CustomerReport
+from db.fsm import (
+    IllegalTransition,
+    StaleTransition,
+    get_allowed_next_states,
+    get_transition_label,
+    transition_order,
+)
+from db.models import Customer, CustomerReport, Order, OrderStateTransition
 from db.session import get_db_session
 from providers.inbox import FIXTURE_ROOT, InboxClient, InboxFixtureMissing
 
@@ -111,28 +119,156 @@ def customers_page(
     return templates.TemplateResponse(request, "customers.html", ctx)
 
 
+ORDERS_PAGE_SIZE = 50
+
+
 @router.get("/orders", response_class=HTMLResponse)
 def orders_page(
     request: Request,
     db: Session = Depends(get_db_session),
     settings: Settings = Depends(get_settings),
     state: OrderState | None = None,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=ORDERS_PAGE_SIZE, ge=1, le=200),
 ) -> HTMLResponse:
-    q = select(Order).options(
-        selectinload(Order.customer), selectinload(Order.apiarist)
-    )
+    """Paginated order list with the FSM filter and a detail pane.
+
+    Rows load ``/orders/{id}/partial`` into the pane on click, where the
+    order can be advanced through the state machine.
+    """
+    base_q = select(Order)
     if state is not None:
-        q = q.where(Order.state == state)
+        base_q = base_q.where(Order.state == state)
+    total = db.execute(select(func.count()).select_from(base_q.subquery())).scalar_one()
     rows = db.execute(
-        q.order_by(Order.created_at.desc()).limit(100)  # type: ignore[attr-defined]
+        base_q.options(selectinload(Order.customer), selectinload(Order.apiarist))
+        .order_by(Order.created_at.desc())  # type: ignore[attr-defined]
+        .offset(offset)
+        .limit(limit)
     ).scalars().all()
+    shown_from = offset + 1 if rows else 0
+    shown_to = offset + len(rows)
+    state_qs = f"&state={state.value}" if state is not None else ""
     ctx = _common_context(request, settings) | {
         "nav": "orders",
         "orders": rows,
         "states": list(OrderState),
         "current_state": state,
+        "total": total,
+        "shown_from": shown_from,
+        "shown_to": shown_to,
+        "prev_url": f"/orders?offset={max(offset - limit, 0)}&limit={limit}{state_qs}" if offset > 0 else None,
+        "next_url": f"/orders?offset={offset + limit}&limit={limit}{state_qs}" if shown_to < total else None,
     }
     return templates.TemplateResponse(request, "orders.html", ctx)
+
+
+def _load_order_for_detail(db: Session, order_id: uuid.UUID) -> Order | None:
+    return db.execute(
+        select(Order)
+        .where(Order.id == order_id)
+        .options(
+            selectinload(Order.customer),
+            selectinload(Order.apiarist),
+            selectinload(Order.line_items),
+        )
+    ).scalar_one_or_none()
+
+
+def _render_order_detail(
+    request: Request,
+    db: Session,
+    order: Order,
+    *,
+    notice: str | None = None,
+    status_code: int = 200,
+) -> HTMLResponse:
+    """Render the order detail pane: header, line items, history, next moves.
+
+    The response also carries the row's state badge with ``hx-swap-oob`` so
+    the list updates in place after a transition.
+    """
+    history = db.execute(
+        select(OrderStateTransition)
+        .where(OrderStateTransition.order_id == order.id)
+        .order_by(OrderStateTransition.transitioned_at)  # type: ignore[attr-defined]
+    ).scalars().all()
+    current = OrderState(order.state)
+    next_moves = [
+        {"to_state": s, "label": get_transition_label(current, s)}
+        for s in get_allowed_next_states(current)
+    ]
+    return templates.TemplateResponse(
+        request,
+        "partials/order_detail.html",
+        {
+            "order": order,
+            "current_state": current,
+            "history": history,
+            "next_moves": next_moves,
+            "notice": notice,
+        },
+        status_code=status_code,
+    )
+
+
+@router.get("/orders/{order_id}/partial", response_class=HTMLResponse)
+def order_detail_partial(
+    order_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db_session),
+) -> HTMLResponse:
+    """HTMX partial — detail pane for one order, with its transition history."""
+    order = _load_order_for_detail(db, order_id)
+    if order is None:
+        return HTMLResponse("<div class='empty'>Not found</div>", status_code=404)
+    return _render_order_detail(request, db, order)
+
+
+@router.post("/orders/{order_id}/transition", response_class=HTMLResponse)
+def order_transition(
+    order_id: uuid.UUID,
+    request: Request,
+    to_state: OrderState = Form(...),
+    expected_from_state: OrderState = Form(...),
+    db: Session = Depends(get_db_session),
+) -> HTMLResponse:
+    """HTMX action — move an order one legal step through the FSM.
+
+    ``expected_from_state`` is the state the pane was rendered with; if the
+    order has moved since, the move is refused with 409 and the pane is
+    re-rendered from the current row so the user sees what happened.
+    Illegal edges are refused with 409 too. The actor is the demo's default
+    apiarist (there is no per-user login).
+
+    Side effects: on success, one UPDATE on ``orders`` and one INSERT on
+    ``order_state_transitions``.
+    """
+    order = _load_order_for_detail(db, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail=f"order {order_id} not found")
+    actor = resolve_default_apiarist(db)
+    try:
+        transition_order(
+            db, order, to_state,
+            actor_id=actor.id,
+            metadata={"source": "orders_ui"},
+            expected_from_state=expected_from_state,
+        )
+    except StaleTransition as exc:
+        db.rollback()
+        order = _load_order_for_detail(db, order_id)
+        assert order is not None
+        return _render_order_detail(request, db, order, notice=str(exc), status_code=409)
+    except IllegalTransition as exc:
+        db.rollback()
+        return _render_order_detail(request, db, order, notice=str(exc), status_code=409)
+    db.commit()
+    db.refresh(order)
+    return _render_order_detail(
+        request, db, order,
+        notice=f"Moved to {to_state.value}.",
+    )
 
 
 @router.get("/customer-reports", response_class=HTMLResponse)
